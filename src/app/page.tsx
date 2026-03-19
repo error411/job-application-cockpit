@@ -1,5 +1,5 @@
 import Link from 'next/link'
-
+//note
 export default function HomePage() {
   return (
     <main className="p-6">
