@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as RequestBody
     const { jobId } = body
 
-    if (!jobId) {
+    if (!jobId || typeof jobId !== 'string') {
       return NextResponse.json({ error: 'jobId is required' }, { status: 400 })
     }
 
