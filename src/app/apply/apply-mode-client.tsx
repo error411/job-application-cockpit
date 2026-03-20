@@ -95,9 +95,9 @@ function NotesForm({ item }: { item: ApplyItem }) {
       method="post"
       className="mt-4 space-y-2"
     >
-      <input type="hidden" name="jobId" value={item.jobId} />
-      <input type="hidden" name="status" value={item.status} />
-      <input type="hidden" name="from" value="apply" />
+      <input type="hidden" name="jobId" defaultValue={item.jobId ?? ''} />
+      <input type="hidden" name="status" defaultValue={item.status ?? 'ready'} />
+      <input type="hidden" name="from" defaultValue="apply" />
       <div>
         <label className="mb-1 block text-sm font-medium">Quick notes</label>
         <textarea
