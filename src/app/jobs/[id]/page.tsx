@@ -1,11 +1,11 @@
 import Link from 'next/link'
-import { createClient } from '../../../lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import type {
   ApplicationAssetRow,
   ApplicationRow,
   JobRow,
   JobScoreRow,
-} from '../../../lib/supabase/types'
+} from '@/lib/supabase/types'
 
 type PageProps = {
   params: Promise<{ id: string }>

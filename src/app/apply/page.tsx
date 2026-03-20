@@ -1,4 +1,4 @@
-import { createClient } from '../../lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import ApplyModeClient from './apply-mode-client'
 
 type ApplyItem = {

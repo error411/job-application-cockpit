@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '../../../lib/supabase/server'
-import { openai } from '../../../lib/openai/client'
+import { createClient } from '@/lib/supabase/server'
+import { openai } from '@/lib/openai/client'
 import type {
   CandidateProfileRow,
   JobRow,
   JobScoreInsert,
-} from '../../../lib/supabase/types'
+} from '@/lib/supabase/types'
 
 type RequestBody = {
   jobId?: string
@@ -28,9 +28,32 @@ type CandidateProfileForScore = Pick<
   'id' | 'full_name' | 'title' | 'summary' | 'strengths' | 'experience_bullets'
 >
 
+type CandidateExperienceRow = {
+  company: string
+  title: string
+  location: string | null
+  start_date: string | null
+  end_date: string | null
+  is_current: boolean | null
+  summary: string | null
+  bullets: string[] | null
+  technologies: string[] | null
+  sort_order: number | null
+}
+
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return value.filter((item): item is string => typeof item === 'string')
+}
+
+function formatDateRange(
+  startDate: string | null,
+  endDate: string | null,
+  isCurrent: boolean | null
+) {
+  const start = startDate ? startDate.slice(0, 7) : 'Unknown start'
+  const end = isCurrent ? 'Present' : endDate ? endDate.slice(0, 7) : 'Unknown end'
+  return `${start} to ${end}`
 }
 
 export async function POST(req: NextRequest) {
@@ -86,6 +109,39 @@ export async function POST(req: NextRequest) {
     const strengths = toStringArray(typedProfile.strengths)
     const experienceBullets = toStringArray(typedProfile.experience_bullets)
 
+    const { data: experienceData, error: experienceError } = await supabase
+      .from('candidate_experience')
+      .select(
+        'company, title, location, start_date, end_date, is_current, summary, bullets, technologies, sort_order'
+      )
+      .eq('candidate_profile_id', typedProfile.id)
+      .order('sort_order', { ascending: true })
+
+    if (experienceError) {
+      return NextResponse.json(
+        { error: experienceError.message },
+        { status: 500 }
+      )
+    }
+
+    const experienceRows = (experienceData ?? []) as CandidateExperienceRow[]
+
+    const formattedExperience = experienceRows
+      .map((exp) => {
+        const bullets = toStringArray(exp.bullets)
+        const technologies = toStringArray(exp.technologies)
+
+        return `
+${exp.title} @ ${exp.company}
+Location: ${exp.location || 'Not specified'}
+Dates: ${formatDateRange(exp.start_date, exp.end_date, exp.is_current)}
+${exp.summary ? `Summary: ${exp.summary}` : ''}
+${bullets.length ? `Bullets:\n${bullets.map((b) => `- ${b}`).join('\n')}` : ''}
+${technologies.length ? `Technologies: ${technologies.join(', ')}` : ''}
+        `.trim()
+      })
+      .join('\n\n')
+
     const response = await openai.responses.create({
       model: 'gpt-5.4',
       input: [
@@ -101,6 +157,8 @@ Rules:
 - matched_skills should list concrete overlaps
 - missing_skills should list important missing requirements
 - reasons should be short bullet-style explanations
+- Use both the profile summary and structured past experience
+- Give strong weight to directly relevant work history
 - Output must follow the provided schema exactly
           `.trim(),
         },
@@ -115,8 +173,11 @@ Summary: ${typedProfile.summary || ''}
 Strengths:
 ${strengths.map((s) => `- ${s}`).join('\n')}
 
-Experience bullets:
+General experience bullets:
 ${experienceBullets.map((b) => `- ${b}`).join('\n')}
+
+Structured past experience:
+${formattedExperience || 'No structured past experience provided.'}
 
 Target job:
 Company: ${typedJob.company}

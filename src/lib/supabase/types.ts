@@ -21,3 +21,7 @@ export type CandidateProfileUpdate = Tables['candidate_profile']['Update']
 export type ApplicationAssetRow = Tables['application_assets']['Row']
 export type ApplicationAssetInsert = Tables['application_assets']['Insert']
 export type ApplicationAssetUpdate = Tables['application_assets']['Update']
+
+export type CandidateExperienceRow = Tables['candidate_experience']['Row']
+export type CandidateExperienceInsert = Tables['candidate_experience']['Insert']
+export type CandidateExperienceUpdate = Tables['candidate_experience']['Update']

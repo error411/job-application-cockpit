@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { createClient } from '../../lib/supabase/server'
-import type { ApplicationRow as DbApplicationRow, JobRow } from '../../lib/supabase/types'
+import { createClient } from '@/lib/supabase/server'
+import type { ApplicationRow as DbApplicationRow, JobRow } from '@/lib/supabase/types'
 
 type FollowUpListJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location'>
 

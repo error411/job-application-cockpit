@@ -1,10 +1,10 @@
 import Link from 'next/link'
-import { createClient } from '../../lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import type {
   ApplicationRow as DbApplicationRow,
   JobRow,
   JobScoreRow as DbJobScoreRow,
-} from '../../lib/supabase/types'
+} from '@/lib/supabase/types'
 
 type TodayJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location'>
 
