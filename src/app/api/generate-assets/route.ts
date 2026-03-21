@@ -69,14 +69,29 @@ function toNullableString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
+function formatMonthYear(date: string | null): string | null {
+  if (!date) return null
+
+  const parsed = new Date(date)
+  if (isNaN(parsed.getTime())) return null
+
+  return parsed.toLocaleDateString('en-US', {
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 function formatDateRange(
   startDate: string | null,
   endDate: string | null,
   isCurrent: boolean | null
 ) {
-  const start = startDate ? startDate.slice(0, 7) : 'Unknown start'
-  const end = isCurrent ? 'Present' : endDate ? endDate.slice(0, 7) : 'Unknown end'
-  return `${start} to ${end}`
+  const start = formatMonthYear(startDate) ?? 'Unknown start'
+  const end = isCurrent
+    ? 'Present'
+    : formatMonthYear(endDate) ?? 'Unknown end'
+
+  return `${start} – ${end}`
 }
 
 function formatLocationLine(city: string | null, state: string | null) {
