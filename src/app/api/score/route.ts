@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
 
     const { data: profile, error: profileError } = await supabase
       .from('candidate_profile')
-      .select('id, full_name, title, summary, strengths, experience_bullets')
+      .select('*')
       .order('created_at', { ascending: true })
       .limit(1)
       .single()

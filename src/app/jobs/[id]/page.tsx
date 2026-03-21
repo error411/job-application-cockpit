@@ -197,6 +197,27 @@ export default async function JobDetailPage({
             Mark Interviewing
           </button>
         </form>
+
+        <div className="flex flex-wrap gap-2">
+  <a
+    href={`/api/application-assets/${job.id}/resume-html`}
+    target="_blank"
+    rel="noreferrer"
+    className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+  >
+    Preview Resume HTML
+  </a>
+
+  <a
+    href={`/api/application-assets/${job.id}/resume-pdf`}
+    target="_blank"
+    rel="noreferrer"
+    className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+  >
+    Download Resume PDF
+  </a>
+</div>
+
       </div>
 
       <div className="mt-8 rounded border p-4">
