@@ -216,6 +216,23 @@ export default async function JobDetailPage({
   >
     Download Resume PDF
   </a>
+  <a
+    href={`/api/application-assets/${job.id}/cover-letter-html`}
+    target="_blank"
+    rel="noreferrer"
+    className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+  >
+    Preview Cover Letter HTML
+  </a>
+
+  <a
+    href={`/api/application-assets/${job.id}/cover-letter-pdf`}
+    target="_blank"
+    rel="noreferrer"
+    className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+  >
+    Download Cover Letter PDF
+  </a>
 </div>
 
       </div>
