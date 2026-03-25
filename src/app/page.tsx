@@ -1,3 +1,4 @@
+//before refactoring
 import Link from 'next/link'
 //note
 export default function HomePage() {
