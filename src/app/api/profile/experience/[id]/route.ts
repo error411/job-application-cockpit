@@ -4,18 +4,34 @@ import type { TablesUpdate } from '@/lib/supabase/types'
 
 type CandidateExperienceUpdate = TablesUpdate<'candidate_experience'>
 
+type CandidateExperienceRouteUpdate = Omit<
+  CandidateExperienceUpdate,
+  'bullets' | 'technologies'
+> & {
+  bullets?: string[]
+  technologies?: string[]
+}
+
 type RequestBody = {
   candidate_profile_id?: string
   company?: string
   title?: string
-  bullets?: string[]
-  technologies?: string[]
+  bullets?: string[] | null
+  technologies?: string[] | null
   summary?: string | null
   location?: string | null
   start_date?: string | null
   end_date?: string | null
   is_current?: boolean | null
   sort_order?: number | null
+}
+
+function normalizeStringArray(value: string[] | null | undefined) {
+  if (value == null) return undefined
+
+  return value
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 export async function PATCH(
@@ -27,38 +43,48 @@ export async function PATCH(
     const body = (await req.json()) as RequestBody
     const { id } = await params
 
-    const updatePayload: CandidateExperienceUpdate = {}
+    const updatePayload: CandidateExperienceRouteUpdate = {}
 
     if (body.candidate_profile_id !== undefined) {
       updatePayload.candidate_profile_id = body.candidate_profile_id
     }
+
     if (body.company !== undefined) {
       updatePayload.company = body.company.trim()
     }
+
     if (body.title !== undefined) {
       updatePayload.title = body.title.trim()
     }
+
     if (body.bullets !== undefined) {
-      updatePayload.bullets = body.bullets
+      updatePayload.bullets = normalizeStringArray(body.bullets)
     }
+
     if (body.technologies !== undefined) {
-      updatePayload.technologies = body.technologies
+      updatePayload.technologies = normalizeStringArray(body.technologies)
     }
+
     if (body.summary !== undefined) {
       updatePayload.summary = body.summary
     }
+
     if (body.location !== undefined) {
       updatePayload.location = body.location
     }
+
     if (body.start_date !== undefined) {
       updatePayload.start_date = body.start_date
     }
+
     if (body.end_date !== undefined) {
       updatePayload.end_date = body.end_date
     }
+
     if (body.is_current !== undefined) {
       updatePayload.is_current = body.is_current
     }
+
     if (body.sort_order !== undefined) {
       updatePayload.sort_order = body.sort_order
     }
