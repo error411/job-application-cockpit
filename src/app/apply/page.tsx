@@ -8,6 +8,7 @@ import {
   isApplicationStatus,
   type ApplicationStatus,
 } from '@/lib/statuses'
+import type { Tables } from '@/lib/supabase/types'
 
 type ApplyItem = {
   id: string
@@ -20,20 +21,28 @@ type ApplyItem = {
   appliedAt: string | null
   followUp1Due: string | null
   followUp2Due: string | null
+  followUp1SentAt: string | null
+  followUp2SentAt: string | null
+  followUp1EmailMarkdown: string | null
+  followUp2EmailMarkdown: string | null
   hasAssets: boolean
   latestScore: number | null
   priorityScore: number
   reason: string
 }
 
-type ApplicationRow = {
-  id: string
-  job_id: string
-  status: string | null
-  applied_at: string | null
-  follow_up_1_due: string | null
-  follow_up_2_due: string | null
-  notes: string | null
+type ApplicationRow = Pick<
+  Tables<'applications'>,
+  | 'id'
+  | 'job_id'
+  | 'status'
+  | 'applied_at'
+  | 'follow_up_1_due'
+  | 'follow_up_2_due'
+  | 'follow_up_1_sent_at'
+  | 'follow_up_2_sent_at'
+  | 'notes'
+> & {
   jobs:
     | {
         id: string
@@ -50,18 +59,17 @@ type ApplicationRow = {
     | null
 }
 
-type JobScoreRow = {
-  job_id: string
-  score: number
-  created_at: string
-}
+type JobScoreRow = Pick<Tables<'job_scores'>, 'job_id' | 'score' | 'created_at'>
 
-type ApplicationAssetRow = {
-  job_id: string
-  resume_markdown: string | null
-  cover_letter_markdown: string | null
-  created_at: string
-}
+type ApplicationAssetRow = Pick<
+  Tables<'application_assets'>,
+  | 'job_id'
+  | 'resume_markdown'
+  | 'cover_letter_markdown'
+  | 'follow_up_1_email_markdown'
+  | 'follow_up_2_email_markdown'
+  | 'created_at'
+>
 
 function normalizeApplicationStatus(value: string | null): ApplicationStatus {
   if (value && isApplicationStatus(value)) {
@@ -76,13 +84,16 @@ export default async function ApplyPage() {
 
   const { data: applicationData, error: applicationError } = await supabase
     .from('applications')
-    .select(`
+    .select(
+      `
       id,
       job_id,
       status,
       applied_at,
       follow_up_1_due,
       follow_up_2_due,
+      follow_up_1_sent_at,
+      follow_up_2_sent_at,
       notes,
       jobs (
         id,
@@ -90,18 +101,33 @@ export default async function ApplyPage() {
         title,
         location
       )
-    `)
+    `
+    )
     .in('status', ACTIVE_APPLICATION_STATUSES)
 
   if (applicationError) {
     console.error('Error loading apply page:', applicationError)
   }
 
-  const applicationRows = (applicationData ?? []) as ApplicationRow[]
+  const applicationRows: ApplicationRow[] = (applicationData ?? []).map((row) => ({
+    id: row.id,
+    job_id: row.job_id,
+    status: row.status,
+    applied_at: row.applied_at,
+    follow_up_1_due: row.follow_up_1_due,
+    follow_up_2_due: row.follow_up_2_due,
+    follow_up_1_sent_at: row.follow_up_1_sent_at,
+    follow_up_2_sent_at: row.follow_up_2_sent_at,
+    notes: row.notes,
+    jobs: row.jobs,
+  }))
+
   const jobIds = Array.from(new Set(applicationRows.map((row) => row.job_id)))
 
   const latestScoreByJobId = new Map<string, number>()
   const hasAssetsByJobId = new Map<string, boolean>()
+  const followUp1ByJobId = new Map<string, string | null>()
+  const followUp2ByJobId = new Map<string, string | null>()
 
   if (jobIds.length > 0) {
     const [
@@ -116,7 +142,16 @@ export default async function ApplyPage() {
 
       supabase
         .from('application_assets')
-        .select('job_id, resume_markdown, cover_letter_markdown, created_at')
+        .select(
+          `
+          job_id,
+          resume_markdown,
+          cover_letter_markdown,
+          follow_up_1_email_markdown,
+          follow_up_2_email_markdown,
+          created_at
+        `
+        )
         .in('job_id', jobIds)
         .order('created_at', { ascending: false }),
     ])
@@ -124,7 +159,11 @@ export default async function ApplyPage() {
     if (scoreError) {
       console.error('Error loading job scores for apply page:', scoreError)
     } else {
-      const scoreRows = (scoreData ?? []) as JobScoreRow[]
+      const scoreRows: JobScoreRow[] = (scoreData ?? []).map((row) => ({
+        job_id: row.job_id,
+        score: row.score,
+        created_at: row.created_at,
+      }))
 
       for (const row of scoreRows) {
         if (!latestScoreByJobId.has(row.job_id)) {
@@ -136,7 +175,14 @@ export default async function ApplyPage() {
     if (assetError) {
       console.error('Error loading application assets for apply page:', assetError)
     } else {
-      const assetRows = (assetData ?? []) as ApplicationAssetRow[]
+      const assetRows: ApplicationAssetRow[] = (assetData ?? []).map((row) => ({
+        job_id: row.job_id,
+        resume_markdown: row.resume_markdown,
+        cover_letter_markdown: row.cover_letter_markdown,
+        follow_up_1_email_markdown: row.follow_up_1_email_markdown,
+        follow_up_2_email_markdown: row.follow_up_2_email_markdown,
+        created_at: row.created_at,
+      }))
 
       for (const row of assetRows) {
         if (!hasAssetsByJobId.has(row.job_id)) {
@@ -144,6 +190,14 @@ export default async function ApplyPage() {
             row.resume_markdown?.trim() && row.cover_letter_markdown?.trim()
           )
           hasAssetsByJobId.set(row.job_id, hasAssets)
+        }
+
+        if (!followUp1ByJobId.has(row.job_id)) {
+          followUp1ByJobId.set(row.job_id, row.follow_up_1_email_markdown ?? null)
+        }
+
+        if (!followUp2ByJobId.has(row.job_id)) {
+          followUp2ByJobId.set(row.job_id, row.follow_up_2_email_markdown ?? null)
         }
       }
     }
@@ -167,6 +221,10 @@ export default async function ApplyPage() {
         appliedAt: row.applied_at ?? null,
         followUp1Due: row.follow_up_1_due ?? null,
         followUp2Due: row.follow_up_2_due ?? null,
+        followUp1SentAt: row.follow_up_1_sent_at ?? null,
+        followUp2SentAt: row.follow_up_2_sent_at ?? null,
+        followUp1EmailMarkdown: followUp1ByJobId.get(row.job_id) ?? null,
+        followUp2EmailMarkdown: followUp2ByJobId.get(row.job_id) ?? null,
         hasAssets,
         latestScore,
         priorityScore: latestScore ?? 0,

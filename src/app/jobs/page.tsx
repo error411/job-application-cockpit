@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { Database } from '@/lib/supabase/database.types'
+import type { Database } from '@/lib/supabase/types'
 
 type JobRow = Pick<
   Database['public']['Tables']['jobs']['Row'],
