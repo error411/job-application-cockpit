@@ -1,11 +1,11 @@
 -- EXTENSIONS
-create extension if not exists "uuid-ossp";
+create extension if not exists "pgcrypto";
 
 -- =========================
 -- jobs
 -- =========================
 create table public.jobs (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   company text not null,
   title text not null,
   description_raw text not null,
@@ -23,7 +23,7 @@ create table public.jobs (
 -- candidate_profile
 -- =========================
 create table public.candidate_profile (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   full_name text not null,
   title text,
   summary text,
@@ -37,7 +37,7 @@ create table public.candidate_profile (
 -- candidate_experience
 -- =========================
 create table public.candidate_experience (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   candidate_profile_id uuid not null,
   company text not null,
   title text not null,
@@ -57,7 +57,7 @@ create table public.candidate_experience (
 -- applications
 -- =========================
 create table public.applications (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   job_id uuid not null,
   status text not null default 'ready',
   notes text,
@@ -76,7 +76,7 @@ create table public.applications (
 -- application_assets
 -- =========================
 create table public.application_assets (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   job_id uuid unique not null,
   resume_markdown text,
   cover_letter_markdown text,
@@ -88,7 +88,7 @@ create table public.application_assets (
 -- job_scores
 -- =========================
 create table public.job_scores (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   job_id uuid not null,
   score int not null,
   matched_skills text[] default '{}',
