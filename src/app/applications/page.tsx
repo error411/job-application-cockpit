@@ -56,6 +56,41 @@ function toApplicationListItem(row: RawApplicationRow): ApplicationListItem {
   }
 }
 
+function getPriority(app: ApplicationListItem) {
+  const now = new Date()
+
+  const followUp1Due =
+    app.follow_up_1_due ? new Date(app.follow_up_1_due) : null
+  const followUp2Due =
+    app.follow_up_2_due ? new Date(app.follow_up_2_due) : null
+
+  const isFollowUpDue =
+    (followUp1Due && followUp1Due <= now) ||
+    (followUp2Due && followUp2Due <= now)
+
+  if (isFollowUpDue) {
+    return 4
+  }
+
+  if (app.status === 'follow_up_due') {
+    return 4
+  }
+
+  if (app.status === 'ready') {
+    return 3
+  }
+
+  if (app.status === 'applied') {
+    return 2
+  }
+
+  if (app.status === 'interviewing') {
+    return 2
+  }
+
+  return 1
+}
+
 export default async function ApplicationsPage() {
   const supabase = await createClient()
 
@@ -82,7 +117,16 @@ export default async function ApplicationsPage() {
     return <main className="p-6">Error loading applications: {error.message}</main>
   }
 
-  const applications = ((data ?? []) as RawApplicationRow[]).map(toApplicationListItem)
+const applications = ((data ?? []) as RawApplicationRow[])
+  .map(toApplicationListItem)
+  .sort((a, b) => getPriority(b) - getPriority(a))
+  
+  const nextActions = applications.filter(
+  (app) =>
+    app.status !== 'rejected' &&
+    app.status !== 'closed' &&
+    app.job !== null
+)
 
   const grouped = {
     ready: applications.filter((a) => a.status === 'ready'),
@@ -108,6 +152,19 @@ export default async function ApplicationsPage() {
           </Link>
         </div>
       </div>
+
+      <section className="border rounded p-4 mb-6 bg-yellow-50">
+    <h2 className="text-xl font-semibold mb-4">Next Actions</h2>
+    <div className="space-y-4">
+      {nextActions.slice(0, 3).length ? (
+  nextActions.slice(0, 3).map((app) => (
+          <ApplicationCard key={app.id} app={app} />
+        ))
+      ) : (
+        <p>No priority actions right now.</p>
+      )}
+    </div>
+  </section>
 
       <div className="grid gap-6 md:grid-cols-3">
         <section className="border rounded p-4">
