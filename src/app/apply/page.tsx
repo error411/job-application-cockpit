@@ -1,10 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import ApplyModeClient from './apply-mode-client'
+import {
+  ACTIVE_APPLICATION_STATUSES,
+  isApplicationStatus,
+  type ApplicationStatus,
+} from '@/lib/statuses'
 
 type ApplyItem = {
   id: string
   jobId: string
-  status: string
+  status: ApplicationStatus
   company: string
   title: string
   location: string
@@ -55,6 +60,14 @@ type ApplicationAssetRow = {
   created_at: string
 }
 
+function normalizeApplicationStatus(value: string | null): ApplicationStatus {
+  if (value && isApplicationStatus(value)) {
+    return value
+  }
+
+  return 'ready'
+}
+
 export default async function ApplyPage() {
   const supabase = await createClient()
 
@@ -75,7 +88,7 @@ export default async function ApplyPage() {
         location
       )
     `)
-    .in('status', ['ready', 'applied', 'interviewing'])
+    .in('status', ACTIVE_APPLICATION_STATUSES)
 
   if (applicationError) {
     console.error('Error loading apply page:', applicationError)
@@ -136,11 +149,12 @@ export default async function ApplyPage() {
       const job = Array.isArray(row.jobs) ? (row.jobs[0] ?? null) : row.jobs
       const latestScore = latestScoreByJobId.get(row.job_id) ?? null
       const hasAssets = hasAssetsByJobId.get(row.job_id) ?? false
+      const status = normalizeApplicationStatus(row.status)
 
       return {
         id: row.id,
         jobId: row.job_id,
-        status: row.status ?? 'ready',
+        status,
         company: job?.company ?? 'Unknown company',
         title: job?.title ?? 'Untitled role',
         location: job?.location ?? '—',

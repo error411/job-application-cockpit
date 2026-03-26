@@ -1,20 +1,25 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { ApplicationRow as DbApplicationRow, JobRow } from '@/lib/supabase/types'
+import type { ApplicationRow, JobRow } from '@/lib/supabase/model-types'
+import { isApplicationStatus, type ApplicationStatus } from '@/lib/statuses'
 
 type ApplicationListJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location'>
 
 type RawApplicationRow = Pick<
-  DbApplicationRow,
+  ApplicationRow,
   'id' | 'job_id' | 'status' | 'applied_at' | 'follow_up_1_due' | 'follow_up_2_due' | 'notes'
 > & {
   jobs: ApplicationListJob | ApplicationListJob[] | null
 }
 
-type ApplicationListItem = Pick<
-  DbApplicationRow,
-  'id' | 'job_id' | 'status' | 'applied_at' | 'follow_up_1_due' | 'follow_up_2_due' | 'notes'
-> & {
+type ApplicationListItem = {
+  id: string
+  job_id: string
+  status: ApplicationStatus
+  applied_at: string | null
+  follow_up_1_due: string | null
+  follow_up_2_due: string | null
+  notes: string | null
   job: ApplicationListJob | null
 }
 
@@ -30,11 +35,19 @@ function normalizeJob(
   return Array.isArray(value) ? value[0] ?? null : value
 }
 
+function normalizeApplicationStatus(value: string | null): ApplicationStatus {
+  if (value && isApplicationStatus(value)) {
+    return value
+  }
+
+  return 'ready'
+}
+
 function toApplicationListItem(row: RawApplicationRow): ApplicationListItem {
   return {
     id: row.id,
     job_id: row.job_id,
-    status: row.status,
+    status: normalizeApplicationStatus(row.status),
     applied_at: row.applied_at,
     follow_up_1_due: row.follow_up_1_due,
     follow_up_2_due: row.follow_up_2_due,
@@ -73,10 +86,12 @@ export default async function ApplicationsPage() {
 
   const grouped = {
     ready: applications.filter((a) => a.status === 'ready'),
-    applied: applications.filter((a) => a.status === 'applied'),
+    applied: applications.filter(
+      (a) => a.status === 'applied' || a.status === 'follow_up_due'
+    ),
     interviewing: applications.filter((a) => a.status === 'interviewing'),
-    other: applications.filter(
-      (a) => !['ready', 'applied', 'interviewing'].includes(a.status)
+    closed: applications.filter(
+      (a) => a.status === 'rejected' || a.status === 'closed'
     ),
   }
 
@@ -135,11 +150,11 @@ export default async function ApplicationsPage() {
         </section>
       </div>
 
-      {grouped.other.length ? (
+      {grouped.closed.length ? (
         <section className="border rounded p-4 mt-6">
-          <h2 className="text-xl font-semibold mb-4">Other</h2>
+          <h2 className="text-xl font-semibold mb-4">Closed</h2>
           <div className="space-y-4">
-            {grouped.other.map((app) => (
+            {grouped.closed.map((app) => (
               <ApplicationCard key={app.id} app={app} />
             ))}
           </div>

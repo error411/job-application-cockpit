@@ -5,7 +5,7 @@ import type {
   ApplicationRow,
   JobRow,
   JobScoreRow,
-} from '@/lib/supabase/types'
+} from '@/lib/supabase/model-types'
 
 type PageProps = {
   params: Promise<{ id: string }>

@@ -1,5 +1,4 @@
-alter table candidate_profile
-add column if not exists email text,
-add column if not exists phone text,
-add column if not exists city text,
-add column if not exists state text;
+select id, status, follow_up_1_due, follow_up_2_due
+from public.applications
+order by updated_at desc
+limit 10;

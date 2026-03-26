@@ -1,12 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import type { ApplyItem } from './types'
-
+import {
+  ACTIVE_APPLICATION_STATUSES,
+  isApplicationStatus,
+  type ApplicationStatus,
+} from '@/lib/statuses'
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>
 
 type ApplicationRow = {
   id: string
   job_id: string
-  status: string | null
+  status: ApplicationStatus | null
   applied_at: string | null
   follow_up_1_due: string | null
   follow_up_2_due: string | null
@@ -40,6 +44,14 @@ type ApplicationAssetRow = {
   created_at: string
 }
 
+function normalizeApplicationStatus(value: string | null): ApplicationStatus {
+  if (value && isApplicationStatus(value)) {
+    return value
+  }
+
+  return 'ready'
+}
+
 export async function getApplyItems(
   supabase: SupabaseClient
 ): Promise<ApplyItem[]> {
@@ -60,7 +72,7 @@ export async function getApplyItems(
         location
       )
     `)
-    .in('status', ['ready', 'applied', 'interviewing'])
+    .in('status', ACTIVE_APPLICATION_STATUSES)
 
   if (applicationError) {
     throw new Error(applicationError.message)
@@ -123,6 +135,7 @@ export async function getApplyItems(
     const job = Array.isArray(row.jobs) ? (row.jobs[0] ?? null) : row.jobs
     const latestScore = latestScoreByJobId.get(row.job_id) ?? null
     const hasAssets = hasAssetsByJobId.get(row.job_id) ?? false
+    const status = normalizeApplicationStatus(row.status)
 
     let priority = latestScore ?? 0
 
@@ -130,11 +143,11 @@ export async function getApplyItems(
       priority += 10
     }
 
-    if ((row.status ?? 'ready') === 'ready') {
+    if (status === 'ready') {
       priority += 5
     }
 
-    if ((row.status ?? '') === 'interviewing') {
+    if (status === 'interviewing') {
       priority += 15
     }
 
@@ -166,16 +179,16 @@ export async function getApplyItems(
       reason = `Ready to apply (${latestScore}/100, assets complete)`
     } else if (hasAssets) {
       reason = 'Assets ready, but not yet scored'
-    } else if ((row.status ?? '') === 'interviewing') {
+    } else if (status === 'interviewing') {
       reason = 'Interview process active'
-    } else if ((row.status ?? 'ready') === 'ready') {
+    } else if (status === 'ready') {
       reason = 'Ready for next action'
     }
 
     return {
       id: row.id,
       jobId: row.job_id,
-      status: row.status ?? 'ready',
+      status,
       company: job?.company ?? 'Unknown company',
       title: job?.title ?? 'Untitled role',
       location: job?.location ?? '—',
