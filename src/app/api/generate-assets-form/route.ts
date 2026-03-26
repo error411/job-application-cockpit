@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { generateAssetsForJob } from '@/lib/services/generate-assets'
 
 export async function POST(req: Request) {
   const formData = await req.formData()
@@ -9,20 +10,13 @@ export async function POST(req: Request) {
     return NextResponse.redirect(new URL('/jobs', req.url))
   }
 
-  const response = await fetch(new URL('/api/generate-assets', req.url), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ jobId }),
-  })
-
-  if (!response.ok) {
-    console.error('POST /api/generate-assets failed:', await response.text())
+  try {
+    await generateAssetsForJob(jobId)
+  } catch (error) {
+    console.error('generateAssetsForJob failed:', error)
   }
 
-  const redirectPath =
-    from === 'apply' ? '/apply' : `/jobs/${jobId}`
+  const redirectPath = from === 'apply' ? '/apply' : `/jobs/${jobId}`
 
   return NextResponse.redirect(new URL(redirectPath, req.url))
 }

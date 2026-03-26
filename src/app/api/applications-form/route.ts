@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { upsertApplicationForJob } from '@/lib/services/upsert-application'
 
 export async function POST(req: Request) {
   const formData = await req.formData()
@@ -11,24 +12,17 @@ export async function POST(req: Request) {
     return NextResponse.redirect(new URL('/jobs', req.url))
   }
 
-  const response = await fetch(new URL('/api/applications', req.url), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  try {
+    await upsertApplicationForJob({
       jobId,
       status: typeof status === 'string' ? status : 'ready',
       notes: typeof notes === 'string' ? notes : null,
-    }),
-  })
-
-  if (!response.ok) {
-    console.error('POST /api/applications failed:', await response.text())
+    })
+  } catch (error) {
+    console.error('upsertApplicationForJob failed:', error)
   }
 
-  const redirectPath =
-    from === 'apply' ? '/apply' : `/jobs/${jobId}`
+  const redirectPath = from === 'apply' ? '/apply' : `/jobs/${jobId}`
 
   return NextResponse.redirect(new URL(redirectPath, req.url))
 }
