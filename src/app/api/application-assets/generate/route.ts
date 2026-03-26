@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { openai } from '@/lib/openai/client'
-import type {
-  ApplicationAssetInsert,
-  CandidateProfileRow,
-  JobRow,
-} from '@/lib/supabase/types'
+import type { Tables, TablesInsert } from '@/lib/supabase/types'
+
+type ApplicationAssetInsert = TablesInsert<'application_assets'>
+type CandidateProfileRow = Tables<'candidate_profile'>
+type JobRow = Tables<'jobs'>
 
 type RequestBody = {
   jobId?: string
