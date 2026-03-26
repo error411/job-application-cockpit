@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import type { Json } from '@/lib/supabase/types'
 import type {
   AutomationEntityType,
-  AutomationJobStatus,
   AutomationJobType,
 } from './types'
 import type {
@@ -97,13 +96,13 @@ export async function markAutomationJobProcessing(jobId: string) {
     .eq('id', jobId)
     .eq('status', 'pending')
     .select()
-    .single()
 
   if (error) {
     throw new Error(error.message)
   }
 
-  return data as QueuedAutomationJob
+  const row = data?.[0] ?? null
+  return row as QueuedAutomationJob | null
 }
 
 export async function markAutomationJobCompleted(jobId: string) {
@@ -119,24 +118,34 @@ export async function markAutomationJobCompleted(jobId: string) {
     .from('automation_jobs')
     .update(updatePayload)
     .eq('id', jobId)
+    .eq('status', 'processing')
     .select()
-    .single()
 
   if (error) {
     throw new Error(error.message)
   }
 
-  return data as QueuedAutomationJob
+  const row = data?.[0]
+  if (!row) {
+    throw new Error(`Automation job ${jobId} could not be marked completed`)
+  }
+
+  return row as QueuedAutomationJob
 }
 
-export async function markAutomationJobFailed(job: QueuedAutomationJob, errorMessage: string) {
+export async function markAutomationJobFailed(
+  job: QueuedAutomationJob,
+  errorMessage: string,
+) {
   const supabase = await createClient()
 
   const nextAttempts = job.attempts + 1
   const hitMaxAttempts = nextAttempts >= job.max_attempts
 
   const retryDelayMinutes = Math.min(nextAttempts * 5, 30)
-  const nextScheduledFor = new Date(Date.now() + retryDelayMinutes * 60 * 1000).toISOString()
+  const nextScheduledFor = new Date(
+    Date.now() + retryDelayMinutes * 60 * 1000,
+  ).toISOString()
 
   const updatePayload: AutomationJobUpdate = {
     status: hitMaxAttempts ? 'failed' : 'pending',
@@ -149,12 +158,17 @@ export async function markAutomationJobFailed(job: QueuedAutomationJob, errorMes
     .from('automation_jobs')
     .update(updatePayload)
     .eq('id', job.id)
+    .eq('status', 'processing')
     .select()
-    .single()
 
   if (error) {
     throw new Error(error.message)
   }
 
-  return data as QueuedAutomationJob
+  const row = data?.[0]
+  if (!row) {
+    throw new Error(`Automation job ${job.id} could not be marked failed`)
+  }
+
+  return row as QueuedAutomationJob
 }
