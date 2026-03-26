@@ -191,20 +191,84 @@ function ApplyItemCard({
                     Due: {formatDateTime(activeFollowUpDueDate)}
                   </p>
 
-                  {activeFollowUpContent ? (
-                    <details className="mt-3">
-                      <summary className="cursor-pointer text-sm font-medium text-amber-900">
-                        Preview follow-up email
-                      </summary>
-                      <div className="mt-2 whitespace-pre-wrap rounded-md border border-amber-200 bg-white p-3 text-sm text-slate-700">
-                        {activeFollowUpContent}
-                      </div>
-                    </details>
-                  ) : (
-                    <p className="mt-2 text-sm text-amber-800">
-                      No generated follow-up content found yet.
-                    </p>
-                  )}
+                  {activeFollowUpStage !== null ? (
+  <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-amber-900">
+          Follow-up {activeFollowUpStage} due
+        </p>
+
+        <p className="mt-1 text-sm text-amber-800">
+          Due: {formatDateTime(activeFollowUpDueDate)}
+        </p>
+
+        {activeFollowUpContent ? (
+          <>
+            <div className="mt-3 flex gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(activeFollowUpContent)
+                    alert('Copied to clipboard')
+                  } catch {
+                    window.prompt('Copy manually:', activeFollowUpContent)
+                  }
+                }}
+                className="text-xs bg-white border border-amber-300 px-2 py-1 rounded hover:bg-amber-100"
+              >
+                Copy Email
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const subject = encodeURIComponent(
+                    `Following up on my application for ${item.title}`
+                  )
+
+                  const body = encodeURIComponent(activeFollowUpContent)
+
+                  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`
+
+                  window.open(gmailUrl, '_blank')
+                }}
+                className="text-xs bg-white border border-amber-300 px-2 py-1 rounded hover:bg-amber-100"
+              >
+                Open in Gmail
+              </button>
+            </div>
+
+            <details className="mt-3">
+              <summary className="cursor-pointer text-sm font-medium text-amber-900">
+                Preview follow-up email
+              </summary>
+              <div className="mt-2 whitespace-pre-wrap rounded-md border border-amber-200 bg-white p-3 text-sm text-slate-700">
+                {activeFollowUpContent}
+              </div>
+            </details>
+          </>
+        ) : (
+          <p className="mt-2 text-sm text-amber-800">
+            No generated follow-up content found yet.
+          </p>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onMarkFollowUpSent(item.jobId)}
+        disabled={markingJobId === item.jobId}
+        className="inline-flex shrink-0 items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {markingJobId === item.jobId
+          ? 'Marking...'
+          : 'Mark Follow-Up Sent'}
+      </button>
+    </div>
+  </div>
+) : null}
                 </div>
 
                 <button
