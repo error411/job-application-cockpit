@@ -11,6 +11,7 @@ import type { QueuedAutomationJob } from '@/lib/automation/queue'
 
 type RunAutomationWorkerOptions = {
   limit?: number
+  maxCycles?: number
 }
 
 type AutomationJobResult = {
@@ -58,101 +59,113 @@ export async function runAutomationWorker(
   options: RunAutomationWorkerOptions = {},
 ) {
   const limit = options.limit ?? 5
-  const jobs = await getDueAutomationJobs(limit)
-
+  const maxCycles = options.maxCycles ?? 3
   const results: AutomationJobResult[] = []
 
   console.info('automation worker start', {
     limit,
-    fetched: jobs.length,
+    maxCycles,
   })
 
-  for (const queuedJob of jobs) {
-    const startedAt = Date.now()
-    let lockedJob: QueuedAutomationJob | null = null
+  for (let cycle = 1; cycle <= maxCycles; cycle += 1) {
+    const jobs = await getDueAutomationJobs(limit)
 
-    try {
-      console.info('automation job claim attempt', {
-        jobId: queuedJob.id,
-        jobType: queuedJob.job_type,
-        entityId: queuedJob.entity_id,
-      })
+    console.info('automation worker cycle', {
+      cycle,
+      fetched: jobs.length,
+    })
 
-      lockedJob = await markAutomationJobProcessing(queuedJob.id)
+    if (jobs.length === 0) {
+      break
+    }
 
-      if (!lockedJob) {
-        results.push({
+    for (const queuedJob of jobs) {
+      const startedAt = Date.now()
+      let lockedJob: QueuedAutomationJob | null = null
+
+      try {
+        console.info('automation job claim attempt', {
           jobId: queuedJob.id,
           jobType: queuedJob.job_type,
-          status: 'skipped',
-          error: 'Job could not be claimed for processing',
+          entityId: queuedJob.entity_id,
         })
 
-        console.warn('automation job skipped', {
-          jobId: queuedJob.id,
-          jobType: queuedJob.job_type,
-          reason: 'claim_failed',
-        })
+        lockedJob = await markAutomationJobProcessing(queuedJob.id)
 
-        continue
-      }
-
-      console.info('automation job processing', {
-        jobId: lockedJob.id,
-        jobType: lockedJob.job_type,
-        entityType: lockedJob.entity_type,
-        entityId: lockedJob.entity_id,
-        attempts: lockedJob.attempts,
-      })
-
-      await processAutomationJob(lockedJob)
-      await markAutomationJobCompleted(lockedJob.id)
-
-      results.push({
-        jobId: lockedJob.id,
-        jobType: lockedJob.job_type,
-        status: 'completed',
-      })
-
-      console.info('automation job completed', {
-        jobId: lockedJob.id,
-        jobType: lockedJob.job_type,
-        durationMs: Date.now() - startedAt,
-      })
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Unknown automation error'
-
-      if (lockedJob) {
-        try {
-          await markAutomationJobFailed(lockedJob, message)
-        } catch (markFailedError) {
-          const markFailedMessage =
-            markFailedError instanceof Error
-              ? markFailedError.message
-              : 'Unknown mark-failed error'
-
-          console.error('automation job failure state update failed', {
-            jobId: lockedJob.id,
-            jobType: lockedJob.job_type,
-            error: markFailedMessage,
+        if (!lockedJob) {
+          results.push({
+            jobId: queuedJob.id,
+            jobType: queuedJob.job_type,
+            status: 'skipped',
+            error: 'Job could not be claimed for processing',
           })
+
+          console.warn('automation job skipped', {
+            jobId: queuedJob.id,
+            jobType: queuedJob.job_type,
+            reason: 'claim_failed',
+          })
+
+          continue
         }
+
+        console.info('automation job processing', {
+          jobId: lockedJob.id,
+          jobType: lockedJob.job_type,
+          entityType: lockedJob.entity_type,
+          entityId: lockedJob.entity_id,
+          attempts: lockedJob.attempts,
+        })
+
+        await processAutomationJob(lockedJob)
+        await markAutomationJobCompleted(lockedJob.id)
+
+        results.push({
+          jobId: lockedJob.id,
+          jobType: lockedJob.job_type,
+          status: 'completed',
+        })
+
+        console.info('automation job completed', {
+          jobId: lockedJob.id,
+          jobType: lockedJob.job_type,
+          durationMs: Date.now() - startedAt,
+        })
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unknown automation error'
+
+        if (lockedJob) {
+          try {
+            await markAutomationJobFailed(lockedJob, message)
+          } catch (markFailedError) {
+            const markFailedMessage =
+              markFailedError instanceof Error
+                ? markFailedError.message
+                : 'Unknown mark-failed error'
+
+            console.error('automation job failure state update failed', {
+              jobId: lockedJob.id,
+              jobType: lockedJob.job_type,
+              error: markFailedMessage,
+            })
+          }
+        }
+
+        results.push({
+          jobId: lockedJob?.id ?? queuedJob.id,
+          jobType: lockedJob?.job_type ?? queuedJob.job_type,
+          status: 'failed',
+          error: message,
+        })
+
+        console.error('automation job failed', {
+          jobId: lockedJob?.id ?? queuedJob.id,
+          jobType: lockedJob?.job_type ?? queuedJob.job_type,
+          durationMs: Date.now() - startedAt,
+          error: message,
+        })
       }
-
-      results.push({
-        jobId: lockedJob?.id ?? queuedJob.id,
-        jobType: lockedJob?.job_type ?? queuedJob.job_type,
-        status: 'failed',
-        error: message,
-      })
-
-      console.error('automation job failed', {
-        jobId: lockedJob?.id ?? queuedJob.id,
-        jobType: lockedJob?.job_type ?? queuedJob.job_type,
-        durationMs: Date.now() - startedAt,
-        error: message,
-      })
     }
   }
 

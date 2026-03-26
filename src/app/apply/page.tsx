@@ -1,5 +1,8 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
 import ApplyModeClient from './apply-mode-client'
+import ProcessAutomationButton from './process-automation-button'
 import {
   ACTIVE_APPLICATION_STATUSES,
   isApplicationStatus,
@@ -101,20 +104,22 @@ export default async function ApplyPage() {
   const hasAssetsByJobId = new Map<string, boolean>()
 
   if (jobIds.length > 0) {
-    const [{ data: scoreData, error: scoreError }, { data: assetData, error: assetError }] =
-      await Promise.all([
-        supabase
-          .from('job_scores')
-          .select('job_id, score, created_at')
-          .in('job_id', jobIds)
-          .order('created_at', { ascending: false }),
+    const [
+      { data: scoreData, error: scoreError },
+      { data: assetData, error: assetError },
+    ] = await Promise.all([
+      supabase
+        .from('job_scores')
+        .select('job_id, score, created_at')
+        .in('job_id', jobIds)
+        .order('created_at', { ascending: false }),
 
-        supabase
-          .from('application_assets')
-          .select('job_id, resume_markdown, cover_letter_markdown, created_at')
-          .in('job_id', jobIds)
-          .order('created_at', { ascending: false }),
-      ])
+      supabase
+        .from('application_assets')
+        .select('job_id, resume_markdown, cover_letter_markdown, created_at')
+        .in('job_id', jobIds)
+        .order('created_at', { ascending: false }),
+    ])
 
     if (scoreError) {
       console.error('Error loading job scores for apply page:', scoreError)
@@ -173,5 +178,10 @@ export default async function ApplyPage() {
     })
     .sort((a, b) => b.priorityScore - a.priorityScore)
 
-  return <ApplyModeClient items={items} />
+  return (
+    <div className="space-y-6">
+      <ProcessAutomationButton />
+      <ApplyModeClient items={items} />
+    </div>
+  )
 }

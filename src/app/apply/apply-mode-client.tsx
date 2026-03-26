@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { ApplyItem } from '@/lib/apply-mode/types'
 
 type ApplyModeClientProps = {
@@ -128,87 +129,9 @@ function NotesForm({
   )
 }
 
-function FocusPanel({
-  item,
-  onGenerate,
-  generating,
-}: {
-  item: ApplyItem
-  onGenerate: (jobId: string, source: 'manual' | 'auto') => Promise<void>
-  generating: boolean
-}) {
-  return (
-    <section className="mt-8 rounded-2xl border border-zinc-900 bg-zinc-900 p-6 text-white shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-300">
-            Next action focus
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold">{item.title}</h2>
-          <p className="mt-1 text-zinc-300">{item.company}</p>
-          <p className="mt-1 text-sm text-zinc-400">{item.location}</p>
-        </div>
-
-        <StatusBadge status={item.status} />
-      </div>
-
-      <div className="mt-5 grid gap-2 text-sm text-zinc-200">
-        <p>
-          <span className="font-medium text-white">Why now:</span> {item.reason}
-        </p>
-        <p>
-          <span className="font-medium text-white">Latest score:</span>{' '}
-          {item.latestScore !== null ? `${item.latestScore}/100` : 'Not scored'}
-        </p>
-        <p>
-          <span className="font-medium text-white">Assets:</span>{' '}
-          {item.hasAssets ? 'Available' : 'Missing'}
-        </p>
-        <p>
-          <span className="font-medium text-white">Applied:</span>{' '}
-          {formatDate(item.appliedAt)}
-        </p>
-        <p>
-          <span className="font-medium text-white">Follow-up 1:</span>{' '}
-          {formatDate(item.followUp1Due)}
-        </p>
-        <p>
-          <span className="font-medium text-white">Follow-up 2:</span>{' '}
-          {formatDate(item.followUp2Due)}
-        </p>
-      </div>
-
-      <div className="mt-5 flex flex-wrap gap-3">
-        <a
-          href={`#apply-item-${item.id}`}
-          className="rounded bg-white px-4 py-2 text-sm font-medium text-zinc-900"
-        >
-          Jump to focused item
-        </a>
-
-        <Link
-          href={`/jobs/${item.jobId}?from=apply`}
-          className="rounded border border-zinc-600 px-4 py-2 text-sm font-medium text-white"
-        >
-          Open job detail
-        </Link>
-
-        <button
-          type="button"
-          onClick={() => void onGenerate(item.jobId, 'manual')}
-          disabled={generating}
-          className="rounded border border-zinc-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {generating ? 'Generating...' : 'Generate assets'}
-        </button>
-      </div>
-    </section>
-  )
-}
-
 function KeyboardHelp() {
   return (
-    <div className="mt-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700">
+    <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700">
       <span className="font-medium text-zinc-900">Keyboard:</span>{' '}
       <kbd className="rounded border px-2 py-0.5">j</kbd> next{' '}
       <kbd className="rounded border px-2 py-0.5">k</kbd> prev{' '}
@@ -246,10 +169,10 @@ function ApplyCard({
     <div
       id={`apply-item-${item.id}`}
       className={[
-        'scroll-mt-24 rounded-xl p-5 transition-all duration-200 relative',
+        'relative scroll-mt-24 rounded-xl p-5 transition-all duration-200',
         isFocused
-          ? 'bg-zinc-100 border border-zinc-900 shadow-lg ring-1 ring-zinc-300 before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:rounded-l-xl before:bg-zinc-900'
-          : 'bg-white border border-zinc-200 shadow-sm hover:shadow-md',
+          ? 'border border-zinc-900 bg-zinc-100 shadow-lg ring-1 ring-zinc-300 before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:rounded-l-xl before:bg-zinc-900'
+          : 'border border-zinc-200 bg-white shadow-sm hover:shadow-md',
       ].join(' ')}
     >
       <div className="flex items-start justify-between gap-4">
@@ -298,12 +221,13 @@ function ApplyCard({
         generating={generating}
         updatingStatus={updatingStatus}
       />
+
       <NotesForm
-  key={`${item.id}:${item.notes ?? ''}`}
-  item={item}
-  onSaveNotes={onSaveNotes}
-  saving={savingNotes}
-/>
+        key={`${item.id}:${item.notes ?? ''}`}
+        item={item}
+        onSaveNotes={onSaveNotes}
+        saving={savingNotes}
+      />
     </div>
   )
 }
@@ -311,64 +235,31 @@ function ApplyCard({
 export default function ApplyModeClient({
   items: initialItems = [],
 }: ApplyModeClientProps) {
+  const router = useRouter()
   const [items, setItems] = useState<ApplyItem[]>(initialItems)
   const [focusedIndex, setFocusedIndex] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const [refreshing, setRefreshing] = useState(false)
   const [generatingJobId, setGeneratingJobId] = useState<string | null>(null)
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null)
   const [savingNotesJobId, setSavingNotesJobId] = useState<string | null>(null)
 
   const autoGeneratedJobIdsRef = useRef<Set<string>>(new Set())
 
+  useEffect(() => {
+    setItems(initialItems)
+    setFocusedIndex((current) =>
+      initialItems.length === 0 ? 0 : Math.min(current, initialItems.length - 1)
+    )
+  }, [initialItems])
+
   const safeFocusedIndex = useMemo(() => {
     if (items.length === 0) return 0
     return Math.min(focusedIndex, items.length - 1)
   }, [focusedIndex, items])
 
-  const focusedItem = items[safeFocusedIndex] ?? null
-
-  const refreshItems = useCallback(async () => {
-    try {
-      setRefreshing(true)
-      setError(null)
-
-      const res = await fetch('/api/apply-mode/queue', {
-        method: 'GET',
-        cache: 'no-store',
-      })
-
-      const payload = (await res.json().catch(() => null)) as
-        | { items?: ApplyItem[]; error?: string }
-        | null
-
-      if (!res.ok) {
-        throw new Error(payload?.error || 'Failed to refresh apply queue.')
-      }
-
-      const nextItems = (payload?.items ?? []).filter(
-        (item): item is ApplyItem =>
-          Boolean(
-            item &&
-              typeof item.id === 'string' &&
-              typeof item.jobId === 'string' &&
-              typeof item.title === 'string'
-          )
-      )
-
-      setItems(nextItems)
-      setFocusedIndex((current) =>
-        nextItems.length === 0 ? 0 : Math.min(current, nextItems.length - 1)
-      )
-    } catch (err) {
-      console.error(err)
-      setError(
-        err instanceof Error ? err.message : 'Could not refresh apply queue.'
-      )
-    } finally {
-      setRefreshing(false)
-    }
-  }, [])
+  const refreshFromServer = useCallback(() => {
+    router.refresh()
+  }, [router])
 
   const updateStatus = useCallback(
     async (jobId: string, status: ApplicationStatus) => {
@@ -426,7 +317,7 @@ export default function ApplyModeClient({
           throw new Error(payload?.error || 'Failed to update application.')
         }
 
-        await refreshItems()
+        refreshFromServer()
       } catch (err) {
         console.error(err)
         setItems(previousItems)
@@ -437,7 +328,7 @@ export default function ApplyModeClient({
         setUpdatingJobId(null)
       }
     },
-    [items, refreshItems, updatingJobId]
+    [items, refreshFromServer, updatingJobId]
   )
 
   const saveNotes = useCallback(
@@ -483,7 +374,7 @@ export default function ApplyModeClient({
           throw new Error(payload?.error || 'Failed to save notes.')
         }
 
-        await refreshItems()
+        refreshFromServer()
       } catch (err) {
         console.error(err)
         setItems(previousItems)
@@ -492,7 +383,7 @@ export default function ApplyModeClient({
         setSavingNotesJobId(null)
       }
     },
-    [items, refreshItems, savingNotesJobId]
+    [items, refreshFromServer, savingNotesJobId]
   )
 
   const generateAssets = useCallback(
@@ -536,7 +427,7 @@ export default function ApplyModeClient({
           autoGeneratedJobIdsRef.current.add(jobId)
         }
 
-        await refreshItems()
+        refreshFromServer()
       } catch (err) {
         console.error(err)
         setError(
@@ -546,10 +437,11 @@ export default function ApplyModeClient({
         setGeneratingJobId(null)
       }
     },
-    [generatingJobId, refreshItems]
+    [generatingJobId, refreshFromServer]
   )
 
   useEffect(() => {
+    const focusedItem = items[safeFocusedIndex]
     if (!focusedItem) return
     if (focusedItem.hasAssets) return
     if (generatingJobId) return
@@ -557,7 +449,7 @@ export default function ApplyModeClient({
     if ((focusedItem.latestScore ?? 0) < 70) return
 
     void generateAssets(focusedItem.jobId, 'auto')
-  }, [focusedItem, generatingJobId, generateAssets])
+  }, [items, safeFocusedIndex, generatingJobId, generateAssets])
 
   useEffect(() => {
     function isTypingTarget(target: EventTarget | null) {
@@ -660,14 +552,6 @@ export default function ApplyModeClient({
             <Link href="/jobs" className="rounded border px-4 py-2 text-sm">
               Browse jobs
             </Link>
-            <button
-              type="button"
-              onClick={() => void refreshItems()}
-              disabled={refreshing}
-              className="rounded border px-4 py-2 text-sm disabled:opacity-50"
-            >
-              {refreshing ? 'Refreshing...' : 'Refresh'}
-            </button>
           </div>
         </div>
       </>
@@ -676,24 +560,8 @@ export default function ApplyModeClient({
 
   return (
     <>
-      {focusedItem ? (
-        <FocusPanel
-          item={focusedItem}
-          onGenerate={generateAssets}
-          generating={generatingJobId === focusedItem.jobId}
-        />
-      ) : null}
-
       <div className="mt-4 flex items-center justify-between gap-4">
         <KeyboardHelp />
-        <button
-          type="button"
-          onClick={() => void refreshItems()}
-          disabled={refreshing}
-          className="rounded border px-4 py-2 text-sm disabled:opacity-50"
-        >
-          {refreshing ? 'Refreshing...' : 'Refresh'}
-        </button>
       </div>
 
       {error ? (
