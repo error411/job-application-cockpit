@@ -1,18 +1,21 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { ApplicationRow as DbApplicationRow, JobRow } from '@/lib/supabase/types'
+import type { Tables } from '@/lib/supabase/types'
+
+type ApplicationRow = Tables<'applications'>
+type JobRow = Tables<'jobs'>
 
 type FollowUpListJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location'>
 
 type RawFollowUpRow = Pick<
-  DbApplicationRow,
+  ApplicationRow,
   'id' | 'job_id' | 'status' | 'follow_up_1_due' | 'follow_up_2_due' | 'notes'
 > & {
   jobs: FollowUpListJob | FollowUpListJob[] | null
 }
 
 type FollowUpListItem = Pick<
-  DbApplicationRow,
+  ApplicationRow,
   'id' | 'job_id' | 'status' | 'follow_up_1_due' | 'follow_up_2_due' | 'notes'
 > & {
   job: FollowUpListJob | null
@@ -83,7 +86,7 @@ export default async function FollowUpsPage() {
     (app) =>
       !isDue(app.follow_up_1_due) &&
       !isDue(app.follow_up_2_due) &&
-      !!(app.follow_up_1_due || app.follow_up_2_due)
+      Boolean(app.follow_up_1_due || app.follow_up_2_due)
   )
 
   return (
@@ -91,17 +94,17 @@ export default async function FollowUpsPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Follow-Ups</h1>
         <div className="flex gap-3">
-          <Link href="/applications" className="border rounded px-4 py-2">
+          <Link href="/applications" className="rounded border px-4 py-2">
             Applications
           </Link>
-          <Link href="/jobs" className="border rounded px-4 py-2">
+          <Link href="/jobs" className="rounded border px-4 py-2">
             Jobs
           </Link>
         </div>
       </div>
 
-      <section className="border rounded p-4 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Due Now</h2>
+      <section className="mb-6 rounded border p-4">
+        <h2 className="mb-4 text-xl font-semibold">Due Now</h2>
         <div className="space-y-4">
           {dueNow.length ? (
             dueNow.map((app) => <FollowUpCard key={app.id} app={app} />)
@@ -111,8 +114,8 @@ export default async function FollowUpsPage() {
         </div>
       </section>
 
-      <section className="border rounded p-4">
-        <h2 className="text-xl font-semibold mb-4">Upcoming</h2>
+      <section className="rounded border p-4">
+        <h2 className="mb-4 text-xl font-semibold">Upcoming</h2>
         <div className="space-y-4">
           {upcoming.length ? (
             upcoming.map((app) => <FollowUpCard key={app.id} app={app} />)
@@ -127,12 +130,12 @@ export default async function FollowUpsPage() {
 
 function FollowUpCard({ app }: { app: FollowUpListItem }) {
   return (
-    <div className="border rounded p-4">
+    <div className="rounded border p-4">
       <h3 className="font-semibold">{app.job?.title || 'Unknown Job'}</h3>
       <p>{app.job?.company || 'Unknown Company'}</p>
       <p className="text-sm opacity-70">{app.job?.location || 'No location'}</p>
 
-      <div className="mt-3 text-sm space-y-1">
+      <div className="mt-3 space-y-1 text-sm">
         <p>Status: {app.status}</p>
         <p>Follow-up 1 Due: {formatDate(app.follow_up_1_due)}</p>
         <p>Follow-up 2 Due: {formatDate(app.follow_up_2_due)}</p>
@@ -145,7 +148,7 @@ function FollowUpCard({ app }: { app: FollowUpListItem }) {
       </div>
 
       <div className="mt-3">
-        <Link href={`/jobs/${app.job_id}`} className="underline text-sm">
+        <Link href={`/jobs/${app.job_id}`} className="text-sm underline">
           View Job
         </Link>
       </div>

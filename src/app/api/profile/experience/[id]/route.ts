@@ -1,69 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import type { CandidateExperienceInsert } from '@/lib/supabase/types'
+import type { TablesUpdate } from '@/lib/supabase/types'
+
+type CandidateExperienceUpdate = TablesUpdate<'candidate_experience'>
 
 type RequestBody = {
   candidate_profile_id?: string
   company?: string
   title?: string
+  bullets?: string[]
+  technologies?: string[]
+  summary?: string | null
   location?: string | null
   start_date?: string | null
   end_date?: string | null
-  is_current?: boolean
-  summary?: string | null
-  bullets?: string[]
-  technologies?: string[]
-  sort_order?: number
+  is_current?: boolean | null
+  sort_order?: number | null
 }
 
-function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return []
-  return value.filter((item): item is string => typeof item === 'string')
-}
-
-export async function POST(req: NextRequest) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const supabase = await createClient()
     const body = (await req.json()) as RequestBody
+    const { id } = await params
 
-    const {
-      candidate_profile_id,
-      company,
-      title,
-      location,
-      start_date,
-      end_date,
-      is_current,
-      summary,
-      bullets,
-      technologies,
-      sort_order,
-    } = body
+    const updatePayload: CandidateExperienceUpdate = {}
 
-    if (!candidate_profile_id || !company || !title) {
-      return NextResponse.json(
-        { error: 'candidate_profile_id, company, and title are required.' },
-        { status: 400 }
-      )
+    if (body.candidate_profile_id !== undefined) {
+      updatePayload.candidate_profile_id = body.candidate_profile_id
     }
-
-    const insertPayload: CandidateExperienceInsert = {
-      candidate_profile_id,
-      company: company.trim(),
-      title: title.trim(),
-      location: location?.trim() || null,
-      start_date: start_date || null,
-      end_date: end_date || null,
-      is_current: Boolean(is_current),
-      summary: summary?.trim() || null,
-      bullets: toStringArray(bullets),
-      technologies: toStringArray(technologies),
-      sort_order: typeof sort_order === 'number' ? sort_order : 0,
+    if (body.company !== undefined) {
+      updatePayload.company = body.company.trim()
+    }
+    if (body.title !== undefined) {
+      updatePayload.title = body.title.trim()
+    }
+    if (body.bullets !== undefined) {
+      updatePayload.bullets = body.bullets
+    }
+    if (body.technologies !== undefined) {
+      updatePayload.technologies = body.technologies
+    }
+    if (body.summary !== undefined) {
+      updatePayload.summary = body.summary
+    }
+    if (body.location !== undefined) {
+      updatePayload.location = body.location
+    }
+    if (body.start_date !== undefined) {
+      updatePayload.start_date = body.start_date
+    }
+    if (body.end_date !== undefined) {
+      updatePayload.end_date = body.end_date
+    }
+    if (body.is_current !== undefined) {
+      updatePayload.is_current = body.is_current
+    }
+    if (body.sort_order !== undefined) {
+      updatePayload.sort_order = body.sort_order
     }
 
     const { data, error } = await supabase
       .from('candidate_experience')
-      .insert(insertPayload)
+      .update(updatePayload)
+      .eq('id', id)
       .select()
       .single()
 
@@ -71,12 +74,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ experience: data }, { status: 201 })
+    return NextResponse.json({ item: data })
   } catch (error) {
-    console.error('POST /api/profile/experience error:', error)
-    return NextResponse.json(
-      { error: 'Failed to create experience row.' },
-      { status: 500 }
-    )
+    const message =
+      error instanceof Error ? error.message : 'Unexpected server error'
+
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabase = await createClient()
+    const { id } = await params
+
+    const { error } = await supabase
+      .from('candidate_experience')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Unexpected server error'
+
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
