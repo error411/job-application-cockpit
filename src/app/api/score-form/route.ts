@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { scoreJobService } from '@/lib/services/score-job'
 
 export async function POST(req: Request) {
   const formData = await req.formData()
@@ -9,20 +10,13 @@ export async function POST(req: Request) {
     return NextResponse.redirect(new URL('/jobs', req.url))
   }
 
-  const response = await fetch(new URL('/api/score', req.url), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ jobId }),
-  })
-
-  if (!response.ok) {
-    console.error('POST /api/score failed:', await response.text())
+  try {
+    await scoreJobService(jobId)
+  } catch (error) {
+    console.error('scoreJobService failed:', error)
   }
 
-  const redirectPath =
-    from === 'apply' ? '/apply' : `/jobs/${jobId}`
+  const redirectPath = from === 'apply' ? '/apply' : `/jobs/${jobId}`
 
   return NextResponse.redirect(new URL(redirectPath, req.url))
 }
