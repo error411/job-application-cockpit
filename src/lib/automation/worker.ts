@@ -1,5 +1,7 @@
+import { createClient } from '@/lib/supabase/server'
 import { enqueueAutomationJob } from '@/lib/automation/queue'
 import { generateAssetsForJob } from '@/lib/services/generate-assets'
+import { generateFollowupAssetsForJob } from '@/lib/services/generate-followup-assets'
 import { scoreJobService } from '@/lib/services/score-job'
 import {
   getDueAutomationJobs,
@@ -19,6 +21,64 @@ type AutomationJobResult = {
   jobType: string
   status: 'completed' | 'failed' | 'skipped'
   error?: string
+}
+
+type ApplicationFollowupRow = {
+  id: string
+  job_id: string
+  status: string | null
+  follow_up_1_due: string | null
+  follow_up_2_due: string | null
+  follow_up_1_sent_at: string | null
+  follow_up_2_sent_at: string | null
+}
+
+async function maybeQueueFollowupAssets(jobId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('applications')
+    .select(`
+      id,
+      job_id,
+      status,
+      follow_up_1_due,
+      follow_up_2_due,
+      follow_up_1_sent_at,
+      follow_up_2_sent_at
+    `)
+    .eq('job_id', jobId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const application = data as ApplicationFollowupRow | null
+
+  if (!application) return
+
+  const now = new Date()
+
+  const followUp1Due =
+    application.follow_up_1_due &&
+    new Date(application.follow_up_1_due) <= now &&
+    !application.follow_up_1_sent_at
+
+  const followUp2Due =
+    application.follow_up_2_due &&
+    new Date(application.follow_up_2_due) <= now &&
+    !application.follow_up_2_sent_at
+
+  if (!followUp1Due && !followUp2Due) {
+    return
+  }
+
+  await enqueueAutomationJob({
+    jobType: 'generate_followup_assets',
+    entityType: 'job',
+    entityId: jobId,
+  })
 }
 
 async function processAutomationJob(job: QueuedAutomationJob) {
@@ -45,10 +105,12 @@ async function processAutomationJob(job: QueuedAutomationJob) {
   }
 
   if (job.job_type === 'schedule_followups') {
+    await maybeQueueFollowupAssets(job.entity_id)
     return
   }
 
   if (job.job_type === 'generate_followup_assets') {
+    await generateFollowupAssetsForJob(job.entity_id)
     return
   }
 
