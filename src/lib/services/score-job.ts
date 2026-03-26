@@ -36,9 +36,28 @@ type CandidateExperienceRow = {
   sort_order: number | null
 }
 
+type JobScoreRouteInsert = Omit<
+  JobScoreInsert,
+  'matched_skills' | 'missing_skills'
+> & {
+  matched_skills?: string[]
+  missing_skills?: string[]
+}
+
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return value.filter((item): item is string => typeof item === 'string')
+}
+
+function normalizeStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined
+
+  const normalized = value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  return normalized.length > 0 ? normalized : undefined
 }
 
 function formatDateRange(
@@ -208,34 +227,34 @@ ${typedJob.description_raw}
     throw new Error('Failed to parse score payload')
   }
 
-  const insertPayload: JobScoreInsert = {
+  const insertPayload: JobScoreRouteInsert = {
     job_id: typedJob.id,
     score: parsed.score,
-    matched_skills: parsed.matched_skills,
-    missing_skills: parsed.missing_skills,
+    matched_skills: normalizeStringArray(parsed.matched_skills),
+    missing_skills: normalizeStringArray(parsed.missing_skills),
     reasons: parsed.reasons,
   }
 
-const { data: savedScore, error: saveError } = await supabase
-  .from('job_scores')
-  .insert(insertPayload)
-  .select()
-  .single()
+  const { data: savedScore, error: saveError } = await supabase
+    .from('job_scores')
+    .insert(insertPayload)
+    .select()
+    .single()
 
-if (saveError) {
-  throw new Error(saveError.message)
-}
+  if (saveError) {
+    throw new Error(saveError.message)
+  }
 
-const { error: jobStatusError } = await supabase
-  .from('jobs')
-  .update({ status: 'scored' })
-  .eq('id', typedJob.id)
+  const { error: jobStatusError } = await supabase
+    .from('jobs')
+    .update({ status: 'scored' })
+    .eq('id', typedJob.id)
 
-if (jobStatusError) {
-  throw new Error(jobStatusError.message)
-}
+  if (jobStatusError) {
+    throw new Error(jobStatusError.message)
+  }
 
-return {
-  score: savedScore,
-}
+  return {
+    score: savedScore,
+  }
 }

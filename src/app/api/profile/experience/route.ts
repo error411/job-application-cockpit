@@ -4,12 +4,20 @@ import type { TablesInsert } from '@/lib/supabase/types'
 
 type CandidateExperienceInsert = TablesInsert<'candidate_experience'>
 
-type RequestBody = {
-  candidate_profile_id?: string
-  company?: string
-  title?: string
+type CandidateExperienceRouteInsert = Omit<
+  CandidateExperienceInsert,
+  'bullets' | 'technologies'
+> & {
   bullets?: string[]
   technologies?: string[]
+}
+
+type RequestBody = {
+  candidate_profile_id: string
+  company: string
+  title: string
+  bullets?: string[] | null
+  technologies?: string[] | null
   summary?: string | null
   location?: string | null
   start_date?: string | null
@@ -18,12 +26,20 @@ type RequestBody = {
   sort_order?: number | null
 }
 
+function normalizeStringArray(value: string[] | null | undefined) {
+  if (value == null) return undefined
+
+  return value
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
     const body = (await req.json()) as RequestBody
 
-    if (!body.candidate_profile_id) {
+    if (!body.candidate_profile_id?.trim()) {
       return NextResponse.json(
         { error: 'candidate_profile_id is required' },
         { status: 400 }
@@ -44,12 +60,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const insertPayload: CandidateExperienceInsert = {
-      candidate_profile_id: body.candidate_profile_id,
+    const insertPayload: CandidateExperienceRouteInsert = {
+      candidate_profile_id: body.candidate_profile_id.trim(),
       company: body.company.trim(),
       title: body.title.trim(),
-      bullets: body.bullets ?? [],
-      technologies: body.technologies ?? [],
+      bullets: normalizeStringArray(body.bullets),
+      technologies: normalizeStringArray(body.technologies),
       summary: body.summary ?? null,
       location: body.location ?? null,
       start_date: body.start_date ?? null,
