@@ -2,6 +2,7 @@ import './globals.css'
 import Link from 'next/link'
 
 const NAV_ITEMS = [
+  { href: '/', label: 'Dashboard' },
   { href: '/today', label: 'Today' },
   { href: '/apply', label: 'Apply Hub' },
   { href: '/jobs', label: 'Jobs' },
