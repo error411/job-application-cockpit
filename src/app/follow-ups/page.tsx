@@ -90,42 +90,64 @@ export default async function FollowUpsPage() {
   )
 
   return (
-    <main className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Follow-Ups</h1>
-        <div className="flex gap-3">
-          <Link href="/applications" className="rounded border px-4 py-2">
-            Applications
-          </Link>
-          <Link href="/jobs" className="rounded border px-4 py-2">
-            Jobs
-          </Link>
-        </div>
+  <div className="space-y-8">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 className="text-3xl font-semibold tracking-tight">Follow-Ups</h1>
+        <p className="mt-2 text-sm text-zinc-600">
+          Derived from due and sent timestamps. No follow-up statuses.
+        </p>
       </div>
 
-      <section className="mb-6 rounded border p-4">
-        <h2 className="mb-4 text-xl font-semibold">Due Now</h2>
-        <div className="space-y-4">
-          {dueNow.length ? (
-            dueNow.map((app) => <FollowUpCard key={app.id} app={app} />)
-          ) : (
-            <p>No follow-ups due right now.</p>
-          )}
-        </div>
-      </section>
+      {dueNow.length > 0 ? (
+        <form action="/api/automation-run-form" method="POST">
+          <input type="hidden" name="from" value="/follow-ups" />
+          <input
+            type="hidden"
+            name="limit"
+            value={String(Math.min(Math.max(dueNow.length, 1), 10))}
+          />
+          <button
+            type="submit"
+            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium transition hover:bg-zinc-50"
+          >
+            Run Follow-Up Worker ({dueNow.length})
+          </button>
+        </form>
+      ) : null}
+    </div>
 
-      <section className="rounded border p-4">
-        <h2 className="mb-4 text-xl font-semibold">Upcoming</h2>
-        <div className="space-y-4">
-          {upcoming.length ? (
-            upcoming.map((app) => <FollowUpCard key={app.id} app={app} />)
-          ) : (
-            <p>No upcoming follow-ups scheduled.</p>
-          )}
+    <section className="space-y-4">
+      <h2 className="text-2xl font-semibold tracking-tight">Due Now</h2>
+
+      {dueNow.length ? (
+        <div className="grid gap-4">
+          {dueNow.map((app) => (
+            <FollowUpCard key={app.id} app={app} />
+          ))}
         </div>
-      </section>
-    </main>
-  )
+      ) : (
+        <p className="text-sm text-zinc-600">No follow-ups due right now.</p>
+      )}
+    </section>
+
+    <section className="space-y-4">
+      <h2 className="text-2xl font-semibold tracking-tight">Upcoming</h2>
+
+      {upcoming.length ? (
+        <div className="grid gap-4">
+          {upcoming.map((app) => (
+            <FollowUpCard key={app.id} app={app} />
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-zinc-600">
+          No upcoming follow-ups scheduled.
+        </p>
+      )}
+    </section>
+  </div>
+)
 }
 
 function FollowUpCard({ app }: { app: FollowUpListItem }) {
