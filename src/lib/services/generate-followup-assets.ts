@@ -7,10 +7,10 @@ const openai = new OpenAI({
 
 type CandidateProfileRow = {
   full_name: string | null
-  email: string | null
-  phone: string | null
-  city: string | null
-  state: string | null
+  // email: string | null
+  // phone: string | null
+  // city: string | null
+  // state: string | null
   summary: string | null
 }
 
@@ -59,21 +59,31 @@ function summarizeExperience(rows: CandidateExperienceRow[]) {
   }))
 }
 
-function getFollowupStage(application: ApplicationRow) {
-  const now = new Date()
+function hasText(value: string | null | undefined) {
+  return Boolean(value?.trim())
+}
 
-  const followUp1Due =
-    application.follow_up_1_due &&
-    new Date(application.follow_up_1_due) <= now &&
-    !application.follow_up_1_sent_at
+function getNextFollowupStageToGenerate(
+  application: ApplicationRow,
+  latestAsset: ApplicationAssetRow | null
+): 1 | 2 | null {
+  const followUp1Scheduled = Boolean(application.follow_up_1_due)
+  const followUp2Scheduled = Boolean(application.follow_up_2_due)
 
-  const followUp2Due =
-    application.follow_up_2_due &&
-    new Date(application.follow_up_2_due) <= now &&
-    !application.follow_up_2_sent_at
+  const followUp1NeedsContent =
+    followUp1Scheduled &&
+    !application.follow_up_1_sent_at &&
+    !hasText(latestAsset?.follow_up_1_email_markdown)
 
-  if (followUp2Due) return 2
-  if (followUp1Due) return 1
+  const followUp2NeedsContent =
+    followUp2Scheduled &&
+    !application.follow_up_2_sent_at &&
+    !hasText(latestAsset?.follow_up_2_email_markdown)
+
+  // Always generate stage 1 first if it is missing.
+  if (followUp1NeedsContent) return 1
+  if (followUp2NeedsContent) return 2
+
   return null
 }
 
@@ -111,7 +121,7 @@ export async function generateFollowupAssetsForJob(jobId: string) {
 
     supabase
       .from('candidate_profile')
-      .select('full_name, email, phone, city, state, summary')
+      .select('full_name, summary')
       .limit(1)
       .maybeSingle(),
 
@@ -157,25 +167,12 @@ export async function generateFollowupAssetsForJob(jobId: string) {
     throw new Error(`No job found for job ${jobId}`)
   }
 
-  const stage = getFollowupStage(application)
+  const stage = getNextFollowupStageToGenerate(application, latestAsset)
 
   if (!stage) {
     return {
       generated: false,
-      reason: 'No follow-up is currently due.',
-    }
-  }
-
-  const existingContent =
-    stage === 1
-      ? latestAsset?.follow_up_1_email_markdown
-      : latestAsset?.follow_up_2_email_markdown
-
-  if (existingContent?.trim()) {
-    return {
-      generated: false,
-      reason: `Follow-up ${stage} content already exists.`,
-      stage,
+      reason: 'No follow-up content needs to be generated.',
     }
   }
 
@@ -191,9 +188,9 @@ export async function generateFollowupAssetsForJob(jobId: string) {
       stage,
       candidate: {
         fullName: profile?.full_name ?? '',
-        email: profile?.email ?? '',
-        phone: profile?.phone ?? '',
-        location: [profile?.city, profile?.state].filter(Boolean).join(', '),
+        email: '',
+        phone: '',
+        location: '',
         summary: profile?.summary ?? '',
       },
       job: {
@@ -217,7 +214,7 @@ export async function generateFollowupAssetsForJob(jobId: string) {
       },
     },
     null,
-    2,
+    2
   )
 
   const response = await openai.responses.create({
@@ -262,53 +259,35 @@ export async function generateFollowupAssetsForJob(jobId: string) {
 
   const composedMarkdown = `Subject: ${parsed.subject}\n\n${parsed.body_markdown}`
 
-    if (latestAsset) {
+  if (latestAsset) {
     const updatePayload =
       stage === 1
-        ? ({
-            follow_up_1_email_markdown: composedMarkdown,
-          } as unknown as {
-            follow_up_1_email_markdown?: string | null
-            follow_up_2_email_markdown?: string | null
-          })
-        : ({
-            follow_up_2_email_markdown: composedMarkdown,
-          } as unknown as {
-            follow_up_1_email_markdown?: string | null
-            follow_up_2_email_markdown?: string | null
-          })
+        ? { follow_up_1_email_markdown: composedMarkdown }
+        : { follow_up_2_email_markdown: composedMarkdown }
 
     const { error: updateError } = await supabase
       .from('application_assets')
-      .update(updatePayload as never)
+      .update(updatePayload)
       .eq('id', latestAsset.id)
 
     if (updateError) {
       throw new Error(updateError.message)
     }
-    } else {
+  } else {
     const insertPayload =
       stage === 1
-        ? ({
+        ? {
             job_id: jobId,
             follow_up_1_email_markdown: composedMarkdown,
-          } as unknown as {
-            job_id: string
-            follow_up_1_email_markdown?: string | null
-            follow_up_2_email_markdown?: string | null
-          })
-        : ({
+          }
+        : {
             job_id: jobId,
             follow_up_2_email_markdown: composedMarkdown,
-          } as unknown as {
-            job_id: string
-            follow_up_1_email_markdown?: string | null
-            follow_up_2_email_markdown?: string | null
-          })
+          }
 
     const { error: insertError } = await supabase
       .from('application_assets')
-      .insert(insertPayload as never)
+      .insert(insertPayload)
 
     if (insertError) {
       throw new Error(insertError.message)

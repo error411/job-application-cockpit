@@ -5,6 +5,7 @@ import {
   isApplicationStatus,
   type ApplicationStatus,
 } from '@/lib/statuses'
+
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>
 
 type ApplicationRow = {
@@ -14,6 +15,8 @@ type ApplicationRow = {
   applied_at: string | null
   follow_up_1_due: string | null
   follow_up_2_due: string | null
+  follow_up_1_sent_at: string | null
+  follow_up_2_sent_at: string | null
   notes: string | null
   jobs:
     | {
@@ -41,6 +44,8 @@ type ApplicationAssetRow = {
   job_id: string
   resume_markdown: string | null
   cover_letter_markdown: string | null
+  follow_up_1_email_markdown: string | null
+  follow_up_2_email_markdown: string | null
   created_at: string
 }
 
@@ -64,6 +69,8 @@ export async function getApplyItems(
       applied_at,
       follow_up_1_due,
       follow_up_2_due,
+      follow_up_1_sent_at,
+      follow_up_2_sent_at,
       notes,
       jobs (
         id,
@@ -83,6 +90,7 @@ export async function getApplyItems(
 
   const latestScoreByJobId = new Map<string, number>()
   const hasAssetsByJobId = new Map<string, boolean>()
+  const assetByJobId = new Map<string, ApplicationAssetRow>()
 
   if (jobIds.length > 0) {
     const [
@@ -97,7 +105,14 @@ export async function getApplyItems(
 
       supabase
         .from('application_assets')
-        .select('job_id, resume_markdown, cover_letter_markdown, created_at')
+        .select(`
+          job_id,
+          resume_markdown,
+          cover_letter_markdown,
+          follow_up_1_email_markdown,
+          follow_up_2_email_markdown,
+          created_at
+        `)
         .in('job_id', jobIds)
         .order('created_at', { ascending: false }),
     ])
@@ -120,10 +135,13 @@ export async function getApplyItems(
     }
 
     for (const row of assetRows) {
-      if (!hasAssetsByJobId.has(row.job_id)) {
+      if (!assetByJobId.has(row.job_id)) {
+        assetByJobId.set(row.job_id, row)
+
         const hasAssets = Boolean(
           row.resume_markdown?.trim() && row.cover_letter_markdown?.trim()
         )
+
         hasAssetsByJobId.set(row.job_id, hasAssets)
       }
     }
@@ -133,6 +151,7 @@ export async function getApplyItems(
 
   const items: ApplyItem[] = applicationRows.map((row) => {
     const job = Array.isArray(row.jobs) ? (row.jobs[0] ?? null) : row.jobs
+    const asset = assetByJobId.get(row.job_id)
     const latestScore = latestScoreByJobId.get(row.job_id) ?? null
     const hasAssets = hasAssetsByJobId.get(row.job_id) ?? false
     const status = normalizeApplicationStatus(row.status)
@@ -153,7 +172,7 @@ export async function getApplyItems(
 
     let followUpOverdue = false
 
-    if (row.follow_up_1_due) {
+    if (row.follow_up_1_due && !row.follow_up_1_sent_at) {
       const diff = new Date(row.follow_up_1_due).getTime() - now
       if (diff < 0) {
         priority += 25
@@ -161,7 +180,7 @@ export async function getApplyItems(
       }
     }
 
-    if (row.follow_up_2_due) {
+    if (row.follow_up_2_due && !row.follow_up_2_sent_at) {
       const diff = new Date(row.follow_up_2_due).getTime() - now
       if (diff < 0) {
         priority += 25
@@ -196,6 +215,10 @@ export async function getApplyItems(
       appliedAt: row.applied_at ?? null,
       followUp1Due: row.follow_up_1_due ?? null,
       followUp2Due: row.follow_up_2_due ?? null,
+      followUp1SentAt: row.follow_up_1_sent_at ?? null,
+      followUp2SentAt: row.follow_up_2_sent_at ?? null,
+      followUp1EmailMarkdown: asset?.follow_up_1_email_markdown ?? null,
+      followUp2EmailMarkdown: asset?.follow_up_2_email_markdown ?? null,
       hasAssets,
       latestScore,
       priorityScore: priority,

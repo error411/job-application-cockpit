@@ -1,5 +1,4 @@
-select column_name, data_type
-from information_schema.columns
-where table_schema = 'public'
-  and table_name = 'application_assets'
-order by ordinal_position;
+select job_id, follow_up_1_due
+from applications
+where follow_up_1_due is not null
+limit 5;

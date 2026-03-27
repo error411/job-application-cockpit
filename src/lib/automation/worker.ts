@@ -33,44 +33,77 @@ type ApplicationFollowupRow = {
   follow_up_2_sent_at: string | null
 }
 
+type ApplicationAssetFollowupRow = {
+  job_id: string
+  follow_up_1_email_markdown: string | null
+  follow_up_2_email_markdown: string | null
+}
+
 async function maybeQueueFollowupAssets(jobId: string) {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from('applications')
-    .select(`
-      id,
-      job_id,
-      status,
-      follow_up_1_due,
-      follow_up_2_due,
-      follow_up_1_sent_at,
-      follow_up_2_sent_at
-    `)
-    .eq('job_id', jobId)
-    .maybeSingle()
+  const [
+    { data: applicationData, error: applicationError },
+    { data: assetData, error: assetError },
+  ] = await Promise.all([
+    supabase
+      .from('applications')
+      .select(
+        `
+          id,
+          job_id,
+          status,
+          follow_up_1_due,
+          follow_up_2_due,
+          follow_up_1_sent_at,
+          follow_up_2_sent_at
+        `
+      )
+      .eq('job_id', jobId)
+      .maybeSingle(),
 
-  if (error) {
-    throw new Error(error.message)
+    supabase
+      .from('application_assets')
+      .select(
+        `
+          job_id,
+          follow_up_1_email_markdown,
+          follow_up_2_email_markdown
+        `
+      )
+      .eq('job_id', jobId)
+      .maybeSingle(),
+  ])
+
+  if (applicationError) {
+    throw new Error(applicationError.message)
   }
 
-  const application = data as ApplicationFollowupRow | null
+  if (assetError) {
+    throw new Error(assetError.message)
+  }
+
+  const application = applicationData as ApplicationFollowupRow | null
+  const assets = assetData as ApplicationAssetFollowupRow | null
 
   if (!application) return
 
-  const now = new Date()
+  const followUp1Scheduled = Boolean(application.follow_up_1_due)
+  const followUp2Scheduled = Boolean(application.follow_up_2_due)
 
-  const followUp1Due =
-    application.follow_up_1_due &&
-    new Date(application.follow_up_1_due) <= now &&
-    !application.follow_up_1_sent_at
+  const followUp1MissingContent = Boolean(
+    followUp1Scheduled &&
+      !application.follow_up_1_sent_at &&
+      !assets?.follow_up_1_email_markdown?.trim()
+  )
 
-  const followUp2Due =
-    application.follow_up_2_due &&
-    new Date(application.follow_up_2_due) <= now &&
-    !application.follow_up_2_sent_at
+  const followUp2MissingContent = Boolean(
+    followUp2Scheduled &&
+      !application.follow_up_2_sent_at &&
+      !assets?.follow_up_2_email_markdown?.trim()
+  )
 
-  if (!followUp1Due && !followUp2Due) {
+  if (!followUp1MissingContent && !followUp2MissingContent) {
     return
   }
 
@@ -118,7 +151,7 @@ async function processAutomationJob(job: QueuedAutomationJob) {
 }
 
 export async function runAutomationWorker(
-  options: RunAutomationWorkerOptions = {},
+  options: RunAutomationWorkerOptions = {}
 ) {
   const limit = options.limit ?? 5
   const maxCycles = options.maxCycles ?? 3
