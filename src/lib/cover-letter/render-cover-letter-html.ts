@@ -6,8 +6,7 @@ type BuildCoverLetterHtmlDocumentArgs = {
   candidateName?: string | null
   targetCompany?: string | null
   targetRole?: string | null
-  city?: string | null
-  state?: string | null
+  location?: string | null
   phone?: string | null
   email?: string | null
 }
@@ -79,19 +78,16 @@ function buildDocumentTitle({
 
 function buildHeader({
   candidateName,
-  city,
-  state,
+  location,
   phone,
   email,
 }: Pick<
   BuildCoverLetterHtmlDocumentArgs,
-  'candidateName' | 'city' | 'state' | 'phone' | 'email'
+  'candidateName' | 'location' | 'phone' | 'email'
 >): string {
-  const location = [city?.trim(), state?.trim()].filter(Boolean).join(', ')
-
   const lines = [
     candidateName?.trim() || '',
-    location,
+    location?.trim() || '',
     phone?.trim() || '',
     email?.trim() || '',
   ].filter(Boolean)
@@ -271,12 +267,12 @@ function getCoverLetterStyles(): string {
     }
 
     .cl-signoff {
-  margin-top: 0.3in;
-}
+      margin-top: 0.3in;
+    }
 
-.cl-signoff-name {
-  margin-top: 0.08in;
-}
+    .cl-signoff-name {
+      margin-top: 0.08in;
+    }
 
     @media screen {
       body {
@@ -315,8 +311,7 @@ export function buildCoverLetterHtmlDocument({
   candidateName,
   targetCompany,
   targetRole,
-  city,
-  state,
+  location,
   phone,
   email,
 }: BuildCoverLetterHtmlDocumentArgs): string {
@@ -328,8 +323,7 @@ export function buildCoverLetterHtmlDocument({
     targetCompany,
     targetRole,
     markdown,
-    city,
-    state,
+    location,
     phone,
     email,
   })
@@ -350,13 +344,12 @@ export function buildCoverLetterHtmlDocument({
       </div>
       ${buildHeader({
         candidateName,
-        city,
-        state,
+        location,
         phone,
         email,
       })}
       ${safeBody}
-${buildSignoff(candidateName)}
+      ${buildSignoff(candidateName)}
     </main>
   </body>
 </html>`

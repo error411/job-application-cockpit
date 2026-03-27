@@ -6,6 +6,9 @@ type BuildResumeHtmlDocumentArgs = {
   candidateName?: string | null
   targetCompany?: string | null
   targetRole?: string | null
+  location?: string | null
+  phone?: string | null
+  email?: string | null
 }
 
 const md = new MarkdownIt({
@@ -73,6 +76,123 @@ function buildDocumentTitle({
   return parts.join(' — ')
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function looksLikeContactMetaLine(
+  line: string,
+  candidateName?: string | null,
+  location?: string | null,
+  phone?: string | null,
+  email?: string | null
+): boolean {
+  const normalized = line.trim().toLowerCase()
+  if (!normalized) return false
+
+  const checks = [
+    candidateName?.trim().toLowerCase(),
+    location?.trim().toLowerCase(),
+    phone?.trim().toLowerCase(),
+    email?.trim().toLowerCase(),
+  ].filter(Boolean) as string[]
+
+  const hasKnownProfileValue = checks.some((value) => normalized.includes(value))
+  const hasSeparator = normalized.includes('•') || normalized.includes('·') || normalized.includes('|')
+  const hasEmailLikeText = normalized.includes('@')
+
+  return hasKnownProfileValue || hasSeparator || hasEmailLikeText
+}
+
+function stripLeadingResumeHeaderBlock({
+  markdown,
+  candidateName,
+  location,
+  phone,
+  email,
+}: {
+  markdown: string
+  candidateName?: string | null
+  location?: string | null
+  phone?: string | null
+  email?: string | null
+}): string {
+  if (!candidateName?.trim()) return markdown
+
+  const lines = markdown.split('\n')
+  if (lines.length === 0) return markdown
+
+  const escapedName = escapeRegExp(candidateName.trim())
+  const headingPattern = new RegExp(`^#\\s+${escapedName}\\s*$`, 'i')
+
+  let index = 0
+
+  while (index < lines.length && lines[index].trim() === '') {
+    index += 1
+  }
+
+  if (index >= lines.length || !headingPattern.test(lines[index])) {
+    return markdown
+  }
+
+  index += 1
+
+  while (index < lines.length && lines[index].trim() === '') {
+    index += 1
+  }
+
+  if (
+    index < lines.length &&
+    looksLikeContactMetaLine(
+      lines[index],
+      candidateName,
+      location,
+      phone,
+      email
+    )
+  ) {
+    index += 1
+
+    while (index < lines.length && lines[index].trim() === '') {
+      index += 1
+    }
+  }
+
+  return lines.slice(index).join('\n').trim()
+}
+
+function buildResumeHeader({
+  candidateName,
+  location,
+  phone,
+  email,
+}: Pick<
+  BuildResumeHtmlDocumentArgs,
+  'candidateName' | 'location' | 'phone' | 'email'
+>): string {
+  const name = candidateName?.trim()
+  const contactParts = [location?.trim(), phone?.trim(), email?.trim()].filter(
+    Boolean
+  ) as string[]
+
+  if (!name && contactParts.length === 0) {
+    return ''
+  }
+
+  return `
+    <header class="resume-header">
+      ${name ? `<div class="resume-name">${escapeHtml(name)}</div>` : ''}
+      ${
+        contactParts.length > 0
+          ? `<div class="resume-contact-line">${contactParts
+              .map((part) => escapeHtml(part))
+              .join(' · ')}</div>`
+          : ''
+      }
+    </header>
+  `
+}
+
 function getResumeStyles(): string {
   return `
     @page {
@@ -111,6 +231,26 @@ function getResumeStyles(): string {
 
     .page {
       width: 100%;
+    }
+
+    .resume-header {
+      margin: 0 0 0.16in 0;
+    }
+
+    .resume-name {
+      font-size: 23pt;
+      line-height: 1.02;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      margin: 0 0 0.06in 0;
+    }
+
+    .resume-contact-line {
+      font-size: 10pt;
+      line-height: 1.25;
+      color: var(--muted);
+      margin: 0;
+      word-break: break-word;
     }
 
     h1,
@@ -255,31 +395,26 @@ function getResumeStyles(): string {
       display: none;
     }
 
-    /* Tighten common resume patterns */
     h2 + p strong:first-child,
     h2 + ul strong:first-child {
       letter-spacing: 0;
       text-transform: none;
     }
 
-    /* Keep long sections from feeling loose */
     h2 + h3 {
       margin-top: 0;
     }
 
-    /* Skills sections often come through as short bullets; keep them compact */
     h2 + ul li,
     h2 + ol li {
       margin-bottom: 0.03in;
     }
 
-    /* Improve rhythm in experience sections */
     h3 + ul,
     h3 + ol {
       margin-top: 0.03in;
     }
 
-    /* Make contact line feel intentional */
     h1 + p a {
       color: inherit;
     }
@@ -321,15 +456,28 @@ export function buildResumeHtmlDocument({
   candidateName,
   targetCompany,
   targetRole,
+  location,
+  phone,
+  email,
 }: BuildResumeHtmlDocumentArgs): string {
   const normalizedMarkdown = normalizeMarkdown(markdown)
-  const renderedHtml = md.render(normalizedMarkdown)
+const markdownWithoutDuplicateHeader = stripLeadingResumeHeaderBlock({
+  markdown: normalizedMarkdown,
+  candidateName,
+  location,
+  phone,
+  email,
+})
+const renderedHtml = md.render(markdownWithoutDuplicateHeader)
   const safeBody = sanitizeResumeHtml(renderedHtml)
   const title = buildDocumentTitle({
     markdown,
     candidateName,
     targetCompany,
     targetRole,
+    location,
+    phone,
+    email,
   })
 
   return `<!doctype html>
@@ -346,6 +494,12 @@ export function buildResumeHtmlDocument({
         ${escapeHtml(targetCompany ?? '')}
         ${escapeHtml(targetRole ?? '')}
       </div>
+      ${buildResumeHeader({
+        candidateName,
+        location,
+        phone,
+        email,
+      })}
       ${safeBody}
     </main>
   </body>

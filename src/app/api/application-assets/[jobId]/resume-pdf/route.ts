@@ -1,7 +1,6 @@
 import { chromium, type Browser } from 'playwright'
 import { NextResponse } from 'next/server'
 
-import { buildResumeHtmlDocument } from '@/lib/resume/render-resume-html'
 import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -39,44 +38,43 @@ function buildFilename(company?: string | null, title?: string | null): string {
   return `${parts.join('-') || 'resume'}.pdf`
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   const { jobId } = await context.params
   const supabase = await createClient()
 
-  const [{ data: asset, error: assetError }, { data: job, error: jobError }] =
-    await Promise.all([
-      supabase
-        .from('application_assets')
-        .select('job_id, resume_markdown')
-        .eq('job_id', jobId)
-        .maybeSingle(),
-      supabase
-        .from('jobs')
-        .select('id, company, title')
-        .eq('id', jobId)
-        .maybeSingle(),
-    ])
-
-  if (assetError) {
-    return NextResponse.json({ error: assetError.message }, { status: 500 })
-  }
+  const { data: job, error: jobError } = await supabase
+    .from('jobs')
+    .select('id, company, title')
+    .eq('id', jobId)
+    .maybeSingle()
 
   if (jobError) {
     return NextResponse.json({ error: jobError.message }, { status: 500 })
   }
 
-  if (!asset?.resume_markdown) {
+  const htmlUrl = new URL(
+    `/api/application-assets/${jobId}/resume-html`,
+    request.url
+  )
+
+  const htmlResponse = await fetch(htmlUrl, {
+    method: 'GET',
+    cache: 'no-store',
+  })
+
+  if (!htmlResponse.ok) {
+    const message = await htmlResponse.text()
+
     return NextResponse.json(
-      { error: 'Resume markdown not found for this job.' },
-      { status: 404 },
+      {
+        error: 'Failed to load resume HTML for PDF generation.',
+        details: message,
+      },
+      { status: 500 }
     )
   }
 
-  const html = buildResumeHtmlDocument({
-    markdown: asset.resume_markdown,
-    targetCompany: job?.company ?? null,
-    targetRole: job?.title ?? null,
-  })
+  const html = await htmlResponse.text()
 
   const browser = await getBrowser()
   const page = await browser.newPage()
@@ -106,7 +104,7 @@ export async function GET(_request: Request, context: RouteContext) {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${buildFilename(
           job?.company,
-          job?.title,
+          job?.title
         )}"`,
         'Cache-Control': 'no-store',
       },

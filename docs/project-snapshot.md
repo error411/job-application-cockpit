@@ -1,230 +1,300 @@
-# Project Snapshot — Job Application Cockpit
+# Job Application Cockpit — Project Snapshot
 
-## Purpose
+## Overview
 
-Job Application Cockpit is a pipeline-driven system for managing a job search with a focus on:
+This is a **pipeline-driven job application system**, not a CRUD app.
 
-- prioritization
-- execution speed
-- consistent follow-through
+The system answers one core question:
 
-The system is designed to reduce friction between identifying opportunities and taking action.
+👉 *“What should I do next?”*
 
----
-
-## Core Principle
-
-This is not a CRUD app.
-
-It is a **decision engine + execution system** that answers:
-
-> “What should I do next?”
+It orchestrates job discovery, scoring, asset generation, application tracking, and follow-ups into a single decision engine.
 
 ---
 
 ## Tech Stack
 
-- Next.js 16 (App Router)
-- React 19
-- Tailwind CSS 4
-- Supabase (typed)
-- OpenAI Responses API
-- Playwright (PDF generation)
-- markdown-it + sanitize-html
-- Zod
+* Next.js 16 (App Router)
+* React 19
+* Tailwind CSS 4
+* Supabase (typed)
+* OpenAI Responses API
+* Playwright (PDF generation)
+* Deployed on Vercel
 
 ---
 
 ## Core Data Model
 
-- `jobs` — raw job opportunities
-- `job_scores` — structured AI evaluation
-- `applications` — user execution state + timing
-- `application_assets` — generated materials (resume, cover letter, follow-ups)
-- `automation_jobs` — orchestration layer
+### Tables
+
+* `jobs` — source opportunities
+* `job_scores` — AI scoring results
+* `applications` — application state + follow-up timing
+* `application_assets` — resume, cover letter, follow-ups
+* `automation_jobs` — background job queue
+* `candidate_profile` — single source of truth for candidate data
 
 ---
 
-## System Architecture
+## Pipelines
 
-The system is built from connected pipelines:
+### 1. Job Scoring
 
-### 1. Scoring Pipeline
-- evaluates job fit using AI
-- stores structured results in `job_scores`
-- updates job status
-
----
-
-### 2. Asset Pipeline
-- generates resume and cover letter
-- stores assets in `application_assets`
+* AI evaluates job fit
+* Results stored in `job_scores`
+* Structured + repeatable
 
 ---
 
-### 3. Application Pipeline
-- tracks application lifecycle
-- sets `applied_at`
-- schedules follow-ups
+### 2. Asset Generation
+
+* Generates:
+
+  * Resume
+  * Cover Letter
+  * Follow-up messages
+* Stored in `application_assets`
+* Now fully driven by `candidate_profile`
 
 ---
 
-### 4. Follow-Up System (Critical)
+### 3. Application Tracking
 
-Follow-ups are **state-derived**, not status-based.
+* Tracks:
 
-Fields:
-- `follow_up_1_due`
-- `follow_up_2_due`
-- `follow_up_1_sent_at`
-- `follow_up_2_sent_at`
+  * status
+  * applied_at
+  * notes
+* Schedules follow-ups on apply
 
-Content:
-- stored in `application_assets`
+---
+
+### 4. Follow-Up System (Derived)
+
+Follow-ups are **NOT status-based**
+
+They are derived from timestamps:
+
+* `follow_up_1_due`
+* `follow_up_2_due`
+* `follow_up_1_sent_at`
+* `follow_up_2_sent_at`
 
 Rules:
-- no additional statuses for follow-ups
-- UI derives active follow-up dynamically
-- follow-up completion sets `sent_at` timestamps only
+
+* No follow-up statuses
+* UI determines current stage
+* Marking complete sets `sent_at`
 
 ---
 
 ### 5. Apply Queue (Decision Engine)
 
 Combines:
-- job score
-- asset readiness
-- application status
-- follow-up urgency
+
+* job score
+* asset readiness
+* application status
+* follow-up urgency
 
 Outputs:
-👉 prioritized actionable queue
 
-This is the primary working surface of the app.
+👉 prioritized execution list
 
 ---
 
-### 6. Automation Pipeline
+### 6. Automation System
 
 Job types:
-- `score_job`
-- `generate_assets`
-- `schedule_followups`
-- `generate_followup_assets`
 
-Worker:
-- processes queued jobs
-- chains dependent work
-- retries failures
-- idempotent by design
+* `score_job`
+* `generate_assets`
+* `schedule_followups`
+* `generate_followup_assets`
 
-Execution:
-- currently triggered manually via API
-- safe to run repeatedly
+Characteristics:
+
+* idempotent
+* manually triggered (no cron)
+* processed via API worker
 
 ---
 
-## Current Capabilities
+## Current State
 
-- End-to-end pipeline from job → apply → follow-up
-- AI-generated resume and cover letter
-- AI-generated follow-up emails
-- Follow-up scheduling and completion workflow
-- Action-oriented apply UI (priority + execution)
-- Manual automation trigger (local + hosted)
-- Local and hosted environments fully synced
+### Fully Working
+
+* End-to-end pipeline:
+  job → score → generate assets → apply → follow-up
+
+* Follow-up system:
+
+  * scheduling
+  * generation
+  * UI preview + mark sent
+
+* Apply mode:
+
+  * prioritized queue
+  * decision-driven execution
+
+* Automation:
+
+  * manual worker trigger
+  * secure API route
+
+* Local ↔ hosted Supabase:
+
+  * schema synced
+  * data synced
 
 ---
 
-## Current Gaps
+## UI / UX
 
-- No continuous automation (cron not enabled)
-- Limited visibility into prioritization logic
-- No outcome tracking (responses, interviews)
-- Home/dashboard page is underdeveloped
-- Candidate profile is minimal
+### Global Navigation
+
+* Persistent header navigation across all pages
+* Dashboard added as primary entry point
 
 ---
 
-## Current Focus (Hardening + Polish)
+### Dashboard (Home)
 
-The system is functional. Focus is now on:
+* Summary metrics:
 
-- reducing friction
-- improving clarity
-- making execution faster and more intuitive
+  * due follow-ups
+  * ready applications
+  * pipeline counts
+
+* “Today’s Punch List”
+
+* Recent jobs
+
+* Pipeline snapshot
+
+---
+
+### Follow-Ups Page
+
+* Derived “Due Now” and “Upcoming”
+* Action button:
+  👉 run follow-up worker when items are due
+
+---
+
+### Candidate Profile
+
+* Stores:
+
+  * full_name
+  * email
+  * phone
+  * location
+  * title
+  * summary
+  * strengths
+  * experience
+
+* Now drives:
+
+  * resume generation
+  * cover letter generation
+
+---
+
+## Rendering System (Stabilized)
+
+### Resume
+
+* Injected header from `candidate_profile`
+* Removes duplicate name/contact from markdown
+* HTML = source of truth
+* PDF generated from HTML (no drift)
+
+---
+
+### Cover Letter
+
+* Uses unified `location` field (no city/state split)
+* Header + signoff driven by profile
+* HTML = source of truth
+* PDF generated from HTML
+
+---
+
+## Constraints (Strict)
+
+* No follow-up statuses
+* Follow-ups derived from timestamps only
+* No cron jobs
+* Minimal abstractions
+* Maintain type safety
+* Avoid overengineering
 
 ---
 
 ## Active To-Dos
 
-### UI / Navigation
-- Add header navigation on all pages
-- Improve layout consistency and spacing
-- Polish apply-mode visual hierarchy
+### Pipeline / UX
+
+* Resume import + parsing → seed candidate profile
 
 ---
 
-### Follow-Up Operations
-- Add action button to invoke follow-up worker when follow-ups are due
-- Improve visibility of follow-up state and urgency in UI
+### Candidate Profiles (multi-profile support)
+
+* Add `is_active` flag to `candidate_profile`
+* Ensure only one active profile at a time
+* Update all profile fetches to use active profile
+* Add UI to view and switch profiles
+* Display active profile context in UI
 
 ---
 
-### Home / Dashboard
-- Convert home page into a dashboard
-- Add reporting-style widgets
-- Add “today’s punch list”
-- Surface high-priority actions clearly
+## Near-Term Direction
+
+### 1. Resume Import (Next Step)
+
+Goal:
+
+👉 eliminate manual profile setup
+
+Flow:
+
+* paste/upload resume
+* extract structured data via AI
+* populate `candidate_profile`
+* regenerate assets
 
 ---
 
-### Candidate Profile
-- Add and support:
-  - email
-  - phone
-  - location
-- Improve usefulness for downstream generation
+### 2. System Leverage
+
+After import:
+
+* auto-refresh assets
+* improve scoring accuracy
+* reduce friction to near-zero
 
 ---
 
-### Onboarding / Import
-- Allow resume upload
-- Parse resume content
-- Seed candidate profile automatically
+## Design Philosophy
+
+* Pipelines over forms
+* Derived state over manual state
+* Single source of truth per domain
+* HTML as rendering source for PDFs
+* Minimal surface area, high leverage
 
 ---
 
-## Design Rules (Non-Negotiable)
+## Status
 
-### 1. State is the Source of Truth
-- Do not derive state from UI
-- Persist all meaningful transitions
-
----
-
-### 2. Follow-Ups Are Derived
-- Never introduce follow-up statuses
-- Always compute from due + sent timestamps
+✅ Stable
+✅ Consistent across environments
+✅ Ready for scale improvements
+🚀 Entering leverage phase (automation + input simplification)
 
 ---
-
-### 3. Automation Must Be Idempotent
-- Jobs must be safe to run repeatedly
-
----
-
-### 4. Pipelines Over Components
-- Think in flows, not pages
-- UI reflects system state—it does not define it
-
----
-
-## Practical Rule
-
-If a change does not:
-- increase execution speed
-- improve prioritization
-- or reduce friction
-
-…it is not a priority.

@@ -1,7 +1,6 @@
 import { chromium, type Browser } from 'playwright'
 import { NextResponse } from 'next/server'
 
-import { buildCoverLetterHtmlDocument } from '@/lib/cover-letter/render-cover-letter-html'
 import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -39,88 +38,43 @@ function buildFilename(company?: string | null, title?: string | null): string {
   return `${parts.join('-') || 'cover-letter'}.pdf`
 }
 
-function toNullableString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
-}
-
-type CandidateProfileForCoverLetter = {
-  full_name: string | null
-  city: string | null
-  state: string | null
-  phone: string | null
-  email: string | null
-}
-
-function normalizeProfile(profile: Record<string, unknown>): CandidateProfileForCoverLetter {
-  return {
-    full_name: toNullableString(profile.full_name),
-    city: toNullableString(profile.city),
-    state: toNullableString(profile.state),
-    phone: toNullableString(profile.phone),
-    email: toNullableString(profile.email),
-  }
-}
-
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   const { jobId } = await context.params
   const supabase = await createClient()
 
-  const [
-    { data: asset, error: assetError },
-    { data: job, error: jobError },
-    { data: profile, error: profileError },
-  ] = await Promise.all([
-    supabase
-      .from('application_assets')
-      .select('job_id, cover_letter_markdown')
-      .eq('job_id', jobId)
-      .maybeSingle(),
-    supabase
-      .from('jobs')
-      .select('id, company, title')
-      .eq('id', jobId)
-      .maybeSingle(),
-    supabase
-      .from('candidate_profile')
-      .select('*')
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle(),
-  ])
-
-  if (assetError) {
-    return NextResponse.json({ error: assetError.message }, { status: 500 })
-  }
+  const { data: job, error: jobError } = await supabase
+    .from('jobs')
+    .select('id, company, title')
+    .eq('id', jobId)
+    .maybeSingle()
 
   if (jobError) {
     return NextResponse.json({ error: jobError.message }, { status: 500 })
   }
 
-  if (profileError) {
-    return NextResponse.json({ error: profileError.message }, { status: 500 })
-  }
+  const htmlUrl = new URL(
+    `/api/application-assets/${jobId}/cover-letter-html`,
+    request.url
+  )
 
-  if (!asset?.cover_letter_markdown) {
+  const htmlResponse = await fetch(htmlUrl, {
+    method: 'GET',
+    cache: 'no-store',
+  })
+
+  if (!htmlResponse.ok) {
+    const message = await htmlResponse.text()
+
     return NextResponse.json(
-      { error: 'Cover letter markdown not found for this job.' },
-      { status: 404 }
+      {
+        error: 'Failed to load cover letter HTML for PDF generation.',
+        details: message,
+      },
+      { status: 500 }
     )
   }
 
-  const normalizedProfile = profile
-    ? normalizeProfile(profile as Record<string, unknown>)
-    : null
-
-  const html = buildCoverLetterHtmlDocument({
-    markdown: asset.cover_letter_markdown,
-    candidateName: normalizedProfile?.full_name ?? null,
-    targetCompany: job?.company ?? null,
-    targetRole: job?.title ?? null,
-    city: normalizedProfile?.city ?? null,
-    state: normalizedProfile?.state ?? null,
-    phone: normalizedProfile?.phone ?? null,
-    email: normalizedProfile?.email ?? null,
-  })
+  const html = await htmlResponse.text()
 
   const browser = await getBrowser()
   const page = await browser.newPage()
@@ -137,10 +91,10 @@ export async function GET(_request: Request, context: RouteContext) {
       printBackground: true,
       preferCSSPageSize: true,
       margin: {
-        top: '0.7in',
-        right: '0.75in',
-        bottom: '0.75in',
-        left: '0.75in',
+        top: '0.5in',
+        right: '0.55in',
+        bottom: '0.5in',
+        left: '0.55in',
       },
     })
 

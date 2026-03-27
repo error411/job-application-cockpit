@@ -1,33 +1,32 @@
 import { NextResponse } from 'next/server'
-
 import { buildCoverLetterHtmlDocument } from '@/lib/cover-letter/render-cover-letter-html'
 import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 
 type RouteContext = {
-  params: Promise<{
-    jobId: string
-  }>
+  params: Promise<{ jobId: string }>
 }
 
 function toNullableString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null
 }
 
 type CandidateProfileForCoverLetter = {
   full_name: string | null
-  city: string | null
-  state: string | null
+  location: string | null
   phone: string | null
   email: string | null
 }
 
-function normalizeProfile(profile: Record<string, unknown>): CandidateProfileForCoverLetter {
+function normalizeProfile(
+  profile: Record<string, unknown>
+): CandidateProfileForCoverLetter {
   return {
     full_name: toNullableString(profile.full_name),
-    city: toNullableString(profile.city),
-    state: toNullableString(profile.state),
+    location: toNullableString(profile.location),
     phone: toNullableString(profile.phone),
     email: toNullableString(profile.email),
   }
@@ -88,8 +87,7 @@ export async function GET(_request: Request, context: RouteContext) {
     candidateName: normalizedProfile?.full_name ?? null,
     targetCompany: job?.company ?? null,
     targetRole: job?.title ?? null,
-    city: normalizedProfile?.city ?? null,
-    state: normalizedProfile?.state ?? null,
+    location: normalizedProfile?.location ?? null,
     phone: normalizedProfile?.phone ?? null,
     email: normalizedProfile?.email ?? null,
   })
