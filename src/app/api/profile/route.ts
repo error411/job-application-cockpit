@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
@@ -9,6 +10,9 @@ export async function POST(req: NextRequest) {
     const {
       id,
       full_name,
+      email,
+      phone,
+      location,
       title,
       summary,
       strengths,
@@ -26,6 +30,9 @@ export async function POST(req: NextRequest) {
       .from('candidate_profile')
       .update({
         full_name,
+        email: email || null,
+        phone: phone || null,
+        location: location || null,
         title: title || null,
         summary: summary || null,
         strengths: Array.isArray(strengths) ? strengths : [],

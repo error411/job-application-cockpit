@@ -1,4 +1,8 @@
-select job_id, follow_up_1_due
-from applications
-where follow_up_1_due is not null
+select
+  id,
+  full_name,
+  email,
+  phone,
+  location
+from public.candidate_profile
 limit 5;

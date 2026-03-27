@@ -5,6 +5,9 @@ import { useEffect, useMemo, useState } from 'react'
 type Profile = {
   id: string
   full_name: string
+  email: string | null
+  phone: string | null
+  location: string | null
   title: string | null
   summary: string | null
   strengths: string[]
@@ -310,6 +313,40 @@ export default function ProfilePage() {
             }
           />
         </div>
+
+        <div>
+          <label className="mb-2 block font-medium">Email</label>
+            <input
+              type="email"
+              className="w-full rounded border p-2"
+              value={profile.email ?? ''}
+              onChange={(e) =>
+                setProfile({ ...profile, email: e.target.value })
+              }
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block font-medium">Phone</label>
+            <input
+              className="w-full rounded border p-2"
+              value={profile.phone ?? ''}
+              onChange={(e) =>
+                setProfile({ ...profile, phone: e.target.value })
+              }
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block font-medium">Location</label>
+            <input
+              className="w-full rounded border p-2"
+              value={profile.location ?? ''}
+              onChange={(e) =>
+                setProfile({ ...profile, location: e.target.value })
+              }
+            />
+          </div>
 
         <div>
           <label className="mb-2 block font-medium">Title</label>
