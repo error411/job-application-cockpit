@@ -6,8 +6,13 @@ type ApplicationRow = Tables<'applications'>
 type JobRow = Tables<'jobs'>
 type JobScoreRow = Tables<'job_scores'>
 
-type HomeJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location' | 'status' | 'created_at'>
+type HomeJob = Pick<
+  JobRow,
+  'id' | 'company' | 'title' | 'location' | 'status' | 'created_at'
+>
+
 type HomeApplicationJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location'>
+
 type RawApplicationRow = Pick<
   ApplicationRow,
   | 'id'
@@ -79,11 +84,6 @@ function toHomeApplication(row: RawApplicationRow): HomeApplication {
   }
 }
 
-function startOfTodayLocal(): Date {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
-}
-
 function isDueNow(dateString: string | null | undefined): boolean {
   if (!dateString) return false
   return new Date(dateString) <= new Date()
@@ -118,14 +118,22 @@ function getActiveFollowUpLabel(app: HomeApplication): {
   label: string
   dueDate: string | null
 } | null {
-  if (app.follow_up_1_due && !app.follow_up_1_sent_at && isDueNow(app.follow_up_1_due)) {
+  if (
+    app.follow_up_1_due &&
+    !app.follow_up_1_sent_at &&
+    isDueNow(app.follow_up_1_due)
+  ) {
     return {
       label: 'Follow-up 1 due now',
       dueDate: app.follow_up_1_due,
     }
   }
 
-  if (app.follow_up_2_due && !app.follow_up_2_sent_at && isDueNow(app.follow_up_2_due)) {
+  if (
+    app.follow_up_2_due &&
+    !app.follow_up_2_sent_at &&
+    isDueNow(app.follow_up_2_due)
+  ) {
     return {
       label: 'Follow-up 2 due now',
       dueDate: app.follow_up_2_due,
@@ -207,59 +215,118 @@ function buildPunchList(
   return items.sort((a, b) => b.priority - a.priority)
 }
 
+function toneClasses(tone: 'red' | 'green' | 'blue' | 'violet') {
+  if (tone === 'red') {
+    return 'border-rose-200 bg-gradient-to-br from-rose-50 to-white'
+  }
+
+  if (tone === 'green') {
+    return 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white'
+  }
+
+  if (tone === 'blue') {
+    return 'border-blue-200 bg-gradient-to-br from-blue-50 to-white'
+  }
+
+  return 'border-violet-200 bg-gradient-to-br from-violet-50 to-white'
+}
+
 function SummaryCard({
   label,
   value,
   hint,
+  tone,
 }: {
   label: string
   value: string | number
   hint: string
+  tone: 'red' | 'green' | 'blue' | 'violet'
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4">
-      <p className="text-sm text-zinc-500">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
-      <p className="mt-2 text-sm text-zinc-600">{hint}</p>
+    <div
+      className={`rounded-2xl border p-5 shadow-sm ${toneClasses(tone)}`}
+    >
+      <p className="text-sm font-medium text-zinc-600">{label}</p>
+      <p className="mt-3 text-4xl font-semibold tracking-tight text-zinc-950">
+        {value}
+      </p>
+      <p className="mt-2 text-sm text-zinc-500">{hint}</p>
     </div>
   )
 }
 
 function PunchListCard({ item }: { item: PunchListItem }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4">
+    <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700">
+        <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
           {item.kind === 'follow_up' ? 'Follow-Up' : 'Apply'}
         </span>
 
         {item.score !== null ? (
-          <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
+          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
             Score {item.score}/100
           </span>
         ) : null}
       </div>
 
-      <h3 className="mt-3 text-lg font-semibold tracking-tight">{item.title}</h3>
-      <p className="text-sm text-zinc-700">{item.company}</p>
-      <p className="text-sm text-zinc-500">{item.location}</p>
+      <div className="mt-4 space-y-1">
+        <h3 className="text-lg font-semibold tracking-tight text-zinc-950">
+          {item.title}
+        </h3>
+        <p className="text-sm font-medium text-zinc-700">{item.company}</p>
+        <p className="text-sm text-zinc-500">{item.location}</p>
+      </div>
 
-      <p className="mt-3 text-sm text-zinc-700">{item.reason}</p>
+      <p className="mt-4 text-sm text-zinc-700">{item.reason}</p>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-zinc-600">
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-zinc-500">
         <span>Status: {item.status ?? '—'}</span>
         {item.dueDate ? <span>Due: {formatDate(item.dueDate)}</span> : null}
       </div>
 
-      <div className="mt-4">
+      <div className="mt-5">
         <Link
           href={item.href}
-          className="inline-flex rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium transition hover:bg-zinc-50"
+          className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50"
         >
           Open
         </Link>
       </div>
     </div>
+  )
+}
+
+function SectionCard({
+  title,
+  href,
+  hrefLabel,
+  children,
+}: {
+  title: string
+  href?: string
+  hrefLabel?: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-xl font-semibold tracking-tight text-zinc-950">
+          {title}
+        </h2>
+
+        {href && hrefLabel ? (
+          <Link
+            href={href}
+            className="text-sm font-medium text-zinc-700 underline underline-offset-4 hover:text-zinc-950"
+          >
+            {hrefLabel}
+          </Link>
+        ) : null}
+      </div>
+
+      <div className="mt-4">{children}</div>
+    </section>
   )
 }
 
@@ -300,7 +367,10 @@ export default async function HomePage() {
   if (jobsError) {
     return (
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+          Overview
+        </p>
+        <h1>Dashboard</h1>
         <p className="text-sm text-red-600">Failed to load jobs.</p>
         <p className="text-sm text-zinc-600">{jobsError.message}</p>
       </div>
@@ -310,7 +380,10 @@ export default async function HomePage() {
   if (applicationsError) {
     return (
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+          Overview
+        </p>
+        <h1>Dashboard</h1>
         <p className="text-sm text-red-600">Failed to load applications.</p>
         <p className="text-sm text-zinc-600">{applicationsError.message}</p>
       </div>
@@ -336,7 +409,10 @@ export default async function HomePage() {
     if (scoresError) {
       return (
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            Overview
+          </p>
+          <h1>Dashboard</h1>
           <p className="text-sm text-red-600">Failed to load job scores.</p>
           <p className="text-sm text-zinc-600">{scoresError.message}</p>
         </div>
@@ -356,14 +432,21 @@ export default async function HomePage() {
         isDueNow(app.follow_up_2_due))
   ).length
 
-  const readyCount = typedApplications.filter((app) => app.status === 'ready').length
-  const appliedCount = typedApplications.filter((app) => app.status === 'applied').length
+  const readyCount = typedApplications.filter(
+    (app) => app.status === 'ready'
+  ).length
+  const appliedCount = typedApplications.filter(
+    (app) => app.status === 'applied'
+  ).length
   const interviewingCount = typedApplications.filter(
     (app) => app.status === 'interviewing'
   ).length
 
   const recentJobs = typedJobs.slice(0, 5)
-  const punchList = buildPunchList(typedApplications, latestScoresByJobId).slice(0, 6)
+  const punchList = buildPunchList(
+    typedApplications,
+    latestScoresByJobId
+  ).slice(0, 6)
 
   const jobsThisWeek = typedJobs.filter((job) => {
     if (!job.created_at) return false
@@ -376,10 +459,13 @@ export default async function HomePage() {
   return (
     <div className="space-y-8">
       <section className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-zinc-600">
-          Snapshot of what needs attention next across applications, follow-ups,
-          and recent pipeline activity.
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+          Overview
+        </p>
+        <h1>Dashboard</h1>
+        <p className="max-w-3xl text-sm text-zinc-600">
+          Snapshot of what needs attention next across applications,
+          follow-ups, and recent pipeline activity.
         </p>
       </section>
 
@@ -388,33 +474,42 @@ export default async function HomePage() {
           label="Due now"
           value={dueNowCount}
           hint="Active follow-ups derived from due and sent timestamps."
+          tone="red"
         />
         <SummaryCard
           label="Ready to apply"
           value={readyCount}
           hint="Applications waiting for execution."
+          tone="green"
         />
         <SummaryCard
           label="Applied"
           value={appliedCount}
           hint="Recently submitted jobs still in flight."
+          tone="blue"
         />
         <SummaryCard
           label="Interviewing"
           value={interviewingCount}
           hint="Live opportunities needing active management."
+          tone="violet"
         />
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <div className="space-y-4">
+      <section className="grid gap-6 xl:grid-cols-[1.45fr_1fr]">
+        <div className="space-y-6">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-2xl font-semibold tracking-tight">
-              Today&apos;s punch list
-            </h2>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                Focus
+              </p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-950">
+                Today&apos;s punch list
+              </h2>
+            </div>
             <Link
               href="/today"
-              className="text-sm font-medium text-zinc-700 underline underline-offset-4"
+              className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50"
             >
               Open Today
             </Link>
@@ -427,8 +522,8 @@ export default async function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-zinc-200 bg-white p-6">
-              <h3 className="text-lg font-semibold tracking-tight">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <h3 className="text-lg font-semibold tracking-tight text-zinc-950">
                 Nothing urgent right now
               </h3>
               <p className="mt-2 text-sm text-zinc-600">
@@ -440,79 +535,80 @@ export default async function HomePage() {
         </div>
 
         <div className="space-y-6">
-          <section className="rounded-xl border border-zinc-200 bg-white p-4">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-xl font-semibold tracking-tight">
-                Pipeline snapshot
-              </h2>
-              <Link
-                href="/applications"
-                className="text-sm font-medium text-zinc-700 underline underline-offset-4"
-              >
-                View applications
-              </Link>
-            </div>
-
-            <dl className="mt-4 space-y-3 text-sm">
-              <div className="flex items-center justify-between gap-4">
+          <SectionCard
+            title="Pipeline snapshot"
+            href="/applications"
+            hrefLabel="View applications"
+          >
+            <dl className="space-y-3 text-sm">
+              <div className="flex items-center justify-between gap-4 border-b border-zinc-100 pb-3">
                 <dt className="text-zinc-600">Total jobs</dt>
-                <dd className="font-medium text-zinc-900">{typedJobs.length}</dd>
+                <dd className="font-semibold text-zinc-950">{typedJobs.length}</dd>
               </div>
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4 border-b border-zinc-100 pb-3">
                 <dt className="text-zinc-600">Jobs added in last 7 days</dt>
-                <dd className="font-medium text-zinc-900">{jobsThisWeek}</dd>
+                <dd className="font-semibold text-zinc-950">{jobsThisWeek}</dd>
               </div>
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4 border-b border-zinc-100 pb-3">
                 <dt className="text-zinc-600">Tracked applications</dt>
-                <dd className="font-medium text-zinc-900">
+                <dd className="font-semibold text-zinc-950">
                   {typedApplications.length}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-4">
                 <dt className="text-zinc-600">Follow-ups due now</dt>
-                <dd className="font-medium text-zinc-900">{dueNowCount}</dd>
+                <dd className="font-semibold text-zinc-950">{dueNowCount}</dd>
               </div>
             </dl>
-          </section>
+          </SectionCard>
 
-          <section className="rounded-xl border border-zinc-200 bg-white p-4">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-xl font-semibold tracking-tight">Recent jobs</h2>
-              <Link
-                href="/jobs"
-                className="text-sm font-medium text-zinc-700 underline underline-offset-4"
-              >
-                View jobs
-              </Link>
-            </div>
-
+          <SectionCard
+            title="Recent jobs"
+            href="/jobs"
+            hrefLabel="View jobs"
+          >
             {recentJobs.length ? (
-              <div className="mt-4 space-y-4">
-                {recentJobs.map((job) => (
-                  <div key={job.id} className="border-t border-zinc-200 pt-4 first:border-t-0 first:pt-0">
-                    <h3 className="text-base font-semibold tracking-tight">
-                      {job.title}
-                    </h3>
-                    <p className="text-sm text-zinc-700">{job.company}</p>
-                    <p className="text-sm text-zinc-500">
-                      {job.location || 'No location'}
-                    </p>
-                    <div className="mt-2 flex items-center justify-between gap-4 text-sm">
-                      <span className="text-zinc-600">Status: {job.status ?? '—'}</span>
+              <div className="space-y-4">
+                {recentJobs.map((job, index) => (
+                  <div
+                    key={job.id}
+                    className={
+                      index === 0
+                        ? 'pt-0'
+                        : 'border-t border-zinc-100 pt-4'
+                    }
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-base font-semibold tracking-tight text-zinc-950">
+                          {job.title}
+                        </h3>
+                        <p className="mt-1 text-sm font-medium text-zinc-700">
+                          {job.company}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-500">
+                          {job.location || 'No location'}
+                        </p>
+                      </div>
+
                       <Link
                         href={`/jobs/${job.id}`}
-                        className="font-medium text-zinc-700 underline underline-offset-4"
+                        className="shrink-0 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50"
                       >
                         Open
                       </Link>
+                    </div>
+
+                    <div className="mt-3 text-sm text-zinc-500">
+                      Status: {job.status ?? '—'}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="mt-4 text-sm text-zinc-600">No jobs yet.</p>
+              <p className="text-sm text-zinc-600">No jobs yet.</p>
             )}
-          </section>
+          </SectionCard>
         </div>
       </section>
     </div>

@@ -218,9 +218,77 @@ export default async function ApplyPage() {
     .sort((a, b) => b.priorityScore - a.priorityScore)
 
   return (
-    <div className="space-y-6">
-      <ProcessAutomationButton />
-      <ApplyModeClient items={items} />
-    </div>
-  )
+  <div className="space-y-8">
+    {/* Header */}
+    <section className="space-y-2">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+        Execution
+      </p>
+
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1>Apply Hub</h1>
+          <p className="mt-2 max-w-3xl text-sm text-zinc-600">
+            Prioritized execution queue combining score, asset readiness,
+            application state, and follow-up urgency.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <ProcessAutomationButton />
+        </div>
+      </div>
+    </section>
+
+    {/* Summary / Context */}
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-sm font-medium text-zinc-600">Items in queue</p>
+        <p className="mt-3 text-4xl font-semibold tracking-tight text-zinc-950">
+          {items.length}
+        </p>
+        <p className="mt-2 text-sm text-zinc-500">
+          Active applications prioritized for action.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm">
+        <p className="text-sm font-medium text-zinc-600">Sorted by score</p>
+        <p className="mt-3 text-lg font-semibold text-zinc-950">
+          Highest first
+        </p>
+        <p className="mt-2 text-sm text-zinc-500">
+          Uses latest job scoring output.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-sm font-medium text-zinc-600">Execution mode</p>
+        <p className="mt-3 text-lg font-semibold text-zinc-950">
+          Guided workflow
+        </p>
+        <p className="mt-2 text-sm text-zinc-500">
+          Focused step-by-step interaction per item.
+        </p>
+      </div>
+    </section>
+
+    {/* Apply Mode Surface */}
+    <section className="app-panel p-0">
+      <div className="border-b border-zinc-200 px-5 py-4">
+        <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
+          Execution Queue
+        </h2>
+        <p className="mt-1 text-sm text-zinc-600">
+          Work through applications in priority order. Each item includes assets,
+          status, and next actions.
+        </p>
+      </div>
+
+      <div className="p-5">
+        <ApplyModeClient items={items} />
+      </div>
+    </section>
+  </div>
+)
 }

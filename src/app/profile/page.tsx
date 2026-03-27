@@ -42,6 +42,65 @@ type ExperienceFormState = {
   sort_order: string
 }
 
+function InputField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label?: string
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+}) {
+  return (
+    <div>
+      {label && (
+        <label className="mb-2 block text-sm font-medium text-zinc-900">
+          {label}
+        </label>
+      )}
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-xl border border-zinc-300 bg-white p-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
+      />
+    </div>
+  )
+}
+
+function TextareaField({
+  label,
+  value,
+  onChange,
+  rows = 4,
+  placeholder,
+}: {
+  label?: string
+  value: string
+  onChange: (value: string) => void
+  rows?: number
+  placeholder?: string
+}) {
+  return (
+    <div>
+      {label && (
+        <label className="mb-2 block text-sm font-medium text-zinc-900">
+          {label}
+        </label>
+      )}
+      <textarea
+        rows={rows}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-xl border border-zinc-300 bg-white p-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
+      />
+    </div>
+  )
+}
+
 function toLines(value: string): string[] {
   return value
     .split('\n')
@@ -299,474 +358,305 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="max-w-4xl p-6">
-      <h1 className="mb-6 text-2xl font-bold">Candidate Profile</h1>
+  <div className="space-y-10">
+    {/* Header */}
+    <section className="space-y-2">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+        Candidate
+      </p>
+
+      <h1>Profile</h1>
+
+      <p className="max-w-3xl text-sm text-zinc-600">
+        This is your source of truth for scoring, resume generation, and cover letters.
+      </p>
+    </section>
+
+    {/* Profile Panel */}
+    <section className="app-panel">
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold tracking-tight text-zinc-950">
+          Core Profile
+        </h2>
+        <p className="mt-1 text-sm text-zinc-600">
+          Used across all generated assets and scoring.
+        </p>
+      </div>
 
       <form onSubmit={handleSave} className="space-y-6">
-        <div>
-          <label className="mb-2 block font-medium">Full Name</label>
-          <input
-            className="w-full rounded border p-2"
+        <div className="grid gap-4 md:grid-cols-2">
+          <InputField
+            label="Full Name"
             value={profile.full_name}
-            onChange={(e) =>
-              setProfile({ ...profile, full_name: e.target.value })
+            onChange={(v) =>
+              setProfile({ ...profile, full_name: v })
+            }
+          />
+
+          <InputField
+            label="Email"
+            value={profile.email ?? ''}
+            onChange={(v) =>
+              setProfile({ ...profile, email: v })
+            }
+          />
+
+          <InputField
+            label="Phone"
+            value={profile.phone ?? ''}
+            onChange={(v) =>
+              setProfile({ ...profile, phone: v })
+            }
+          />
+
+          <InputField
+            label="Location"
+            value={profile.location ?? ''}
+            onChange={(v) =>
+              setProfile({ ...profile, location: v })
             }
           />
         </div>
 
-        <div>
-          <label className="mb-2 block font-medium">Email</label>
-            <input
-              type="email"
-              className="w-full rounded border p-2"
-              value={profile.email ?? ''}
-              onChange={(e) =>
-                setProfile({ ...profile, email: e.target.value })
-              }
-            />
-          </div>
+        <InputField
+          label="Title"
+          value={profile.title ?? ''}
+          onChange={(v) =>
+            setProfile({ ...profile, title: v })
+          }
+        />
 
-          <div>
-            <label className="mb-2 block font-medium">Phone</label>
-            <input
-              className="w-full rounded border p-2"
-              value={profile.phone ?? ''}
-              onChange={(e) =>
-                setProfile({ ...profile, phone: e.target.value })
-              }
-            />
-          </div>
+        <TextareaField
+          label="Summary"
+          value={profile.summary ?? ''}
+          onChange={(v) =>
+            setProfile({ ...profile, summary: v })
+          }
+          rows={5}
+        />
 
-          <div>
-            <label className="mb-2 block font-medium">Location</label>
-            <input
-              className="w-full rounded border p-2"
-              value={profile.location ?? ''}
-              onChange={(e) =>
-                setProfile({ ...profile, location: e.target.value })
-              }
-            />
-          </div>
+        <TextareaField
+          label="Strengths (one per line)"
+          value={profile.strengths.join('\n')}
+          onChange={(v) =>
+            setProfile({
+              ...profile,
+              strengths: toLines(v),
+            })
+          }
+          rows={6}
+        />
 
-        <div>
-          <label className="mb-2 block font-medium">Title</label>
-          <input
-            className="w-full rounded border p-2"
-            value={profile.title || ''}
-            onChange={(e) =>
-              setProfile({ ...profile, title: e.target.value })
-            }
-          />
+        <TextareaField
+          label="Experience Bullets (one per line)"
+          value={profile.experience_bullets.join('\n')}
+          onChange={(v) =>
+            setProfile({
+              ...profile,
+              experience_bullets: toLines(v),
+            })
+          }
+          rows={8}
+        />
+
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="app-button-primary disabled:opacity-50"
+          >
+            {isSaving ? 'Saving...' : 'Save Profile'}
+          </button>
+
+          {message ? (
+            <p className="text-sm text-zinc-600">{message}</p>
+          ) : null}
         </div>
-
-        <div>
-          <label className="mb-2 block font-medium">Summary</label>
-          <textarea
-            className="min-h-[120px] w-full rounded border p-2"
-            value={profile.summary || ''}
-            onChange={(e) =>
-              setProfile({ ...profile, summary: e.target.value })
-            }
-          />
-        </div>
-
-        <div>
-          <label className="mb-2 block font-medium">
-            Strengths (one per line)
-          </label>
-          <textarea
-            className="min-h-[180px] w-full rounded border p-2"
-            value={profile.strengths.join('\n')}
-            onChange={(e) =>
-              setProfile({
-                ...profile,
-                strengths: e.target.value
-                  .split('\n')
-                  .map((line) => line.trim())
-                  .filter(Boolean),
-              })
-            }
-          />
-        </div>
-
-        <div>
-          <label className="mb-2 block font-medium">
-            Experience Bullets (one per line)
-          </label>
-          <textarea
-            className="min-h-[220px] w-full rounded border p-2"
-            value={profile.experience_bullets.join('\n')}
-            onChange={(e) =>
-              setProfile({
-                ...profile,
-                experience_bullets: e.target.value
-                  .split('\n')
-                  .map((line) => line.trim())
-                  .filter(Boolean),
-              })
-            }
-          />
-        </div>
-
-        <button
-          type="submit"
-          className="rounded border px-4 py-2 disabled:opacity-50"
-          disabled={isSaving}
-        >
-          {isSaving ? 'Saving...' : 'Save Profile'}
-        </button>
-
-        {message && <p>{message}</p>}
       </form>
+    </section>
 
-      <section className="mt-12 space-y-6">
-        <div>
-          <h2 className="text-xl font-semibold">Past Experience</h2>
-          <p className="mt-1 text-sm text-zinc-600">
-            This powers better scoring and better generated assets.
-          </p>
+    {/* Experience Section */}
+    <section className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold tracking-tight text-zinc-950">
+          Experience
+        </h2>
+        <p className="mt-1 text-sm text-zinc-600">
+          Improves scoring accuracy and generated content quality.
+        </p>
+      </div>
+
+      {/* Add Experience */}
+      <div className="app-panel">
+        <h3 className="text-lg font-medium text-zinc-950">
+          Add Experience
+        </h3>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <InputField
+            value={newExperience.company}
+            onChange={(v) =>
+              setNewExperience((c) => ({ ...c, company: v }))
+            }
+            placeholder="Company"
+          />
+
+          <InputField
+            value={newExperience.title}
+            onChange={(v) =>
+              setNewExperience((c) => ({ ...c, title: v }))
+            }
+            placeholder="Title"
+          />
+
+          <InputField
+            value={newExperience.location}
+            onChange={(v) =>
+              setNewExperience((c) => ({ ...c, location: v }))
+            }
+            placeholder="Location"
+          />
+
+          <InputField
+            value={newExperience.sort_order}
+            onChange={(v) =>
+              setNewExperience((c) => ({ ...c, sort_order: v }))
+            }
+            placeholder="Sort order"
+          />
+
+          <input
+            type="date"
+            value={newExperience.start_date}
+            onChange={(e) =>
+              setNewExperience((c) => ({
+                ...c,
+                start_date: e.target.value,
+              }))
+            }
+            className="rounded-xl border p-2"
+          />
+
+          <input
+            type="date"
+            value={newExperience.end_date}
+            onChange={(e) =>
+              setNewExperience((c) => ({
+                ...c,
+                end_date: e.target.value,
+              }))
+            }
+            disabled={newExperience.is_current}
+            className="rounded-xl border p-2 disabled:opacity-50"
+          />
         </div>
 
-        <div className="rounded-xl border bg-white p-5">
-          <h3 className="text-lg font-medium">Add experience</h3>
-
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <input
-              value={newExperience.company}
-              onChange={(e) =>
-                setNewExperience((current) => ({
-                  ...current,
-                  company: e.target.value,
-                }))
-              }
-              placeholder="Company"
-              className="rounded border p-2"
-            />
-            <input
-              value={newExperience.title}
-              onChange={(e) =>
-                setNewExperience((current) => ({
-                  ...current,
-                  title: e.target.value,
-                }))
-              }
-              placeholder="Title"
-              className="rounded border p-2"
-            />
-            <input
-              value={newExperience.location}
-              onChange={(e) =>
-                setNewExperience((current) => ({
-                  ...current,
-                  location: e.target.value,
-                }))
-              }
-              placeholder="Location"
-              className="rounded border p-2"
-            />
-            <input
-              value={newExperience.sort_order}
-              onChange={(e) =>
-                setNewExperience((current) => ({
-                  ...current,
-                  sort_order: e.target.value,
-                }))
-              }
-              placeholder="Sort order"
-              className="rounded border p-2"
-            />
-            <input
-              type="date"
-              value={newExperience.start_date}
-              onChange={(e) =>
-                setNewExperience((current) => ({
-                  ...current,
-                  start_date: e.target.value,
-                }))
-              }
-              className="rounded border p-2"
-            />
-            <input
-              type="date"
-              value={newExperience.end_date}
-              onChange={(e) =>
-                setNewExperience((current) => ({
-                  ...current,
-                  end_date: e.target.value,
-                }))
-              }
-              disabled={newExperience.is_current}
-              className="rounded border p-2 disabled:opacity-50"
-            />
-          </div>
-
-          <label className="mt-4 flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={newExperience.is_current}
-              onChange={(e) =>
-                setNewExperience((current) => ({
-                  ...current,
-                  is_current: e.target.checked,
-                }))
-              }
-            />
-            Current role
-          </label>
-
-          <textarea
-            value={newExperience.summary}
+        <label className="mt-4 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={newExperience.is_current}
             onChange={(e) =>
-              setNewExperience((current) => ({
-                ...current,
-                summary: e.target.value,
+              setNewExperience((c) => ({
+                ...c,
+                is_current: e.target.checked,
               }))
             }
-            placeholder="Summary"
-            className="mt-4 min-h-[90px] w-full rounded border p-2"
           />
+          Current role
+        </label>
 
-          <textarea
-            value={newExperience.bulletsText}
-            onChange={(e) =>
-              setNewExperience((current) => ({
-                ...current,
-                bulletsText: e.target.value,
-              }))
-            }
-            placeholder="Bullets (one per line)"
-            className="mt-4 min-h-[140px] w-full rounded border p-2"
-          />
+        <TextareaField
+          value={newExperience.summary}
+          onChange={(v) =>
+            setNewExperience((c) => ({ ...c, summary: v }))
+          }
+          placeholder="Summary"
+          rows={3}
+        />
 
-          <textarea
-            value={newExperience.technologiesText}
-            onChange={(e) =>
-              setNewExperience((current) => ({
-                ...current,
-                technologiesText: e.target.value,
-              }))
-            }
-            placeholder="Technologies (comma separated)"
-            className="mt-4 min-h-[90px] w-full rounded border p-2"
-          />
+        <TextareaField
+          value={newExperience.bulletsText}
+          onChange={(v) =>
+            setNewExperience((c) => ({ ...c, bulletsText: v }))
+          }
+          placeholder="Bullets (one per line)"
+          rows={5}
+        />
 
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={() => void handleCreateExperience()}
-              disabled={isSavingExperience}
-              className="rounded border px-4 py-2 text-sm disabled:opacity-50"
-            >
-              {isSavingExperience ? 'Saving...' : 'Add experience'}
-            </button>
-          </div>
+        <TextareaField
+          value={newExperience.technologiesText}
+          onChange={(v) =>
+            setNewExperience((c) => ({
+              ...c,
+              technologiesText: v,
+            }))
+          }
+          placeholder="Technologies (comma separated)"
+          rows={3}
+        />
+
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => void handleCreateExperience()}
+            disabled={isSavingExperience}
+            className="app-button-primary disabled:opacity-50"
+          >
+            {isSavingExperience ? 'Saving...' : 'Add Experience'}
+          </button>
         </div>
+      </div>
 
-        <div className="space-y-4">
-          {sortedExperience.map((row) => {
-            const isEditing = editingId === row.id
-            const form = isEditing ? editingForm : formFromRow(row)
-
-            return (
-              <div key={row.id} className="rounded-xl border bg-white p-5">
-                {isEditing ? (
-                  <>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <input
-                        value={form.company}
-                        onChange={(e) =>
-                          setEditingForm((current) => ({
-                            ...current,
-                            company: e.target.value,
-                          }))
-                        }
-                        placeholder="Company"
-                        className="rounded border p-2"
-                      />
-                      <input
-                        value={form.title}
-                        onChange={(e) =>
-                          setEditingForm((current) => ({
-                            ...current,
-                            title: e.target.value,
-                          }))
-                        }
-                        placeholder="Title"
-                        className="rounded border p-2"
-                      />
-                      <input
-                        value={form.location}
-                        onChange={(e) =>
-                          setEditingForm((current) => ({
-                            ...current,
-                            location: e.target.value,
-                          }))
-                        }
-                        placeholder="Location"
-                        className="rounded border p-2"
-                      />
-                      <input
-                        value={form.sort_order}
-                        onChange={(e) =>
-                          setEditingForm((current) => ({
-                            ...current,
-                            sort_order: e.target.value,
-                          }))
-                        }
-                        placeholder="Sort order"
-                        className="rounded border p-2"
-                      />
-                      <input
-                        type="date"
-                        value={form.start_date}
-                        onChange={(e) =>
-                          setEditingForm((current) => ({
-                            ...current,
-                            start_date: e.target.value,
-                          }))
-                        }
-                        className="rounded border p-2"
-                      />
-                      <input
-                        type="date"
-                        value={form.end_date}
-                        onChange={(e) =>
-                          setEditingForm((current) => ({
-                            ...current,
-                            end_date: e.target.value,
-                          }))
-                        }
-                        disabled={form.is_current}
-                        className="rounded border p-2 disabled:opacity-50"
-                      />
-                    </div>
-
-                    <label className="mt-4 flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={form.is_current}
-                        onChange={(e) =>
-                          setEditingForm((current) => ({
-                            ...current,
-                            is_current: e.target.checked,
-                          }))
-                        }
-                      />
-                      Current role
-                    </label>
-
-                    <textarea
-                      value={form.summary}
-                      onChange={(e) =>
-                        setEditingForm((current) => ({
-                          ...current,
-                          summary: e.target.value,
-                        }))
-                      }
-                      placeholder="Summary"
-                      className="mt-4 min-h-[90px] w-full rounded border p-2"
-                    />
-
-                    <textarea
-                      value={form.bulletsText}
-                      onChange={(e) =>
-                        setEditingForm((current) => ({
-                          ...current,
-                          bulletsText: e.target.value,
-                        }))
-                      }
-                      placeholder="Bullets (one per line)"
-                      className="mt-4 min-h-[140px] w-full rounded border p-2"
-                    />
-
-                    <textarea
-                      value={form.technologiesText}
-                      onChange={(e) =>
-                        setEditingForm((current) => ({
-                          ...current,
-                          technologiesText: e.target.value,
-                        }))
-                      }
-                      placeholder="Technologies (comma separated)"
-                      className="mt-4 min-h-[90px] w-full rounded border p-2"
-                    />
-
-                    <div className="mt-4 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void handleSaveExperience(row.id)}
-                        disabled={isSavingExperience}
-                        className="rounded border px-4 py-2 text-sm disabled:opacity-50"
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={cancelEditExperience}
-                        className="rounded border px-4 py-2 text-sm"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-medium">{row.title}</h3>
-                        <p className="text-sm text-zinc-700">{row.company}</p>
-                        <p className="text-sm text-zinc-500">
-                          {row.location || 'No location'}
-                        </p>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => startEditExperience(row)}
-                          className="rounded border px-3 py-2 text-sm"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDeleteExperience(row.id)}
-                          className="rounded border border-red-300 px-3 py-2 text-sm text-red-700"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-
-                    {row.summary ? (
-                      <p className="mt-3 text-sm text-zinc-700">{row.summary}</p>
-                    ) : null}
-
-                    {(row.bullets ?? []).length ? (
-                      <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-700">
-                        {(row.bullets ?? []).map((bullet, index) => (
-                          <li key={index}>{bullet}</li>
-                        ))}
-                      </ul>
-                    ) : null}
-
-                    {(row.technologies ?? []).length ? (
-                      <p className="mt-3 text-sm text-zinc-600">
-                        <span className="font-medium text-zinc-800">
-                          Technologies:
-                        </span>{' '}
-                        {(row.technologies ?? []).join(', ')}
-                      </p>
-                    ) : null}
-                  </>
-                )}
+      {/* Experience List */}
+      <div className="space-y-4">
+        {sortedExperience.map((row) => (
+          <div key={row.id} className="app-panel">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-950">
+                  {row.title}
+                </h3>
+                <p className="text-sm text-zinc-700">{row.company}</p>
+                <p className="text-sm text-zinc-500">
+                  {row.location || 'No location'}
+                </p>
               </div>
-            )
-          })}
-        </div>
 
-        {experienceMessage && <p>{experienceMessage}</p>}
-      </section>
-    </main>
-  )
+              <div className="flex gap-2">
+                <button
+                  onClick={() => startEditExperience(row)}
+                  className="app-button"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => void handleDeleteExperience(row.id)}
+                  className="app-button border-red-300 text-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+
+            {row.summary && (
+              <p className="mt-3 text-sm text-zinc-700">{row.summary}</p>
+            )}
+
+            {(row.bullets ?? []).length > 0 && (
+              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-700">
+                {row.bullets!.map((b, i) => (
+                  <li key={i}>{b}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {experienceMessage && (
+        <p className="text-sm text-zinc-600">{experienceMessage}</p>
+      )}
+    </section>
+  </div>
+)
 }

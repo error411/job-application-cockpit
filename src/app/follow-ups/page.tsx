@@ -50,6 +50,83 @@ function toFollowUpListItem(row: RawFollowUpRow): FollowUpListItem {
   }
 }
 
+function getCardTone(app: FollowUpListItem) {
+  if (isDue(app.follow_up_1_due) || isDue(app.follow_up_2_due)) {
+    return 'border-rose-200 bg-gradient-to-br from-rose-50 to-white'
+  }
+
+  return 'border-zinc-200 bg-white'
+}
+
+function FollowUpCard({ app }: { app: FollowUpListItem }) {
+  return (
+    <div
+      className={`rounded-2xl border p-5 shadow-sm ${getCardTone(app)}`}
+    >
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
+              {isDue(app.follow_up_1_due) || isDue(app.follow_up_2_due)
+                ? 'Due Now'
+                : 'Upcoming'}
+            </span>
+            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+              {app.status}
+            </span>
+          </div>
+
+          <h3 className="mt-4 text-lg font-semibold tracking-tight text-zinc-950">
+            {app.job?.title || 'Unknown Job'}
+          </h3>
+          <p className="mt-1 text-sm font-medium text-zinc-700">
+            {app.job?.company || 'Unknown Company'}
+          </p>
+          <p className="mt-1 text-sm text-zinc-500">
+            {app.job?.location || 'No location'}
+          </p>
+        </div>
+
+        <div className="shrink-0">
+          <Link
+            href={`/jobs/${app.job_id}`}
+            className="app-button"
+          >
+            View Job
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-zinc-200 bg-white/80 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+            Follow-Up 1
+          </p>
+          <p className="mt-2 text-base font-semibold text-zinc-950">
+            {formatDate(app.follow_up_1_due)}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-zinc-200 bg-white/80 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+            Follow-Up 2
+          </p>
+          <p className="mt-2 text-base font-semibold text-zinc-950">
+            {formatDate(app.follow_up_2_due)}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-xl border border-zinc-200 bg-white/80 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+          Notes
+        </p>
+        <p className="mt-2 text-sm text-zinc-700">{app.notes || '—'}</p>
+      </div>
+    </div>
+  )
+}
+
 export default async function FollowUpsPage() {
   const supabase = await createClient()
 
@@ -73,7 +150,17 @@ export default async function FollowUpsPage() {
     .order('updated_at', { ascending: false })
 
   if (error) {
-    return <main className="p-6">Error loading follow-ups: {error.message}</main>
+    return (
+      <main className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+          Workflow
+        </p>
+        <h1>Follow-Ups</h1>
+        <p className="text-sm text-red-600">
+          Error loading follow-ups: {error.message}
+        </p>
+      </main>
+    )
   }
 
   const applications = ((data ?? []) as RawFollowUpRow[]).map(toFollowUpListItem)
@@ -90,90 +177,133 @@ export default async function FollowUpsPage() {
   )
 
   return (
-  <div className="space-y-8">
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Follow-Ups</h1>
-        <p className="mt-2 text-sm text-zinc-600">
-          Derived from due and sent timestamps. No follow-up statuses.
+    <div className="space-y-8">
+      <section className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+          Workflow
         </p>
-      </div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1>Follow-Ups</h1>
+            <p className="mt-2 max-w-3xl text-sm text-zinc-600">
+              Derived from due and sent timestamps. No follow-up statuses.
+              The UI reflects urgency from schedule data, not manual workflow states.
+            </p>
+          </div>
 
-      {dueNow.length > 0 ? (
-        <form action="/api/automation-run-form" method="POST">
-          <input type="hidden" name="from" value="/follow-ups" />
-          <input
-            type="hidden"
-            name="limit"
-            value={String(Math.min(Math.max(dueNow.length, 1), 10))}
-          />
-          <button
-            type="submit"
-            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium transition hover:bg-zinc-50"
-          >
-            Run Follow-Up Worker ({dueNow.length})
-          </button>
-        </form>
-      ) : null}
-    </div>
-
-    <section className="space-y-4">
-      <h2 className="text-2xl font-semibold tracking-tight">Due Now</h2>
-
-      {dueNow.length ? (
-        <div className="grid gap-4">
-          {dueNow.map((app) => (
-            <FollowUpCard key={app.id} app={app} />
-          ))}
+          {dueNow.length > 0 ? (
+            <form action="/api/automation-run-form" method="POST">
+              <input type="hidden" name="from" value="/follow-ups" />
+              <input
+                type="hidden"
+                name="limit"
+                value={String(Math.min(Math.max(dueNow.length, 1), 10))}
+              />
+              <button type="submit" className="app-button-primary">
+                Run Follow-Up Worker ({dueNow.length})
+              </button>
+            </form>
+          ) : null}
         </div>
-      ) : (
-        <p className="text-sm text-zinc-600">No follow-ups due right now.</p>
-      )}
-    </section>
+      </section>
 
-    <section className="space-y-4">
-      <h2 className="text-2xl font-semibold tracking-tight">Upcoming</h2>
-
-      {upcoming.length ? (
-        <div className="grid gap-4">
-          {upcoming.map((app) => (
-            <FollowUpCard key={app.id} app={app} />
-          ))}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-zinc-600">Due now</p>
+          <p className="mt-3 text-4xl font-semibold tracking-tight text-zinc-950">
+            {dueNow.length}
+          </p>
+          <p className="mt-2 text-sm text-zinc-500">
+            Follow-ups that need attention immediately.
+          </p>
         </div>
-      ) : (
-        <p className="text-sm text-zinc-600">
-          No upcoming follow-ups scheduled.
-        </p>
-      )}
-    </section>
-  </div>
-)
-}
 
-function FollowUpCard({ app }: { app: FollowUpListItem }) {
-  return (
-    <div className="rounded border p-4">
-      <h3 className="font-semibold">{app.job?.title || 'Unknown Job'}</h3>
-      <p>{app.job?.company || 'Unknown Company'}</p>
-      <p className="text-sm opacity-70">{app.job?.location || 'No location'}</p>
+        <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-zinc-600">Upcoming</p>
+          <p className="mt-3 text-4xl font-semibold tracking-tight text-zinc-950">
+            {upcoming.length}
+          </p>
+          <p className="mt-2 text-sm text-zinc-500">
+            Scheduled follow-ups still ahead.
+          </p>
+        </div>
 
-      <div className="mt-3 space-y-1 text-sm">
-        <p>Status: {app.status}</p>
-        <p>Follow-up 1 Due: {formatDate(app.follow_up_1_due)}</p>
-        <p>Follow-up 2 Due: {formatDate(app.follow_up_2_due)}</p>
-      </div>
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-zinc-600">Tracked apps</p>
+          <p className="mt-3 text-4xl font-semibold tracking-tight text-zinc-950">
+            {applications.length}
+          </p>
+          <p className="mt-2 text-sm text-zinc-500">
+            Applied or interviewing opportunities with follow-up relevance.
+          </p>
+        </div>
 
-      <div className="mt-3">
-        <p className="text-sm">
-          <span className="font-medium">Notes:</span> {app.notes || '—'}
-        </p>
-      </div>
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-zinc-600">View queue</p>
+          <p className="mt-3 text-lg font-semibold tracking-tight text-zinc-950">
+            Open Today
+          </p>
+          <div className="mt-4">
+            <Link href="/today" className="app-button">
+              Go to Today
+            </Link>
+          </div>
+        </div>
+      </section>
 
-      <div className="mt-3">
-        <Link href={`/jobs/${app.job_id}`} className="text-sm underline">
-          View Job
-        </Link>
-      </div>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              Active
+            </p>
+            <h2 className="mt-1">Due Now</h2>
+          </div>
+        </div>
+
+        {dueNow.length ? (
+          <div className="grid gap-4">
+            {dueNow.map((app) => (
+              <FollowUpCard key={app.id} app={app} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <h3 className="text-lg font-semibold tracking-tight text-zinc-950">
+              No follow-ups due right now
+            </h3>
+            <p className="mt-2 text-sm text-zinc-600">
+              Nothing currently requires immediate follow-up action.
+            </p>
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            Scheduled
+          </p>
+          <h2 className="mt-1">Upcoming</h2>
+        </div>
+
+        {upcoming.length ? (
+          <div className="grid gap-4">
+            {upcoming.map((app) => (
+              <FollowUpCard key={app.id} app={app} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <h3 className="text-lg font-semibold tracking-tight text-zinc-950">
+              No upcoming follow-ups scheduled
+            </h3>
+            <p className="mt-2 text-sm text-zinc-600">
+              There are no future follow-up dates currently queued.
+            </p>
+          </div>
+        )}
+      </section>
     </div>
   )
 }

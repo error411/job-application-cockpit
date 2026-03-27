@@ -1,16 +1,6 @@
 import './globals.css'
 import Link from 'next/link'
-
-const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/today', label: 'Today' },
-  { href: '/apply', label: 'Apply Hub' },
-  { href: '/jobs', label: 'Jobs' },
-  { href: '/jobs/new', label: 'Add Job' },
-  { href: '/applications', label: 'Applications' },
-  { href: '/follow-ups', label: 'Follow-Ups' },
-  { href: '/profile', label: 'Profile' },
-]
+import { AppNav } from './app-nav'
 
 export default function RootLayout({
   children,
@@ -19,33 +9,29 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-white text-zinc-950">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <header className="mb-8 border-b border-zinc-200 pb-4">
-            <div className="flex flex-col gap-4">
-              <div>
-                <Link
-                  href="/"
-                  className="text-xl font-semibold tracking-tight hover:opacity-80"
-                >
-                  Job Application Cockpit
-                </Link>
+      <body>
+        <div className="app-shell">
+          <header className="app-surface mb-8 px-5 py-4 sm:px-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-950 text-sm font-semibold text-white shadow-sm">
+                  JC
+                </div>
+
+                <div>
+                  <Link
+                    href="/"
+                    className="text-lg font-semibold tracking-tight text-zinc-950 hover:opacity-80"
+                  >
+                    Job Application Cockpit
+                  </Link>
+                  <p className="mt-0.5 text-sm text-zinc-500">
+                    Pipeline-driven job search execution
+                  </p>
+                </div>
               </div>
 
-              <nav
-                aria-label="Primary"
-                className="flex flex-wrap gap-2"
-              >
-                {NAV_ITEMS.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium transition hover:bg-zinc-50"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
+              <AppNav />
             </div>
           </header>
 
