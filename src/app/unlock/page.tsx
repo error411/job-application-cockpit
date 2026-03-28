@@ -1,42 +1,14 @@
-'use client'
+import UnlockForm from './unlock-form'
 
-import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+type UnlockPageProps = {
+  searchParams: Promise<{
+    next?: string
+  }>
+}
 
-export default function UnlockPage() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const next = searchParams.get('next') || '/'
-
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-
-    const formData = new FormData()
-    formData.append('password', password)
-    formData.append('next', next)
-
-    const response = await fetch('/api/auth/unlock', {
-      method: 'POST',
-      body: formData,
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      setError(data.error || 'Unable to unlock site.')
-      setLoading(false)
-      return
-    }
-
-    router.replace(data.redirectTo || '/')
-    router.refresh()
-  }
+export default async function UnlockPage({ searchParams }: UnlockPageProps) {
+  const params = await searchParams
+  const nextPath = params.next || '/'
 
   return (
     <main className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-6">
@@ -46,33 +18,7 @@ export default function UnlockPage() {
           Enter the shared password to continue.
         </p>
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <input type="hidden" name="next" value={next} />
-
-          <div>
-            <label htmlFor="password" className="block text-sm mb-2">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-              autoFocus
-            />
-          </div>
-
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-xl bg-white text-black px-4 py-3 font-medium disabled:opacity-60"
-          >
-            {loading ? 'Checking…' : 'Unlock'}
-          </button>
-        </form>
+        <UnlockForm nextPath={nextPath} />
       </div>
     </main>
   )
