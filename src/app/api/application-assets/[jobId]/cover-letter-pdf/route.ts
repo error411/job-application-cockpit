@@ -1,9 +1,11 @@
-import { chromium, type Browser } from 'playwright'
+import chromium from '@sparticuz/chromium'
+import { chromium as playwright, type Browser, type Page } from 'playwright-core'
 import { NextResponse } from 'next/server'
 
 import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 type RouteContext = {
   params: Promise<{
@@ -15,9 +17,22 @@ let browserPromise: Promise<Browser> | null = null
 
 async function getBrowser(): Promise<Browser> {
   if (!browserPromise) {
-    browserPromise = chromium.launch({
-      headless: true,
-    })
+    browserPromise = playwright
+      .launch({
+        args: chromium.args,
+        executablePath: await chromium.executablePath(),
+        headless: true,
+      })
+      .then((browser) => {
+        browser.on('disconnected', () => {
+          browserPromise = null
+        })
+        return browser
+      })
+      .catch((error) => {
+        browserPromise = null
+        throw error
+      })
   }
 
   return browserPromise
@@ -52,12 +67,16 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: jobError.message }, { status: 500 })
   }
 
+  if (!job) {
+    return NextResponse.json({ error: 'Job not found.' }, { status: 404 })
+  }
+
   const htmlUrl = new URL(
     `/api/application-assets/${jobId}/cover-letter-html`,
     request.url
   )
 
-  const htmlResponse = await fetch(htmlUrl, {
+  const htmlResponse = await fetch(htmlUrl.toString(), {
     method: 'GET',
     cache: 'no-store',
   })
@@ -76,10 +95,12 @@ export async function GET(request: Request, context: RouteContext) {
 
   const html = await htmlResponse.text()
 
-  const browser = await getBrowser()
-  const page = await browser.newPage()
+  let page: Page | null = null
 
   try {
+    const browser = await getBrowser()
+    page = await browser.newPage()
+
     await page.setContent(html, {
       waitUntil: 'domcontentloaded',
     })
@@ -91,10 +112,10 @@ export async function GET(request: Request, context: RouteContext) {
       printBackground: true,
       preferCSSPageSize: true,
       margin: {
-        top: '0.5in',
-        right: '0.55in',
-        bottom: '0.5in',
-        left: '0.55in',
+        top: '0.65in',
+        right: '0.7in',
+        bottom: '0.65in',
+        left: '0.7in',
       },
     })
 
@@ -103,13 +124,15 @@ export async function GET(request: Request, context: RouteContext) {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${buildFilename(
-          job?.company,
-          job?.title
+          job.company,
+          job.title
         )}"`,
         'Cache-Control': 'no-store',
       },
     })
   } catch (error) {
+    console.error('Cover letter PDF generation failed', error)
+
     const message =
       error instanceof Error
         ? error.message
@@ -117,6 +140,8 @@ export async function GET(request: Request, context: RouteContext) {
 
     return NextResponse.json({ error: message }, { status: 500 })
   } finally {
-    await page.close()
+    if (page) {
+      await page.close()
+    }
   }
 }
