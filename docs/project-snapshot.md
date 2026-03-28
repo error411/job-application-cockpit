@@ -1,260 +1,115 @@
-# Job Application Cockpit — Project Snapshot
+# Project Snapshot
 
-## Overview
+## Current Focus
 
-This is a **pipeline-driven execution engine**, not a CRUD app.
+Transitioning from core functionality → usable daily system.
 
-The system answers one core question:
-
-👉 *“What should I do next?”*
-
-It transforms job search into a structured system:
-- evaluate opportunities
-- generate assets
-- track execution
-- surface next actions
+Key priorities:
+- onboarding experience
+- first-run usability
+- reducing friction to first application
 
 ---
 
-## Core Principles
+## System Overview
 
-- Pipelines over forms
-- Derived state over manual state
-- Execution > tracking
-- Minimal user input, maximum system leverage
-- Single source of truth per domain
+### Core Entities
 
----
-
-## Tech Stack
-
-- Next.js 16 (App Router)
-- React 19
-- Tailwind CSS 4
-- Supabase (typed)
-- OpenAI Responses API
-- Playwright (PDF generation)
-- Vercel deployment
+- jobs
+- applications
+- application_assets
+- candidate_profile
+- candidate_experience
+- job_scores
 
 ---
 
-## Core Data Model
+## Pipeline Model
 
-### Tables
+Applications move through:
 
-- `jobs` — source opportunities
-- `job_scores` — AI evaluation results
-- `applications` — execution state + timing
-- `application_assets` — generated materials
-- `automation_jobs` — queued background work
-- `candidate_profile` — canonical user data
+- ready
+- applied
+- follow_up_due
+- interviewing
+- rejected / closed
 
----
-
-## Pipelines
-
-### 1. Job Scoring
-AI evaluates job fit → stored in `job_scores`
+Interview tracking is event-based (no fixed columns).
 
 ---
 
-### 2. Asset Generation
-Generates:
-- resume
-- cover letter
-- follow-ups
+## Current Capabilities
 
-Driven by:
-👉 `candidate_profile` (single source of truth)
-
----
-
-### 3. Application Execution
-Tracks:
-- `status`
-- `applied_at`
-- `notes`
-
-Triggers follow-up scheduling on apply.
+- Job capture and tracking
+- Resume + cover letter generation
+- PDF export (React PDF)
+- Interview round logging
+- Follow-up scheduling
+- Private site authentication
 
 ---
 
-### 4. Follow-Up System (Derived)
+## TODO / Next Work
 
-Follow-ups are **not statuses**
+### Onboarding
 
-They are derived from timestamps:
-
-- `follow_up_1_due`
-- `follow_up_2_due`
-- `follow_up_1_sent_at`
-- `follow_up_2_sent_at`
-
-Rules:
-- no follow-up statuses
-- UI determines current state
-- completion = set `sent_at`
+- [ ] First-time user onboarding flow
+  - [ ] Intro / how-it-works screen
+  - [ ] Resume upload (PDF / DOCX)
+  - [ ] Candidate profile seeding
+  - [ ] Guided first job entry
+  - [ ] Transition to dashboard with CTA
 
 ---
 
-### 5. Apply Queue (Decision Engine)
+### Candidate System
 
-Combines:
-- job score
-- readiness
-- application state
-- follow-up urgency
-
-Outputs:
-👉 prioritized execution list
+- [ ] Multi-candidate configuration
+  - [ ] Support multiple candidate profiles
+  - [ ] Profile switcher (UI)
+  - [ ] Scoped applications per candidate
+  - [ ] Asset generation per candidate context
 
 ---
 
-### 6. Automation System
+### Mobile Improvements
 
-Job types:
-- `score_job`
-- `generate_assets`
-- `schedule_followups`
-- `generate_followup_assets`
-
-Characteristics:
-- idempotent
-- manually triggered
-- no cron dependency
-
----
-
-## UI System
-
-### Navigation Model
-
-- Header = execution flows only
-- Dashboard = command center
-- Profile = configuration (not in primary nav)
-- Add Job = primary CTA (not navigation)
+- [ ] Improve navigation for mobile
+  - [ ] Bottom nav or simplified header
+  - [ ] Reduce density of dashboard UI
+- [ ] Suppress keyboard-heavy interactions
+  - [ ] Avoid hotkeys on mobile
+  - [ ] Improve input focus behavior
+- [ ] Optimize layout responsiveness
+  - [ ] Cards stack cleanly
+  - [ ] Metrics + pipeline readable on small screens
 
 ---
 
-### Dashboard
+### UX / Product
 
-- system overview
-- punch list (top actions)
-- pipeline snapshot
-- recent activity
-- profile entry point
+- [ ] Improve empty states across app
+- [ ] Add guided actions (hotspots / banners)
+- [ ] Refine pipeline visualization clarity
 
 ---
 
-### Today Page
+### Tech / System
 
-Core execution surface:
-
-👉 ranked list of actions
-
-- follow-ups due/overdue
-- ready applications
-- follow-up timing windows
+- [ ] Resume import + parsing (Phase 2)
+- [ ] Normalize asset generation pipeline
+- [ ] Improve error handling + logging
 
 ---
 
-### Apply System
+## Notes
 
-- prioritized queue
-- decision-driven execution
-- no manual sorting
+Keep implementation:
+- minimal
+- user-driven
+- easy to reason about
 
----
-
-## Rendering System
-
-### Resume / Cover Letter
-
-- HTML = source of truth
-- PDF generated from HTML (no drift)
-- driven by `candidate_profile`
-
----
-
-For reporting, I also want to support interview progression.
-
-Behavior:
-- user manually records application updates
-- if user sets application status to `interviewing`, they can enter interview date and note
-- this should update `applications.status` to `interviewing`
-- and create an interview-round record
-- if the employer later schedules another interview, the user manually adds another round
-- if the employer rejects or hires, the user manually records that too
-
-Important:
-- keep this user-driven
-- no automatic hiring workflow inference
-- no interview_1 / interview_2 columns on applications
-- use a repeatable interview event model
-- keep implementation minimal and reporting-friendly
-
-## Constraints (Strict)
-
-- ❌ No follow-up statuses
-- ❌ No cron dependency (manual trigger system)
-- ❌ No redundant state
-- ✅ Derived state only
-- ✅ Minimal abstractions
-- ✅ Type-safe system
-
----
-
-## Current State
-
-✅ End-to-end pipeline working  
-✅ Decision engine active  
-✅ UI aligned with system model  
-✅ Automation functional (manual trigger)  
-🚀 Entering leverage phase
-
----
-
-## Active To-Dos
-
-### High Leverage
-
-- Resume import → auto-populate `candidate_profile`
-
----
-
-### System Expansion
-
-- Multi-profile support (`is_active`)
-- Profile switching UI
-- Context awareness across pipelines
-
----
-
-## Near-Term Direction
-
-### 1. Resume Import
-
-Goal:
-👉 eliminate manual setup
-
-Flow:
-- upload/paste resume
-- AI extraction
-- populate profile
-- regenerate assets
-
----
-
-### 2. System Leverage
-
-- auto-refresh assets
-- improve scoring
-- reduce friction to near-zero
-
----
-
-## Status
-
-✅ Stable  
-✅ Cohesive system  
-🚀 Moving toward automation + leverage
+Avoid:
+- over-automation
+- hidden state
+- rigid workflows
