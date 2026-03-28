@@ -444,10 +444,7 @@ function PunchListCard({
             Highest-priority work should be handled first.
           </p>
 
-          <Link
-            href={item.href}
-            className="app-button-primary inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
-          >
+          <Link href={item.href} className="app-button-primary">
             Open
           </Link>
         </div>
@@ -482,16 +479,116 @@ function SectionCard({
         </div>
 
         {href && hrefLabel ? (
-          <Link
-            href={href}
-            className="app-button inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
-          >
+          <Link href={href} className="app-button">
             {hrefLabel}
           </Link>
         ) : null}
       </div>
 
       <div className="pt-5">{children}</div>
+    </section>
+  )
+}
+
+function PipelineOverviewCard({
+  jobsCount,
+  scoredCount,
+  readyCount,
+  appliedCount,
+}: {
+  jobsCount: number
+  scoredCount: number
+  readyCount: number
+  appliedCount: number
+}) {
+  const totalForBar = Math.max(
+    jobsCount + scoredCount + readyCount + appliedCount,
+    1
+  )
+
+  const jobsWidth = (jobsCount / totalForBar) * 100
+  const scoredWidth = (scoredCount / totalForBar) * 100
+  const readyWidth = (readyCount / totalForBar) * 100
+  const appliedWidth = (appliedCount / totalForBar) * 100
+
+  return (
+    <section className="app-panel rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="border-b border-zinc-100 pb-4">
+        <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
+          Pipeline Overview
+        </h2>
+      </div>
+
+      <div className="pt-5">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-red-500 text-xs font-semibold text-white">
+              👜
+            </span>
+            <span className="text-sm font-medium text-zinc-700">Jobs</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500 text-xs font-semibold text-white">
+              ✓
+            </span>
+            <span className="text-sm font-medium text-zinc-700">Scored</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="inline-flex min-w-6 items-center justify-center rounded-lg bg-blue-500 px-1.5 py-1 text-xs font-semibold text-white">
+              {readyCount}
+            </span>
+            <span className="text-sm font-medium text-zinc-700">Ready</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="inline-flex min-w-6 items-center justify-center rounded-lg bg-violet-500 px-1.5 py-1 text-xs font-semibold text-white">
+              {appliedCount}
+            </span>
+            <span className="text-sm font-medium text-zinc-700">Applied</span>
+          </div>
+        </div>
+
+        <div className="mt-5 overflow-hidden rounded-lg bg-zinc-200">
+          <div className="flex h-4 w-full">
+            <div className="bg-blue-500" style={{ width: `${jobsWidth}%` }} />
+            <div className="bg-emerald-500" style={{ width: `${scoredWidth}%` }} />
+            <div className="bg-amber-400" style={{ width: `${readyWidth}%` }} />
+            <div className="bg-violet-500" style={{ width: `${appliedWidth}%` }} />
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-4 divide-x divide-zinc-200">
+          <div className="px-2 text-center first:pl-0">
+            <p className="text-4xl font-semibold tracking-tight text-zinc-950">
+              {jobsCount}
+            </p>
+            <p className="mt-1 text-sm text-zinc-500">Jobs</p>
+          </div>
+
+          <div className="px-2 text-center">
+            <p className="text-4xl font-semibold tracking-tight text-zinc-950">
+              {scoredCount}
+            </p>
+            <p className="mt-1 text-sm text-zinc-500">Scored</p>
+          </div>
+
+          <div className="px-2 text-center">
+            <p className="text-4xl font-semibold tracking-tight text-zinc-950">
+              {readyCount}
+            </p>
+            <p className="mt-1 text-sm text-zinc-500">Ready</p>
+          </div>
+
+          <div className="px-2 text-center last:pr-0">
+            <p className="text-4xl font-semibold tracking-tight text-zinc-950">
+              {appliedCount}
+            </p>
+            <p className="mt-1 text-sm text-zinc-500">Applied</p>
+          </div>
+        </div>
+      </div>
     </section>
   )
 }
@@ -621,6 +718,10 @@ export default async function HomePage() {
     (app) => app.status === 'interviewing'
   ).length
 
+  const scoredCount = typedJobs.filter((job) =>
+    latestScoresByJobId.has(job.id)
+  ).length
+
   const recentJobs = typedJobs.slice(0, 5)
   const punchList = buildPunchList(typedApplications, latestScoresByJobId).slice(
     0,
@@ -683,11 +784,22 @@ export default async function HomePage() {
           <SummaryCard
             label="Immediate focus"
             value={topPunch ? topPunch.company : 'Clear'}
-            hint={topPunch ? topPunch.reason : 'No urgent punch-list item right now.'}
+            hint={
+              topPunch
+                ? topPunch.reason
+                : 'No urgent punch-list item right now.'
+            }
             tone="zinc"
           />
         </div>
       </section>
+
+      <PipelineOverviewCard
+        jobsCount={typedJobs.length}
+        scoredCount={scoredCount}
+        readyCount={readyCount}
+        appliedCount={appliedCount}
+      />
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <SectionCard
@@ -716,49 +828,6 @@ export default async function HomePage() {
         </SectionCard>
 
         <div className="space-y-6">
-          <SectionCard
-            title="Pipeline snapshot"
-            description="Current pipeline volume across jobs and applications."
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4">
-                <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
-                  Total jobs
-                </p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-                  {typedJobs.length}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4">
-                <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
-                  Applied
-                </p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-                  {appliedCount}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4">
-                <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
-                  Interviewing
-                </p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-                  {interviewingCount}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4">
-                <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
-                  Ready
-                </p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-                  {readyCount}
-                </p>
-              </div>
-            </div>
-          </SectionCard>
-
           <SectionCard
             title="Recent jobs"
             description="Most recently added opportunities entering the pipeline."
@@ -796,10 +865,7 @@ export default async function HomePage() {
                         </p>
                       </div>
 
-                      <Link
-                        href={`/jobs/${job.id}`}
-                        className="app-button inline-flex shrink-0 items-center justify-center rounded-xl px-3 py-2 text-sm font-medium"
-                      >
+                      <Link href={`/jobs/${job.id}`} className="app-button">
                         Open
                       </Link>
                     </div>
