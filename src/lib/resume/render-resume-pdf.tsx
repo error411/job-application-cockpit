@@ -99,14 +99,9 @@ function markdownToBlocks(markdown: string): Block[] {
   })
 
   const blocks: Block[] = []
-
-  const headingRegex = /<h[1-3]>(.*?)<\/h[1-3]>/gis
-  const paragraphRegex = /<p>(.*?)<\/p>/gis
-  const listRegex = /<ul>(.*?)<\/ul>/gis
-  const liRegex = /<li>(.*?)<\/li>/gis
-
+  const liRegex = /<li>([\s\S]*?)<\/li>/gi
   const combinedRegex =
-    /<h[1-3]>(.*?)<\/h[1-3]>|<p>(.*?)<\/p>|<ul>(.*?)<\/ul>/gis
+    /<h[1-3]>([\s\S]*?)<\/h[1-3]>|<p>([\s\S]*?)<\/p>|<ul>([\s\S]*?)<\/ul>/gi
 
   let match: RegExpExecArray | null
   while ((match = combinedRegex.exec(clean)) !== null) {
@@ -146,8 +141,95 @@ function buildContactLine(parts: Array<string | null | undefined>): string {
   return parts.filter(Boolean).join(' • ')
 }
 
+function normalizeCompare(value: string | null | undefined): string {
+  return (value ?? '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[^\w@.+()-]/g, '')
+    .trim()
+}
+
+function looksLikeContactLine(text: string): boolean {
+  const hasEmail = /@/.test(text)
+  const hasPhone =
+    /\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/.test(text) ||
+    /\d{3}[\s.-]?\d{4}/.test(text)
+
+  return hasEmail || hasPhone
+}
+
+function isDuplicateNameLine(
+  text: string,
+  candidateName?: string | null
+): boolean {
+  if (!candidateName) return false
+
+  return normalizeCompare(text) === normalizeCompare(candidateName)
+}
+
+function isDuplicateContactLine(
+  text: string,
+  email?: string | null,
+  phone?: string | null
+): boolean {
+  const normalizedText = normalizeCompare(text)
+  const normalizedEmail = normalizeCompare(email)
+
+  const matchesEmail = normalizedEmail
+    ? normalizedText.includes(normalizedEmail)
+    : false
+
+  const digitsOnlyText = text.replace(/\D/g, '')
+  const digitsOnlyPhone = (phone ?? '').replace(/\D/g, '')
+
+  const matchesPhone =
+    digitsOnlyPhone.length >= 7
+      ? digitsOnlyText.includes(digitsOnlyPhone) ||
+        digitsOnlyText.includes(digitsOnlyPhone.slice(-7))
+      : false
+
+  return looksLikeContactLine(text) && (matchesEmail || matchesPhone)
+}
+
+function stripDuplicateHeaderBlocks(
+  blocks: Block[],
+  options: {
+    candidateName?: string | null
+    email?: string | null
+    phone?: string | null
+  }
+): Block[] {
+  let startIndex = 0
+
+  if (
+    blocks[startIndex]?.type === 'paragraph' &&
+    isDuplicateNameLine(blocks[startIndex].text, options.candidateName)
+  ) {
+    startIndex += 1
+  }
+
+  if (
+    blocks[startIndex]?.type === 'paragraph' &&
+    isDuplicateContactLine(
+      blocks[startIndex].text,
+      options.email,
+      options.phone
+    )
+  ) {
+    startIndex += 1
+  }
+
+  return blocks.slice(startIndex)
+}
+
 export function ResumePdfDocument(props: ResumePdfProps) {
-  const blocks = markdownToBlocks(props.markdown)
+  const rawBlocks = markdownToBlocks(props.markdown)
+
+  const blocks = stripDuplicateHeaderBlocks(rawBlocks, {
+    candidateName: props.candidateName,
+    email: props.email,
+    phone: props.phone,
+  })
 
   const contactLine = buildContactLine([
     props.location ?? null,
