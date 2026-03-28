@@ -13,14 +13,18 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/today', label: 'Today' },
   { href: '/apply', label: 'Apply Hub' },
   { href: '/jobs', label: 'Jobs' },
-  { href: '/jobs/new', label: 'Add Job' },
   { href: '/applications', label: 'Applications' },
   { href: '/follow-ups', label: 'Follow-Ups' },
-  { href: '/profile', label: 'Profile' },
 ]
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/'
+
+  // Jobs should stay active for all nested routes
+  if (href === '/jobs') {
+    return pathname === '/jobs' || pathname.startsWith('/jobs/')
+  }
+
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 

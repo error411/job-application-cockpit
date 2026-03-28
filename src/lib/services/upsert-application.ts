@@ -4,6 +4,7 @@ import {
   isApplicationStatus,
   type ApplicationStatus,
 } from '@/lib/statuses'
+import { enqueueAutomationJob } from '@/lib/automation/queue'
 
 type ApplicationInsert = TablesInsert<'applications'>
 type ApplicationUpdate = TablesUpdate<'applications'>
@@ -22,9 +23,9 @@ export async function upsertApplicationForJob({
   const supabase = await createClient()
 
   const normalizedStatus: ApplicationStatus =
-  typeof status === 'string' && isApplicationStatus(status)
-    ? status
-    : 'ready'
+    typeof status === 'string' && isApplicationStatus(status)
+      ? status
+      : 'ready'
 
   const nowIso = new Date().toISOString()
 
@@ -72,6 +73,14 @@ export async function upsertApplicationForJob({
       throw new Error(error.message)
     }
 
+    if (normalizedStatus === 'applied') {
+      await enqueueAutomationJob({
+        jobType: 'schedule_followups',
+        entityType: 'job',
+        entityId: jobId,
+      })
+    }
+
     return data
   }
 
@@ -96,6 +105,14 @@ export async function upsertApplicationForJob({
 
   if (error) {
     throw new Error(error.message)
+  }
+
+  if (normalizedStatus === 'applied') {
+    await enqueueAutomationJob({
+      jobType: 'schedule_followups',
+      entityType: 'job',
+      entityId: jobId,
+    })
   }
 
   return data
