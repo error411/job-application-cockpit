@@ -1,9 +1,10 @@
-import chromium from '@sparticuz/chromium'
-import { chromium as playwright, type Browser, type Page } from 'playwright-core'
+import { Readable } from 'node:stream'
 import { NextResponse } from 'next/server'
+import { renderToStream } from '@react-pdf/renderer'
 
 import { createClient } from '@/lib/supabase/server'
-import { getCoverLetterHtml } from '@/lib/cover-letter/get-cover-letter-html'
+import { getCoverLetterPayload } from '@/lib/cover-letter/get-cover-letter-payload'
+import { CoverLetterPdfDocument } from '@/lib/cover-letter/render-cover-letter-pdf'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -12,31 +13,6 @@ type RouteContext = {
   params: Promise<{
     jobId: string
   }>
-}
-
-let browserPromise: Promise<Browser> | null = null
-
-async function getBrowser(): Promise<Browser> {
-  if (!browserPromise) {
-    browserPromise = playwright
-      .launch({
-        args: chromium.args,
-        executablePath: await chromium.executablePath(),
-        headless: true,
-      })
-      .then((browser) => {
-        browser.on('disconnected', () => {
-          browserPromise = null
-        })
-        return browser
-      })
-      .catch((error) => {
-        browserPromise = null
-        throw error
-      })
-  }
-
-  return browserPromise
 }
 
 function slugify(value: string): string {
@@ -72,33 +48,24 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: 'Job not found.' }, { status: 404 })
   }
 
-  let page: Page | null = null
-
   try {
-    const html = await getCoverLetterHtml(jobId)
+    const payload = await getCoverLetterPayload(jobId)
 
-    const browser = await getBrowser()
-    page = await browser.newPage()
+    const nodeStream = await renderToStream(
+      <CoverLetterPdfDocument
+        markdown={payload.markdown}
+        candidateName={payload.candidateName}
+        location={payload.location}
+        phone={payload.phone}
+        email={payload.email}
+        targetCompany={payload.targetCompany}
+        targetRole={payload.targetRole}
+      />
+    )
 
-    await page.setContent(html, {
-      waitUntil: 'domcontentloaded',
-    })
+    const webStream = Readable.toWeb(nodeStream as Readable)
 
-    await page.emulateMedia({ media: 'print' })
-
-    const pdf = await page.pdf({
-      format: 'Letter',
-      printBackground: true,
-      preferCSSPageSize: true,
-      margin: {
-        top: '0.65in',
-        right: '0.7in',
-        bottom: '0.65in',
-        left: '0.7in',
-      },
-    })
-
-    return new NextResponse(new Uint8Array(pdf), {
+    return new NextResponse(webStream as ReadableStream, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
@@ -124,9 +91,5 @@ export async function GET(_request: Request, context: RouteContext) {
         : 500
 
     return NextResponse.json({ error: message }, { status })
-  } finally {
-    if (page) {
-      await page.close()
-    }
   }
 }
