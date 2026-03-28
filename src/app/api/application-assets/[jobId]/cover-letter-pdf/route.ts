@@ -3,6 +3,7 @@ import { chromium as playwright, type Browser, type Page } from 'playwright-core
 import { NextResponse } from 'next/server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getCoverLetterHtml } from '@/lib/cover-letter/get-cover-letter-html'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -53,7 +54,7 @@ function buildFilename(company?: string | null, title?: string | null): string {
   return `${parts.join('-') || 'cover-letter'}.pdf`
 }
 
-export async function GET(request: Request, context: RouteContext) {
+export async function GET(_request: Request, context: RouteContext) {
   const { jobId } = await context.params
   const supabase = await createClient()
 
@@ -71,33 +72,11 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: 'Job not found.' }, { status: 404 })
   }
 
-  const htmlUrl = new URL(
-    `/api/application-assets/${jobId}/cover-letter-html`,
-    request.url
-  )
-
-  const htmlResponse = await fetch(htmlUrl.toString(), {
-    method: 'GET',
-    cache: 'no-store',
-  })
-
-  if (!htmlResponse.ok) {
-    const message = await htmlResponse.text()
-
-    return NextResponse.json(
-      {
-        error: 'Failed to load cover letter HTML for PDF generation.',
-        details: message,
-      },
-      { status: 500 }
-    )
-  }
-
-  const html = await htmlResponse.text()
-
   let page: Page | null = null
 
   try {
+    const html = await getCoverLetterHtml(jobId)
+
     const browser = await getBrowser()
     page = await browser.newPage()
 
@@ -138,7 +117,13 @@ export async function GET(request: Request, context: RouteContext) {
         ? error.message
         : 'Failed to generate cover letter PDF.'
 
-    return NextResponse.json({ error: message }, { status: 500 })
+    const status =
+      message === 'Cover letter markdown not found for this job.' ||
+      message === 'Job not found.'
+        ? 404
+        : 500
+
+    return NextResponse.json({ error: message }, { status })
   } finally {
     if (page) {
       await page.close()

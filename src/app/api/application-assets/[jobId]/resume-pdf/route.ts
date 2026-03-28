@@ -3,6 +3,7 @@ import { chromium as playwright, type Browser, type Page } from 'playwright-core
 import { NextResponse } from 'next/server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getResumeHtml } from '@/lib/resume/get-resume-html'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -53,7 +54,7 @@ function buildFilename(company?: string | null, title?: string | null): string {
   return `${parts.join('-') || 'resume'}.pdf`
 }
 
-export async function GET(request: Request, context: RouteContext) {
+export async function GET(_request: Request, context: RouteContext) {
   const { jobId } = await context.params
   const supabase = await createClient()
 
@@ -71,33 +72,11 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: 'Job not found.' }, { status: 404 })
   }
 
-  const htmlUrl = new URL(
-    `/api/application-assets/${jobId}/resume-html`,
-    request.url
-  )
-
-  const htmlResponse = await fetch(htmlUrl.toString(), {
-    method: 'GET',
-    cache: 'no-store',
-  })
-
-  if (!htmlResponse.ok) {
-    const message = await htmlResponse.text()
-
-    return NextResponse.json(
-      {
-        error: 'Failed to load resume HTML for PDF generation.',
-        details: message,
-      },
-      { status: 500 }
-    )
-  }
-
-  const html = await htmlResponse.text()
-
   let page: Page | null = null
 
   try {
+    const html = await getResumeHtml(jobId)
+
     const browser = await getBrowser()
     page = await browser.newPage()
 
@@ -119,24 +98,30 @@ export async function GET(request: Request, context: RouteContext) {
       },
     })
 
-return new NextResponse(new Uint8Array(pdf), {
-  status: 200,
-  headers: {
-    'Content-Type': 'application/pdf',
-    'Content-Disposition': `attachment; filename="${buildFilename(
-      job.company,
-      job.title
-    )}"`,
-    'Cache-Control': 'no-store',
-  },
-})
+    return new NextResponse(new Uint8Array(pdf), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${buildFilename(
+          job.company,
+          job.title
+        )}"`,
+        'Cache-Control': 'no-store',
+      },
+    })
   } catch (error) {
     console.error('Resume PDF generation failed', error)
 
     const message =
       error instanceof Error ? error.message : 'Failed to generate resume PDF.'
 
-    return NextResponse.json({ error: message }, { status: 500 })
+    const status =
+      message === 'Resume markdown not found for this job.' ||
+      message === 'Job not found.'
+        ? 404
+        : 500
+
+    return NextResponse.json({ error: message }, { status })
   } finally {
     if (page) {
       await page.close()
