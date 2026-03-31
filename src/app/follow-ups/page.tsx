@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { getActiveFollowUpStage } from '@/lib/applications/get-active-follow-up-stage'
+import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
 import type { Tables } from '@/lib/supabase/types'
 import FollowUpActions from './follow-up-actions'
 
@@ -44,11 +44,6 @@ type FollowUpListItem = Pick<
   asset: FollowUpListAsset | null
 }
 
-function isDue(dateString: string | null) {
-  if (!dateString) return false
-  return new Date(dateString) <= new Date()
-}
-
 function formatDate(dateString: string | null) {
   if (!dateString) return '—'
   return new Date(dateString).toLocaleDateString()
@@ -85,25 +80,27 @@ function toFollowUpListItem(
 }
 
 function getCardTone(app: FollowUpListItem) {
-  const activeStage = getActiveFollowUpStage({
+  const state = getFollowUpState({
     follow_up_1_due: app.follow_up_1_due,
     follow_up_2_due: app.follow_up_2_due,
     follow_up_1_sent_at: app.follow_up_1_sent_at,
     follow_up_2_sent_at: app.follow_up_2_sent_at,
   })
 
-  return activeStage !== null
+  return state.hasDueNow
     ? 'border-rose-200 bg-gradient-to-br from-rose-50 to-white'
     : 'border-zinc-200 bg-white'
 }
 
 function FollowUpCard({ app }: { app: FollowUpListItem }) {
-  const activeFollowUpStage = getActiveFollowUpStage({
+  const followUpState = getFollowUpState({
     follow_up_1_due: app.follow_up_1_due,
     follow_up_2_due: app.follow_up_2_due,
     follow_up_1_sent_at: app.follow_up_1_sent_at,
     follow_up_2_sent_at: app.follow_up_2_sent_at,
   })
+
+  const activeFollowUpStage = followUpState.activeStage
 
   const activeFollowUpContent =
     activeFollowUpStage === 1
@@ -300,30 +297,23 @@ export default async function FollowUpsPage() {
     toFollowUpListItem(row, assetByJobId)
   )
 
-  const dueNow = applications.filter((app) => {
-    const activeStage = getActiveFollowUpStage({
+  const dueNow = applications.filter((app) =>
+    getFollowUpState({
       follow_up_1_due: app.follow_up_1_due,
       follow_up_2_due: app.follow_up_2_due,
       follow_up_1_sent_at: app.follow_up_1_sent_at,
       follow_up_2_sent_at: app.follow_up_2_sent_at,
-    })
+    }).hasDueNow
+  )
 
-    return activeStage !== null
-  })
-
-  const upcoming = applications.filter((app) => {
-    const hasUpcoming1 =
-      Boolean(app.follow_up_1_due) &&
-      !app.follow_up_1_sent_at &&
-      !isDue(app.follow_up_1_due)
-
-    const hasUpcoming2 =
-      Boolean(app.follow_up_2_due) &&
-      !app.follow_up_2_sent_at &&
-      !isDue(app.follow_up_2_due)
-
-    return hasUpcoming1 || hasUpcoming2
-  })
+  const upcoming = applications.filter((app) =>
+    getFollowUpState({
+      follow_up_1_due: app.follow_up_1_due,
+      follow_up_2_due: app.follow_up_2_due,
+      follow_up_1_sent_at: app.follow_up_1_sent_at,
+      follow_up_2_sent_at: app.follow_up_2_sent_at,
+    }).hasUpcoming
+  )
 
   return (
     <div className="space-y-8">
@@ -335,8 +325,9 @@ export default async function FollowUpsPage() {
           <div>
             <h1>Follow-Ups</h1>
             <p className="mt-2 max-w-3xl text-sm text-zinc-600">
-              Derived from due and sent timestamps. No follow-up statuses.
-              The UI reflects urgency from schedule data, not manual workflow states.
+              Derived from due and sent timestamps. No follow-up statuses. The
+              UI reflects urgency from schedule data, not manual workflow
+              states.
             </p>
           </div>
 
