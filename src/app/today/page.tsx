@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Tables } from '@/lib/supabase/types'
-import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
 import { buildActionItems } from '@/lib/applications/build-action-items'
 
 type DbApplicationRow = Tables<'applications'>
