@@ -7,7 +7,7 @@ type NavItem = {
   href: string
   label: string
 }
-
+// added profile
 const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Dashboard' },
   { href: '/today', label: 'Today' },
