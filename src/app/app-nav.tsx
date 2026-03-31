@@ -15,6 +15,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/jobs', label: 'Jobs' },
   { href: '/applications', label: 'Applications' },
   { href: '/follow-ups', label: 'Follow-Ups' },
+  { label: 'Profile', href: '/profile' },
 ]
 
 function isActive(pathname: string, href: string): boolean {
@@ -44,6 +45,7 @@ export function AppNav() {
           >
             {item.label}
           </Link>
+          
         )
       })}
     </nav>
