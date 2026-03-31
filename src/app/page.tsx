@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Tables } from '@/lib/supabase/types'
+import { buildActionItems } from '@/lib/applications/build-action-items'
+import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
 
 type ApplicationRow = Tables<'applications'>
 type JobRow = Tables<'jobs'>
@@ -84,10 +86,10 @@ function toHomeApplication(row: RawApplicationRow): HomeApplication {
   }
 }
 
-function isDueNow(dateString: string | null | undefined): boolean {
-  if (!dateString) return false
-  return new Date(dateString) <= new Date()
-}
+// function isDueNow(dateString: string | null | undefined): boolean {
+//   if (!dateString) return false
+//   return new Date(dateString) <= new Date()
+// }
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return '—'
@@ -98,13 +100,13 @@ function formatDate(value: string | null | undefined): string {
   })
 }
 
-function daysSince(value: string | null | undefined): number | null {
-  if (!value) return null
-  const date = new Date(value)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  return Math.floor(diff / (1000 * 60 * 60 * 24))
-}
+// function daysSince(value: string | null | undefined): number | null {
+//   if (!value) return null
+//   const date = new Date(value)
+//   const now = new Date()
+//   const diff = now.getTime() - date.getTime()
+//   return Math.floor(diff / (1000 * 60 * 60 * 24))
+// }
 
 function buildLatestScoresMap(scores: HomeScore[]): Map<string, number | null> {
   const map = new Map<string, number | null>()
@@ -118,103 +120,51 @@ function buildLatestScoresMap(scores: HomeScore[]): Map<string, number | null> {
   return map
 }
 
-function getActiveFollowUpLabel(
-  app: HomeApplication
-): { label: string; dueDate: string | null } | null {
-  if (
-    app.follow_up_1_due &&
-    !app.follow_up_1_sent_at &&
-    isDueNow(app.follow_up_1_due)
-  ) {
-    return {
-      label: 'Follow-up 1 due now',
-      dueDate: app.follow_up_1_due,
-    }
-  }
+// function getActiveFollowUpLabel(
+//   app: HomeApplication
+// ): { label: string; dueDate: string | null } | null {
+//   if (
+//     app.follow_up_1_due &&
+//     !app.follow_up_1_sent_at &&
+//     isDueNow(app.follow_up_1_due)
+//   ) {
+//     return {
+//       label: 'Follow-up 1 due now',
+//       dueDate: app.follow_up_1_due,
+//     }
+//   }
 
-  if (
-    app.follow_up_2_due &&
-    !app.follow_up_2_sent_at &&
-    isDueNow(app.follow_up_2_due)
-  ) {
-    return {
-      label: 'Follow-up 2 due now',
-      dueDate: app.follow_up_2_due,
-    }
-  }
+//   if (
+//     app.follow_up_2_due &&
+//     !app.follow_up_2_sent_at &&
+//     isDueNow(app.follow_up_2_due)
+//   ) {
+//     return {
+//       label: 'Follow-up 2 due now',
+//       dueDate: app.follow_up_2_due,
+//     }
+//   }
 
-  return null
-}
+//   return null
+// }
 
 function buildPunchList(
   applications: HomeApplication[],
   latestScoresByJobId: Map<string, number | null>
 ): PunchListItem[] {
-  const items: PunchListItem[] = []
-
-  for (const app of applications) {
-    const job = app.job
-    const company = job?.company ?? 'Unknown company'
-    const title = job?.title ?? 'Untitled role'
-    const location = job?.location ?? '—'
-    const score = latestScoresByJobId.get(app.job_id) ?? null
-    const scoreBoost = score ?? 0
-    const activeFollowUp = getActiveFollowUpLabel(app)
-
-    if (activeFollowUp) {
-      items.push({
-        id: `${app.id}-follow-up`,
-        kind: 'follow_up',
-        company,
-        title,
-        location,
-        status: app.status,
-        score,
-        reason: activeFollowUp.label,
-        href: '/follow-ups',
-        dueDate: activeFollowUp.dueDate,
-        priority: 100 + scoreBoost,
-      })
-      continue
-    }
-
-    if (app.status === 'ready') {
-      items.push({
-        id: `${app.id}-apply`,
-        kind: 'apply',
-        company,
-        title,
-        location,
-        status: app.status,
-        score,
-        reason: 'Ready to apply',
-        href: '/applications',
-        priority: 70 + scoreBoost,
-      })
-      continue
-    }
-
-    if (app.status === 'applied') {
-      const age = daysSince(app.applied_at)
-
-      if (age !== null && age >= 5 && age <= 10) {
-        items.push({
-          id: `${app.id}-window`,
-          kind: 'follow_up',
-          company,
-          title,
-          location,
-          status: app.status,
-          score,
-          reason: `Applied ${age} days ago — follow-up window active`,
-          href: '/follow-ups',
-          priority: 55 + scoreBoost,
-        })
-      }
-    }
-  }
-
-  return items.sort((a, b) => b.priority - a.priority)
+  return buildActionItems(applications, latestScoresByJobId).map((item) => ({
+    id: item.id,
+    kind: item.kind === 'follow_up' ? 'follow_up' : 'apply',
+    company: item.company,
+    title: item.title,
+    location: item.location,
+    status: item.status,
+    score: item.score,
+    reason: item.reason,
+    href: item.href,
+    dueDate: item.dueDate,
+    priority: item.priorityScore,
+  }))
 }
 
 function toneClasses(tone: 'red' | 'green' | 'blue' | 'violet' | 'zinc') {
@@ -714,15 +664,19 @@ export default async function HomePage() {
     latestScoresByJobId = buildLatestScoresMap((scores ?? []) as HomeScore[])
   }
 
-  const dueNowCount = typedApplications.filter(
-    (app) =>
-      (app.follow_up_1_due &&
-        !app.follow_up_1_sent_at &&
-        isDueNow(app.follow_up_1_due)) ||
-      (app.follow_up_2_due &&
-        !app.follow_up_2_sent_at &&
-        isDueNow(app.follow_up_2_due))
-  ).length
+const applicationsWithFollowUpState = typedApplications.map((app) => ({
+  ...app,
+  followUpState: getFollowUpState({
+    follow_up_1_due: app.follow_up_1_due,
+    follow_up_2_due: app.follow_up_2_due,
+    follow_up_1_sent_at: app.follow_up_1_sent_at,
+    follow_up_2_sent_at: app.follow_up_2_sent_at,
+  }),
+}))
+
+const dueNowCount = applicationsWithFollowUpState.filter(
+  (app) => app.followUpState.hasDueNow
+).length
 
   const readyCount = typedApplications.filter(
     (app) => app.status === 'ready'

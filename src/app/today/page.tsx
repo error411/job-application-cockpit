@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Tables } from '@/lib/supabase/types'
 import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
+import { buildActionItems } from '@/lib/applications/build-action-items'
 
 type DbApplicationRow = Tables<'applications'>
 type JobRow = Tables<'jobs'>
@@ -58,48 +59,59 @@ type TodayItem = {
   dueDate?: string | null
 }
 
-function startOfTodayLocal(): Date {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
-}
+// function startOfTodayLocal(): Date {
+//   const now = new Date()
+//   return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+// }
 
-function endOfTodayLocal(): Date {
-  const start = startOfTodayLocal()
-  return new Date(
-    start.getFullYear(),
-    start.getMonth(),
-    start.getDate(),
-    23,
-    59,
-    59,
-    999
-  )
-}
+// function endOfTodayLocal(): Date {
+//   const start = startOfTodayLocal()
+//   return new Date(
+//     start.getFullYear(),
+//     start.getMonth(),
+//     start.getDate(),
+//     23,
+//     59,
+//     59,
+//     999
+//   )
+// }
 
-function isDateToday(dateString: string | null | undefined): boolean {
-  if (!dateString) return false
+// function isDateToday(dateString: string | null | undefined): boolean {
+//   if (!dateString) return false
 
-  const date = new Date(dateString)
-  const start = startOfTodayLocal()
-  const end = endOfTodayLocal()
+//   const date = new Date(dateString)
+//   const start = startOfTodayLocal()
+//   const end = endOfTodayLocal()
 
-  return date >= start && date <= end
-}
+//   return date >= start && date <= end
+// }
 
 function isDatePast(dateString: string | null | undefined): boolean {
   if (!dateString) return false
-  return new Date(dateString) < startOfTodayLocal()
-}
-
-function daysSince(dateString: string | null | undefined): number | null {
-  if (!dateString) return null
 
   const date = new Date(dateString)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
+  if (Number.isNaN(date.getTime())) return false
 
-  return Math.floor(diff / (1000 * 60 * 60 * 24))
+  const now = new Date()
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  )
+
+  return date < startOfToday
 }
+
+// function daysSince(dateString: string | null | undefined): number | null {
+//   if (!dateString) return null
+
+//   const date = new Date(dateString)
+//   const now = new Date()
+//   const diff = now.getTime() - date.getTime()
+
+//   return Math.floor(diff / (1000 * 60 * 60 * 24))
+// }
 
 function formatDate(dateString: string | null | undefined): string {
   if (!dateString) return '—'
@@ -150,105 +162,20 @@ function buildTodayItems(
   applications: TodayApplicationRow[],
   latestScoresByJobId: Map<string, number | null>
 ): TodayItem[] {
-  const items: TodayItem[] = []
-
-  for (const row of applications) {
-    const job = row.job
-    const score = latestScoresByJobId.get(row.job_id) ?? null
-    const scoreBoost = score ?? 0
-    const age = daysSince(row.applied_at)
-    const company = job?.company ?? 'Unknown company'
-    const title = job?.title ?? 'Untitled role'
-    const location = job?.location ?? '—'
-    const followUpState = getFollowUpState({
-      follow_up_1_due: row.follow_up_1_due,
-      follow_up_2_due: row.follow_up_2_due,
-      follow_up_1_sent_at: row.follow_up_1_sent_at,
-      follow_up_2_sent_at: row.follow_up_2_sent_at,
-    })
-
-    if (followUpState.stage1?.isDueNow) {
-      items.push({
-        kind: 'follow_up',
-        id: `${row.id}-fu1`,
-        jobId: row.job_id,
-        company,
-        title,
-        location,
-        status: row.status ?? 'unknown',
-        score,
-        reason: followUpState.stage1.isOverdue
-          ? 'Follow-up 1 overdue'
-          : 'Follow-up 1 due today',
-        priorityScore: followUpState.stage1.isOverdue
-          ? 100 + scoreBoost
-          : 85 + scoreBoost,
-        href: '/follow-ups',
-        dueDate: row.follow_up_1_due,
-      })
-    }
-
-    if (followUpState.stage2?.isDueNow) {
-      items.push({
-        kind: 'follow_up',
-        id: `${row.id}-fu2`,
-        jobId: row.job_id,
-        company,
-        title,
-        location,
-        status: row.status ?? 'unknown',
-        score,
-        reason: followUpState.stage2.isOverdue
-          ? 'Follow-up 2 overdue'
-          : 'Follow-up 2 due today',
-        priorityScore: followUpState.stage2.isOverdue
-          ? 95 + scoreBoost
-          : 80 + scoreBoost,
-        href: '/follow-ups',
-        dueDate: row.follow_up_2_due,
-      })
-    }
-
-    if (row.status === 'ready') {
-      items.push({
-        kind: 'application',
-        id: row.id,
-        jobId: row.job_id,
-        company,
-        title,
-        location,
-        status: row.status ?? 'unknown',
-        score,
-        reason: 'Ready to apply',
-        priorityScore: 60 + scoreBoost,
-        href: '/applications',
-      })
-    }
-
-    if (
-      row.status === 'applied' &&
-      age !== null &&
-      age >= 5 &&
-      age <= 10 &&
-      !followUpState.hasDueNow
-    ) {
-      items.push({
-        kind: 'application',
-        id: `${row.id}-applied-window`,
-        jobId: row.job_id,
-        company,
-        title,
-        location,
-        status: row.status ?? 'unknown',
-        score,
-        reason: `Applied ${age} days ago — follow-up window active`,
-        priorityScore: 50 + scoreBoost,
-        href: '/follow-ups',
-      })
-    }
-  }
-
-  return items.sort((a, b) => b.priorityScore - a.priorityScore)
+  return buildActionItems(applications, latestScoresByJobId).map((item) => ({
+    kind: item.kind,
+    id: item.id,
+    jobId: item.jobId,
+    company: item.company,
+    title: item.title,
+    location: item.location,
+    status: item.status ?? 'unknown',
+    score: item.score,
+    reason: item.reason,
+    priorityScore: item.priorityScore,
+    href: item.href,
+    dueDate: item.dueDate,
+  }))
 }
 
 function getStatusTone(status: string | null | undefined): string {
