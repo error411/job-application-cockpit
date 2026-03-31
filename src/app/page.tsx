@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { Tables } from '@/lib/supabase/types'
 import { buildActionItems } from '@/lib/applications/build-action-items'
 import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
+import { formatDate } from '@/lib/dates'
 
 type ApplicationRow = Tables<'applications'>
 type JobRow = Tables<'jobs'>
@@ -10,10 +11,13 @@ type JobScoreRow = Tables<'job_scores'>
 
 type HomeJob = Pick<
   JobRow,
-  'id' | 'company' | 'title' | 'location' | 'status' | 'created_at'
+  'id' | 'company' | 'title' | 'location' | 'status' | 'created_at' | 'archived_at'
 >
 
-type HomeApplicationJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location'>
+type HomeApplicationJob = Pick<
+  JobRow,
+  'id' | 'company' | 'title' | 'location' | 'archived_at'
+>
 
 type RawApplicationRow = Pick<
   ApplicationRow,
@@ -86,28 +90,6 @@ function toHomeApplication(row: RawApplicationRow): HomeApplication {
   }
 }
 
-// function isDueNow(dateString: string | null | undefined): boolean {
-//   if (!dateString) return false
-//   return new Date(dateString) <= new Date()
-// }
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
-
-// function daysSince(value: string | null | undefined): number | null {
-//   if (!value) return null
-//   const date = new Date(value)
-//   const now = new Date()
-//   const diff = now.getTime() - date.getTime()
-//   return Math.floor(diff / (1000 * 60 * 60 * 24))
-// }
-
 function buildLatestScoresMap(scores: HomeScore[]): Map<string, number | null> {
   const map = new Map<string, number | null>()
 
@@ -119,34 +101,6 @@ function buildLatestScoresMap(scores: HomeScore[]): Map<string, number | null> {
 
   return map
 }
-
-// function getActiveFollowUpLabel(
-//   app: HomeApplication
-// ): { label: string; dueDate: string | null } | null {
-//   if (
-//     app.follow_up_1_due &&
-//     !app.follow_up_1_sent_at &&
-//     isDueNow(app.follow_up_1_due)
-//   ) {
-//     return {
-//       label: 'Follow-up 1 due now',
-//       dueDate: app.follow_up_1_due,
-//     }
-//   }
-
-//   if (
-//     app.follow_up_2_due &&
-//     !app.follow_up_2_sent_at &&
-//     isDueNow(app.follow_up_2_due)
-//   ) {
-//     return {
-//       label: 'Follow-up 2 due now',
-//       dueDate: app.follow_up_2_due,
-//     }
-//   }
-
-//   return null
-// }
 
 function buildPunchList(
   applications: HomeApplication[],
@@ -599,7 +553,7 @@ export default async function HomePage() {
   ] = await Promise.all([
     supabase
       .from('jobs')
-      .select('id, company, title, location, status, created_at')
+      .select('id, company, title, location, status, created_at, archived_at')
       .order('created_at', { ascending: false }),
     supabase
       .from('applications')
@@ -618,7 +572,8 @@ export default async function HomePage() {
           id,
           company,
           title,
-          location
+          location,
+          archived_at
         )
       `)
       .order('updated_at', { ascending: false }),
@@ -637,10 +592,13 @@ export default async function HomePage() {
     )
   }
 
-  const typedJobs: HomeJob[] = jobs ?? []
-  const typedApplications = ((applications ?? []) as RawApplicationRow[]).map(
-    toHomeApplication
+  const typedJobs: HomeJob[] = (jobs ?? []).filter(
+    (job) => job.archived_at == null
   )
+
+  const typedApplications = ((applications ?? []) as RawApplicationRow[])
+    .map(toHomeApplication)
+    .filter((app) => app.job?.archived_at == null)
 
   const jobIds = typedApplications.map((row) => row.job_id)
   let latestScoresByJobId = new Map<string, number | null>()
@@ -664,19 +622,19 @@ export default async function HomePage() {
     latestScoresByJobId = buildLatestScoresMap((scores ?? []) as HomeScore[])
   }
 
-const applicationsWithFollowUpState = typedApplications.map((app) => ({
-  ...app,
-  followUpState: getFollowUpState({
-    follow_up_1_due: app.follow_up_1_due,
-    follow_up_2_due: app.follow_up_2_due,
-    follow_up_1_sent_at: app.follow_up_1_sent_at,
-    follow_up_2_sent_at: app.follow_up_2_sent_at,
-  }),
-}))
+  const applicationsWithFollowUpState = typedApplications.map((app) => ({
+    ...app,
+    followUpState: getFollowUpState({
+      follow_up_1_due: app.follow_up_1_due,
+      follow_up_2_due: app.follow_up_2_due,
+      follow_up_1_sent_at: app.follow_up_1_sent_at,
+      follow_up_2_sent_at: app.follow_up_2_sent_at,
+    }),
+  }))
 
-const dueNowCount = applicationsWithFollowUpState.filter(
-  (app) => app.followUpState.hasDueNow
-).length
+  const dueNowCount = applicationsWithFollowUpState.filter(
+    (app) => app.followUpState.hasDueNow
+  ).length
 
   const readyCount = typedApplications.filter(
     (app) => app.status === 'ready'
@@ -744,13 +702,13 @@ const dueNowCount = applicationsWithFollowUpState.filter(
           <SummaryCard
             label="Applications"
             value={typedApplications.length}
-            hint="Total tracked application records."
+            hint="Total tracked active application records."
             tone="blue"
           />
           <SummaryCard
             label="Jobs this week"
             value={jobsThisWeek}
-            hint="New roles added in the last 7 days."
+            hint="New active roles added in the last 7 days."
             tone="green"
           />
           <SummaryCard
@@ -803,7 +761,7 @@ const dueNowCount = applicationsWithFollowUpState.filter(
         <div className="space-y-6">
           <SectionCard
             title="Recent jobs"
-            description="Most recently added opportunities entering the pipeline."
+            description="Most recently added active opportunities entering the pipeline."
             href="/jobs"
             hrefLabel="View jobs"
           >
@@ -846,7 +804,7 @@ const dueNowCount = applicationsWithFollowUpState.filter(
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-zinc-600">No jobs yet.</p>
+              <p className="text-sm text-zinc-600">No active jobs yet.</p>
             )}
           </SectionCard>
 

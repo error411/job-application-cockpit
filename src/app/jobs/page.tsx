@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/supabase/types'
+import { formatDate } from '@/lib/dates'
 
 type JobRow = Pick<
   Database['public']['Tables']['jobs']['Row'],
@@ -17,16 +18,6 @@ function getScoreLabel(score: number | null) {
   if (score >= 80) return 'Strong fit'
   if (score >= 60) return 'Possible fit'
   return 'Weak fit'
-}
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return '—'
-
-  return new Date(value).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
 }
 
 function getScoreTone(score: number | null) {
@@ -90,7 +81,7 @@ function EmptyState() {
           Jobs
         </p>
         <h2 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-950">
-          No jobs yet
+          No active jobs
         </h2>
         <p className="mt-3 text-sm leading-6 text-zinc-600">
           Add your first opportunity to start the scoring, asset generation, and
@@ -153,7 +144,6 @@ export default async function JobsPage() {
   const { data: jobs, error: jobsError } = await supabase
     .from('jobs')
     .select('id, company, title, location, status, created_at, archived_at')
-    .is('archived_at', null)
     .order('created_at', { ascending: false })
 
   if (jobsError) {
@@ -161,7 +151,10 @@ export default async function JobsPage() {
   }
 
   const typedJobs: JobRow[] = jobs ?? []
-  const jobIds = typedJobs.map((job) => job.id)
+  const activeJobs = typedJobs.filter((job) => job.archived_at == null)
+  const archivedJobs = typedJobs.filter((job) => job.archived_at != null)
+
+  const jobIds = activeJobs.map((job) => job.id)
   const latestScoresByJobId = new Map<string, number | null>()
 
   if (jobIds.length > 0) {
@@ -184,11 +177,11 @@ export default async function JobsPage() {
     }
   }
 
-  const scoredCount = typedJobs.filter((job) =>
+  const scoredCount = activeJobs.filter((job) =>
     latestScoresByJobId.has(job.id)
   ).length
-  const unscoredCount = typedJobs.length - scoredCount
-  const strongFitCount = typedJobs.filter((job) => {
+  const unscoredCount = activeJobs.length - scoredCount
+  const strongFitCount = activeJobs.filter((job) => {
     const score = latestScoresByJobId.get(job.id) ?? null
     return score !== null && score >= 80
   }).length
@@ -228,34 +221,34 @@ export default async function JobsPage() {
 
         <div className="grid gap-3 md:grid-cols-4">
           <JobsSummaryCard
-            label="Total jobs"
-            value={typedJobs.length}
-            hint="All tracked opportunities in the pipeline."
+            label="Active jobs"
+            value={activeJobs.length}
+            hint="Current opportunities in the pipeline."
           />
           <JobsSummaryCard
             label="Scored"
             value={scoredCount}
-            hint="Jobs with at least one score result."
+            hint="Active jobs with at least one score result."
           />
           <JobsSummaryCard
             label="Unscored"
             value={unscoredCount}
-            hint="Jobs still waiting on score signal."
+            hint="Active jobs still waiting on score signal."
           />
           <JobsSummaryCard
             label="Strong fit"
             value={strongFitCount}
-            hint="Latest score is 80 or higher."
+            hint="Active jobs with latest score 80 or higher."
             emphasize
           />
         </div>
       </section>
 
-      {typedJobs.length === 0 ? (
+      {activeJobs.length === 0 ? (
         <EmptyState />
       ) : (
         <section className="space-y-4">
-          {typedJobs.map((job, index) => {
+          {activeJobs.map((job, index) => {
             const latestScore = latestScoresByJobId.get(job.id) ?? null
 
             return (
@@ -374,6 +367,78 @@ export default async function JobsPage() {
           })}
         </section>
       )}
+
+      {archivedJobs.length ? (
+        <section className="space-y-4">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold tracking-[0.16em] text-zinc-500 uppercase">
+              History
+            </p>
+            <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
+              Archived Jobs
+            </h2>
+            <p className="text-sm text-zinc-600">
+              Archived opportunities are hidden from the active pipeline but kept
+              for reference and restore.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {archivedJobs.map((job) => (
+              <article
+                key={job.id}
+                className="app-panel overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 shadow-sm"
+              >
+                <div className="border-b border-zinc-100 bg-gradient-to-r from-zinc-50 via-white to-zinc-50 px-5 py-4 sm:px-6">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-zinc-200 px-2.5 py-1 text-[11px] font-medium text-zinc-700">
+                          Archived
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-zinc-500">
+                          {job.company}
+                        </p>
+                        <h3 className="text-xl font-semibold tracking-tight text-zinc-900">
+                          {job.title}
+                        </h3>
+                        <p className="text-sm text-zinc-600">
+                          {job.location || 'No location'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-200 bg-white px-3 py-3 text-center">
+                      <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
+                        Added
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-zinc-950">
+                        {formatDate(job.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                  <p className="text-xs text-zinc-500">Job ID: {job.id}</p>
+
+                  <div className="flex flex-wrap gap-3">
+                    <Link
+                      href={`/jobs/${job.id}`}
+                      className="app-button inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
+                    >
+                      View / Restore
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </main>
   )
 }
