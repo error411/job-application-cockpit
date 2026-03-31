@@ -1,6 +1,9 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
+import {
+  getFollowUpState,
+  type FollowUpState,
+} from '@/lib/applications/get-follow-up-state'
 import type { Tables } from '@/lib/supabase/types'
 import FollowUpActions from './follow-up-actions'
 
@@ -44,6 +47,10 @@ type FollowUpListItem = Pick<
   asset: FollowUpListAsset | null
 }
 
+type FollowUpListItemWithState = FollowUpListItem & {
+  followUpState: FollowUpState
+}
+
 function formatDate(dateString: string | null) {
   if (!dateString) return '—'
   return new Date(dateString).toLocaleDateString()
@@ -79,28 +86,26 @@ function toFollowUpListItem(
   }
 }
 
-function getCardTone(app: FollowUpListItem) {
-  const state = getFollowUpState({
-    follow_up_1_due: app.follow_up_1_due,
-    follow_up_2_due: app.follow_up_2_due,
-    follow_up_1_sent_at: app.follow_up_1_sent_at,
-    follow_up_2_sent_at: app.follow_up_2_sent_at,
-  })
+function withFollowUpState(app: FollowUpListItem): FollowUpListItemWithState {
+  return {
+    ...app,
+    followUpState: getFollowUpState({
+      follow_up_1_due: app.follow_up_1_due,
+      follow_up_2_due: app.follow_up_2_due,
+      follow_up_1_sent_at: app.follow_up_1_sent_at,
+      follow_up_2_sent_at: app.follow_up_2_sent_at,
+    }),
+  }
+}
 
-  return state.hasDueNow
+function getCardTone(app: FollowUpListItemWithState) {
+  return app.followUpState.hasDueNow
     ? 'border-rose-200 bg-gradient-to-br from-rose-50 to-white'
     : 'border-zinc-200 bg-white'
 }
 
-function FollowUpCard({ app }: { app: FollowUpListItem }) {
-  const followUpState = getFollowUpState({
-    follow_up_1_due: app.follow_up_1_due,
-    follow_up_2_due: app.follow_up_2_due,
-    follow_up_1_sent_at: app.follow_up_1_sent_at,
-    follow_up_2_sent_at: app.follow_up_2_sent_at,
-  })
-
-  const activeFollowUpStage = followUpState.activeStage
+function FollowUpCard({ app }: { app: FollowUpListItemWithState }) {
+  const activeFollowUpStage = app.followUpState.activeStage
 
   const activeFollowUpContent =
     activeFollowUpStage === 1
@@ -293,27 +298,12 @@ export default async function FollowUpsPage() {
     }
   }
 
-  const applications = applicationRows.map((row) =>
-    toFollowUpListItem(row, assetByJobId)
-  )
+  const applications = applicationRows
+    .map((row) => toFollowUpListItem(row, assetByJobId))
+    .map(withFollowUpState)
 
-  const dueNow = applications.filter((app) =>
-    getFollowUpState({
-      follow_up_1_due: app.follow_up_1_due,
-      follow_up_2_due: app.follow_up_2_due,
-      follow_up_1_sent_at: app.follow_up_1_sent_at,
-      follow_up_2_sent_at: app.follow_up_2_sent_at,
-    }).hasDueNow
-  )
-
-  const upcoming = applications.filter((app) =>
-    getFollowUpState({
-      follow_up_1_due: app.follow_up_1_due,
-      follow_up_2_due: app.follow_up_2_due,
-      follow_up_1_sent_at: app.follow_up_1_sent_at,
-      follow_up_2_sent_at: app.follow_up_2_sent_at,
-    }).hasUpcoming
-  )
+  const dueNow = applications.filter((app) => app.followUpState.hasDueNow)
+  const upcoming = applications.filter((app) => app.followUpState.hasUpcoming)
 
   return (
     <div className="space-y-8">
