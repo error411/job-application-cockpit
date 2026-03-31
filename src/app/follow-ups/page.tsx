@@ -6,7 +6,7 @@ import {
 } from '@/lib/applications/get-follow-up-state'
 import type { Tables } from '@/lib/supabase/types'
 import FollowUpActions from './follow-up-actions'
-import { formatDate } from '@/lib/dates'
+import { formatDate, formatDateTime } from '@/lib/dates'
 
 type ApplicationRow = Tables<'applications'>
 type JobRow = Tables<'jobs'>
