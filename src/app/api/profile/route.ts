@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
+import { normalizeLinkedInUrl } from '@/lib/validation/linkedin'
 import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
       email,
       phone,
       location,
+      linkedin_url,
       title,
       summary,
       strengths,
@@ -26,6 +27,22 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const normalizedLinkedInUrl =
+      typeof linkedin_url === 'string' && linkedin_url.trim().length > 0
+        ? normalizeLinkedInUrl(linkedin_url)
+        : null
+
+    if (
+      typeof linkedin_url === 'string' &&
+      linkedin_url.trim().length > 0 &&
+      !normalizedLinkedInUrl
+    ) {
+      return NextResponse.json(
+        { error: 'Please enter a valid LinkedIn profile URL.' },
+        { status: 400 }
+      )
+    }
+
     const { data, error } = await supabase
       .from('candidate_profile')
       .update({
@@ -33,6 +50,7 @@ export async function POST(req: NextRequest) {
         email: email || null,
         phone: phone || null,
         location: location || null,
+        linkedin_url: normalizedLinkedInUrl,
         title: title || null,
         summary: summary || null,
         strengths: Array.isArray(strengths) ? strengths : [],

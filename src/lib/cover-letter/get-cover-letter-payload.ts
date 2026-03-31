@@ -11,6 +11,7 @@ type CandidateProfileForCoverLetter = {
   location: string | null
   phone: string | null
   email: string | null
+  linkedin_url: string | null
 }
 
 function normalizeProfile(
@@ -21,6 +22,7 @@ function normalizeProfile(
     location: toNullableString(profile.location),
     phone: toNullableString(profile.phone),
     email: toNullableString(profile.email),
+    linkedin_url: toNullableString(profile.linkedin_url),
   }
 }
 
@@ -30,6 +32,7 @@ export type CoverLetterPayload = {
   location: string | null
   phone: string | null
   email: string | null
+  linkedinUrl: string | null
   targetCompany: string | null
   targetRole: string | null
 }
@@ -92,6 +95,7 @@ export async function getCoverLetterPayload(
     location: normalizedProfile?.location ?? null,
     phone: normalizedProfile?.phone ?? null,
     email: normalizedProfile?.email ?? null,
+    linkedinUrl: normalizedProfile?.linkedin_url ?? null,
     targetCompany: job.company ?? null,
     targetRole: job.title ?? null,
   }

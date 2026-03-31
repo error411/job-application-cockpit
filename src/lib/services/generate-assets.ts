@@ -25,6 +25,7 @@ type CandidateProfileForAssets = Pick<
   | 'summary'
   | 'strengths'
   | 'experience_bullets'
+  | 'linkedin_url'
 > & {
   email: string | null
   phone: string | null
@@ -40,6 +41,7 @@ type CandidateProfileBase = Pick<
   | 'summary'
   | 'strengths'
   | 'experience_bullets'
+  | 'linkedin_url'
 >
 
 type CandidateExperienceRow = {
@@ -102,6 +104,7 @@ function normalizeCandidateProfile(
     summary: profile.summary,
     strengths: toStringArray(profile.strengths),
     experience_bullets: toStringArray(profile.experience_bullets),
+    linkedin_url: toNullableString(profile.linkedin_url),
     email: toNullableString(profile.email),
     phone: toNullableString(profile.phone),
     city: toNullableString(profile.city),
@@ -196,8 +199,7 @@ Resume formatting requirements:
 - The first line must be the candidate full name as a markdown H1
 - The second line must be a single plain text line with available contact details separated by " • "
 - The contact line should include only fields that are actually provided
-- Preferred order for the contact line: city/state, email, phone
-- Then use clear sections such as Summary, Skills, Experience, and Education only when supported by the provided data
+- Preferred order for the contact line: city/state, email, phone, LinkedIn- Then use clear sections such as Summary, Skills, Experience, and Education only when supported by the provided data
 - Do not include placeholders like "Not specified" in the final resume
 - Keep bullets tight and outcome-focused
         `.trim(),
@@ -214,6 +216,7 @@ State: ${typedProfile.state || ''}
 Location line: ${candidateLocation}
 Email: ${typedProfile.email || ''}
 Phone: ${typedProfile.phone || ''}
+LinkedIn: ${typedProfile.linkedin_url || ''}
 
 Strengths:
 ${strengths.length ? strengths.map((s) => `- ${s}`).join('\n') : '- None provided'}

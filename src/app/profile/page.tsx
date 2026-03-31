@@ -8,6 +8,7 @@ type Profile = {
   email: string | null
   phone: string | null
   location: string | null
+  linkedin_url: string | null
   title: string | null
   summary: string | null
   strengths: string[]
@@ -415,6 +416,15 @@ export default function ProfilePage() {
             onChange={(v) =>
               setProfile({ ...profile, location: v })
             }
+          />
+
+          <InputField
+            label="LinkedIn Profile"
+            value={profile.linkedin_url ?? ''}
+            onChange={(v) =>
+              setProfile({ ...profile, linkedin_url: v })
+            }
+            placeholder="https://www.linkedin.com/in/your-name"
           />
         </div>
 
