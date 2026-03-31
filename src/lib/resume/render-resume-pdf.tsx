@@ -164,7 +164,14 @@ function isDuplicateNameLine(
 ): boolean {
   if (!candidateName) return false
 
-  return normalizeCompare(text) === normalizeCompare(candidateName)
+  const normalizedText = normalizeCompare(text)
+  const normalizedCandidateName = normalizeCompare(candidateName)
+
+  return (
+    normalizedText === normalizedCandidateName ||
+    normalizedText.replace(/\s+/g, '') ===
+      normalizedCandidateName.replace(/\s+/g, '')
+  )
 }
 
 function isDuplicateContactLine(
@@ -201,22 +208,27 @@ function stripDuplicateHeaderBlocks(
 ): Block[] {
   let startIndex = 0
 
-  if (
-    blocks[startIndex]?.type === 'paragraph' &&
-    isDuplicateNameLine(blocks[startIndex].text, options.candidateName)
-  ) {
-    startIndex += 1
-  }
+  while (startIndex < blocks.length) {
+    const block = blocks[startIndex]
 
-  if (
-    blocks[startIndex]?.type === 'paragraph' &&
-    isDuplicateContactLine(
-      blocks[startIndex].text,
-      options.email,
-      options.phone
-    )
-  ) {
-    startIndex += 1
+    const isNameBlock =
+      (block.type === 'heading' || block.type === 'paragraph') &&
+      isDuplicateNameLine(block.text, options.candidateName)
+
+    const isContactBlock =
+      block.type === 'paragraph' &&
+      isDuplicateContactLine(
+        block.text,
+        options.email,
+        options.phone
+      )
+
+    if (isNameBlock || isContactBlock) {
+      startIndex += 1
+      continue
+    }
+
+    break
   }
 
   return blocks.slice(startIndex)

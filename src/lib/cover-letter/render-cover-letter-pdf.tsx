@@ -20,14 +20,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 46,
     fontSize: 11,
     lineHeight: 1.55,
-    fontFamily: 'Times-Roman',
+    fontFamily: 'Helvetica',
   },
   header: {
     marginBottom: 18,
   },
   name: {
     fontSize: 16,
-    fontFamily: 'Times-Bold',
+    fontFamily: 'Helvetica-Bold',
     marginBottom: 4,
   },
   contactLine: {
@@ -40,6 +40,12 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     marginBottom: 10,
+  },
+  signoff: {
+    marginTop: 18,
+  },
+  signoffName: {
+    marginTop: 6,
   },
 })
 
@@ -105,6 +111,13 @@ export function CoverLetterPdfDocument(props: CoverLetterPdfProps) {
             {paragraph}
           </Text>
         ))}
+
+        {props.candidateName ? (
+          <View style={styles.signoff}>
+            <Text>Sincerely,</Text>
+            <Text style={styles.signoffName}>{props.candidateName}</Text>
+          </View>
+        ) : null}
       </Page>
     </Document>
   )
