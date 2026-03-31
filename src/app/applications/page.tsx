@@ -6,6 +6,7 @@ import {
   getFollowUpState,
   type FollowUpState,
 } from '@/lib/applications/get-follow-up-state'
+import { formatDate } from '@/lib/dates'
 
 type ApplicationListJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location'>
 
@@ -42,10 +43,10 @@ type ApplicationListItemWithState = ApplicationListItem & {
   priority: number
 }
 
-function formatDate(value: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString()
-}
+// function formatDate(value: string | null) {
+//   if (!value) return '—'
+//   return new Date(value).toLocaleDateString()
+// }
 
 function normalizeJob(
   value: ApplicationListJob | ApplicationListJob[] | null

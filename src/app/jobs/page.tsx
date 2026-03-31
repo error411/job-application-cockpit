@@ -4,7 +4,7 @@ import type { Database } from '@/lib/supabase/types'
 
 type JobRow = Pick<
   Database['public']['Tables']['jobs']['Row'],
-  'id' | 'company' | 'title' | 'location' | 'status' | 'created_at'
+  'id' | 'company' | 'title' | 'location' | 'status' | 'created_at' | 'archived_at'
 >
 
 type JobScoreRow = Pick<
@@ -152,7 +152,8 @@ export default async function JobsPage() {
 
   const { data: jobs, error: jobsError } = await supabase
     .from('jobs')
-    .select('id, company, title, location, status, created_at')
+    .select('id, company, title, location, status, created_at, archived_at')
+    .is('archived_at', null)
     .order('created_at', { ascending: false })
 
   if (jobsError) {

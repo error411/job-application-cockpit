@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Tables } from '@/lib/supabase/types'
 import { buildActionItems } from '@/lib/applications/build-action-items'
+import { formatDate } from '@/lib/dates'
 
 type DbApplicationRow = Tables<'applications'>
 type JobRow = Tables<'jobs'>
@@ -112,15 +113,15 @@ function isDatePast(dateString: string | null | undefined): boolean {
 //   return Math.floor(diff / (1000 * 60 * 60 * 24))
 // }
 
-function formatDate(dateString: string | null | undefined): string {
-  if (!dateString) return '—'
+// function formatDate(dateString: string | null | undefined): string {
+//   if (!dateString) return '—'
 
-  return new Date(dateString).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
+//   return new Date(dateString).toLocaleDateString(undefined, {
+//     month: 'short',
+//     day: 'numeric',
+//     year: 'numeric',
+//   })
+// }
 
 function normalizeJob(value: TodayJob | TodayJob[] | null): TodayJob | null {
   if (!value) return null

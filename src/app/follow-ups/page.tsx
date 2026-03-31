@@ -6,6 +6,7 @@ import {
 } from '@/lib/applications/get-follow-up-state'
 import type { Tables } from '@/lib/supabase/types'
 import FollowUpActions from './follow-up-actions'
+import { formatDate } from '@/lib/dates'
 
 type ApplicationRow = Tables<'applications'>
 type JobRow = Tables<'jobs'>
@@ -51,15 +52,15 @@ type FollowUpListItemWithState = FollowUpListItem & {
   followUpState: FollowUpState
 }
 
-function formatDate(dateString: string | null) {
-  if (!dateString) return '—'
-  return new Date(dateString).toLocaleDateString()
-}
+// function formatDate(dateString: string | null) {
+//   if (!dateString) return '—'
+//   return new Date(dateString).toLocaleDateString()
+// }
 
-function formatDateTime(dateString: string | null) {
-  if (!dateString) return '—'
-  return new Date(dateString).toLocaleString()
-}
+// function formatDateTime(dateString: string | null) {
+//   if (!dateString) return '—'
+//   return new Date(dateString).toLocaleString()
+// }
 
 function normalizeJob(
   value: FollowUpListJob | FollowUpListJob[] | null
