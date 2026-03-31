@@ -352,7 +352,7 @@ function ApplyCard({
       className={[
         'relative scroll-mt-24 rounded-2xl p-5 transition-all duration-200',
         isFocused
-          ? 'border border-zinc-900 bg-white shadow-lg ring-1 ring-zinc-300 before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:rounded-l-2xl before:bg-zinc-900'
+          ? 'border border-zinc-900 bg-white shadow-lg ring-1 ring-zinc-300 before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:rounded-l-2xl'
           : 'border border-zinc-200 bg-white shadow-sm hover:shadow-md',
       ].join(' ')}
     >
