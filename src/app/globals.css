@@ -42,6 +42,7 @@ body {
       box-shadow 160ms ease,
       transform 160ms ease,
       background-color 160ms ease;
+      padding: 15px;
   }
 
   .app-panel:hover {
