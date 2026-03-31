@@ -1,21 +1,28 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { formatDate } from '@/lib/dates'
 import type {
   ApplicationAssetRow,
   ApplicationRow,
   JobRow,
   JobScoreRow,
 } from '@/lib/supabase/model-types'
+import { formatDate } from '@/lib/dates'
 
 type PageProps = {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ from?: string }>
+  searchParams: Promise<{ from?: string; error?: string }>
 }
 
 type JobDetailRow = Pick<
   JobRow,
-  'id' | 'company' | 'title' | 'location' | 'status' | 'description_raw'
+  | 'id'
+  | 'company'
+  | 'title'
+  | 'location'
+  | 'status'
+  | 'description_raw'
+  | 'archived_at'
+  | 'archived_reason'
 >
 
 type JobDetailApplicationRow = Pick<
@@ -60,7 +67,7 @@ export default async function JobDetailPage({
   searchParams,
 }: PageProps) {
   const { id } = await params
-  const { from } = await searchParams
+  const { from, error } = await searchParams
   const supabase = await createClient()
 
   const backHref = from === 'apply' ? '/apply' : '/jobs'
@@ -68,7 +75,9 @@ export default async function JobDetailPage({
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')
-    .select('id, company, title, location, status, description_raw')
+    .select(
+      'id, company, title, location, status, description_raw, archived_at, archived_reason'
+    )
     .eq('id', id)
     .single()
 
@@ -116,22 +125,84 @@ export default async function JobDetailPage({
           {backLabel}
         </Link>
 
-        <form action={`/api/jobs/${typedJob.id}/delete-form`} method="post">
-  <input
-    type="hidden"
-    name="from"
-    value={from === 'apply' ? 'apply' : 'jobs'}
-  />
-  <button
-    className="rounded border border-red-300 px-4 py-2 text-sm text-red-700"
-    type="submit"
-  >
-    Delete Job
-  </button>
-</form>
+        <div className="flex flex-wrap gap-2">
+          {typedJob.archived_at ? (
+            <>
+              <form action={`/api/jobs/${typedJob.id}/restore-form`} method="post">
+                <button className="app-button-primary" type="submit">
+                  Restore Job
+                </button>
+              </form>
+
+              <form action={`/api/jobs/${typedJob.id}/delete-form`} method="post">
+                <input
+                  type="hidden"
+                  name="from"
+                  value={from === 'apply' ? 'apply' : 'jobs'}
+                />
+                <button
+                  className="rounded border border-red-300 px-4 py-2 text-sm text-red-700"
+                  type="submit"
+                >
+                  Delete Permanently
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <form action={`/api/jobs/${typedJob.id}/archive-form`} method="post">
+                <input
+                  type="hidden"
+                  name="from"
+                  value={from === 'apply' ? 'apply' : 'jobs'}
+                />
+                <button className="app-button" type="submit">
+                  Archive Job
+                </button>
+              </form>
+
+              <form action={`/api/jobs/${typedJob.id}/delete-form`} method="post">
+                <input
+                  type="hidden"
+                  name="from"
+                  value={from === 'apply' ? 'apply' : 'jobs'}
+                />
+                <button
+                  className="rounded border border-red-200 px-4 py-2 text-sm text-red-600"
+                  type="submit"
+                >
+                  Delete Permanently
+                </button>
+              </form>
+            </>
+          )}
+        </div>
       </div>
 
+      {error ? (
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4">
+          <p className="text-sm text-red-800">{error}</p>
+        </div>
+      ) : null}
+
       <h1 className="text-2xl font-bold">{typedJob.title}</h1>
+
+      {typedJob.archived_at ? (
+        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+            Archived
+          </p>
+          <p className="mt-2 text-sm text-amber-900">
+            This job was archived on {formatDate(typedJob.archived_at)}.
+          </p>
+          {typedJob.archived_reason ? (
+            <p className="mt-1 text-sm text-amber-800">
+              Reason: {typedJob.archived_reason}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       <p className="mt-1">{typedJob.company}</p>
       <p className="text-sm opacity-70">{typedJob.location || 'No location'}</p>
 
@@ -200,42 +271,41 @@ export default async function JobDetailPage({
         </form>
 
         <div className="flex flex-wrap gap-2">
-  <a
-    href={`/api/application-assets/${job.id}/resume-html`}
-    target="_blank"
-    rel="noreferrer"
-    className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
-  >
-    Preview Resume HTML
-  </a>
+          <a
+            href={`/api/application-assets/${job.id}/resume-html`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+          >
+            Preview Resume HTML
+          </a>
 
-  <a
-    href={`/api/application-assets/${job.id}/resume-pdf`}
-    target="_blank"
-    rel="noreferrer"
-    className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
-  >
-    Download Resume PDF
-  </a>
-  <a
-    href={`/api/application-assets/${job.id}/cover-letter-html`}
-    target="_blank"
-    rel="noreferrer"
-    className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
-  >
-    Preview Cover Letter HTML
-  </a>
+          <a
+            href={`/api/application-assets/${job.id}/resume-pdf`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+          >
+            Download Resume PDF
+          </a>
+          <a
+            href={`/api/application-assets/${job.id}/cover-letter-html`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+          >
+            Preview Cover Letter HTML
+          </a>
 
-  <a
-    href={`/api/application-assets/${job.id}/cover-letter-pdf`}
-    target="_blank"
-    rel="noreferrer"
-    className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
-  >
-    Download Cover Letter PDF
-  </a>
-</div>
-
+          <a
+            href={`/api/application-assets/${job.id}/cover-letter-pdf`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+          >
+            Download Cover Letter PDF
+          </a>
+        </div>
       </div>
 
       <div className="mt-8 rounded border p-4">
