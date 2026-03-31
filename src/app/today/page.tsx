@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Tables } from '@/lib/supabase/types'
+import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
 
 type DbApplicationRow = Tables<'applications'>
 type JobRow = Tables<'jobs'>
@@ -16,6 +17,8 @@ type RawApplicationRow = Pick<
   | 'applied_at'
   | 'follow_up_1_due'
   | 'follow_up_2_due'
+  | 'follow_up_1_sent_at'
+  | 'follow_up_2_sent_at'
   | 'notes'
   | 'updated_at'
 > & {
@@ -30,6 +33,8 @@ type TodayApplicationRow = Pick<
   | 'applied_at'
   | 'follow_up_1_due'
   | 'follow_up_2_due'
+  | 'follow_up_1_sent_at'
+  | 'follow_up_2_sent_at'
   | 'notes'
   | 'updated_at'
 > & {
@@ -119,6 +124,8 @@ function toTodayApplicationRow(row: RawApplicationRow): TodayApplicationRow {
     applied_at: row.applied_at,
     follow_up_1_due: row.follow_up_1_due,
     follow_up_2_due: row.follow_up_2_due,
+    follow_up_1_sent_at: row.follow_up_1_sent_at,
+    follow_up_2_sent_at: row.follow_up_2_sent_at,
     notes: row.notes,
     updated_at: row.updated_at,
     job: normalizeJob(row.jobs),
@@ -153,13 +160,14 @@ function buildTodayItems(
     const company = job?.company ?? 'Unknown company'
     const title = job?.title ?? 'Untitled role'
     const location = job?.location ?? '—'
+    const followUpState = getFollowUpState({
+      follow_up_1_due: row.follow_up_1_due,
+      follow_up_2_due: row.follow_up_2_due,
+      follow_up_1_sent_at: row.follow_up_1_sent_at,
+      follow_up_2_sent_at: row.follow_up_2_sent_at,
+    })
 
-    if (
-      row.follow_up_1_due &&
-      (isDateToday(row.follow_up_1_due) || isDatePast(row.follow_up_1_due))
-    ) {
-      const overdue = isDatePast(row.follow_up_1_due)
-
+    if (followUpState.stage1?.isDueNow) {
       items.push({
         kind: 'follow_up',
         id: `${row.id}-fu1`,
@@ -169,19 +177,18 @@ function buildTodayItems(
         location,
         status: row.status ?? 'unknown',
         score,
-        reason: overdue ? 'Follow-up 1 overdue' : 'Follow-up 1 due today',
-        priorityScore: overdue ? 100 + scoreBoost : 85 + scoreBoost,
+        reason: followUpState.stage1.isOverdue
+          ? 'Follow-up 1 overdue'
+          : 'Follow-up 1 due today',
+        priorityScore: followUpState.stage1.isOverdue
+          ? 100 + scoreBoost
+          : 85 + scoreBoost,
         href: '/follow-ups',
         dueDate: row.follow_up_1_due,
       })
     }
 
-    if (
-      row.follow_up_2_due &&
-      (isDateToday(row.follow_up_2_due) || isDatePast(row.follow_up_2_due))
-    ) {
-      const overdue = isDatePast(row.follow_up_2_due)
-
+    if (followUpState.stage2?.isDueNow) {
       items.push({
         kind: 'follow_up',
         id: `${row.id}-fu2`,
@@ -191,8 +198,12 @@ function buildTodayItems(
         location,
         status: row.status ?? 'unknown',
         score,
-        reason: overdue ? 'Follow-up 2 overdue' : 'Follow-up 2 due today',
-        priorityScore: overdue ? 95 + scoreBoost : 80 + scoreBoost,
+        reason: followUpState.stage2.isOverdue
+          ? 'Follow-up 2 overdue'
+          : 'Follow-up 2 due today',
+        priorityScore: followUpState.stage2.isOverdue
+          ? 95 + scoreBoost
+          : 80 + scoreBoost,
         href: '/follow-ups',
         dueDate: row.follow_up_2_due,
       })
@@ -214,7 +225,13 @@ function buildTodayItems(
       })
     }
 
-    if (row.status === 'applied' && age !== null && age >= 5 && age <= 10) {
+    if (
+      row.status === 'applied' &&
+      age !== null &&
+      age >= 5 &&
+      age <= 10 &&
+      !followUpState.hasDueNow
+    ) {
       items.push({
         kind: 'application',
         id: `${row.id}-applied-window`,
@@ -587,24 +604,26 @@ export default async function TodayPage() {
   const supabase = await createClient()
 
   const { data: applications, error: applicationsError } = await supabase
-    .from('applications')
-    .select(`
+  .from('applications')
+  .select(`
+    id,
+    job_id,
+    status,
+    applied_at,
+    follow_up_1_due,
+    follow_up_2_due,
+    follow_up_1_sent_at,
+    follow_up_2_sent_at,
+    notes,
+    updated_at,
+    jobs:jobs!applications_job_id_fkey (
       id,
-      job_id,
-      status,
-      applied_at,
-      follow_up_1_due,
-      follow_up_2_due,
-      notes,
-      updated_at,
-      jobs:jobs!applications_job_id_fkey (
-        id,
-        company,
-        title,
-        location
-      )
-    `)
-    .order('updated_at', { ascending: false })
+      company,
+      title,
+      location
+    )
+  `)
+  .order('updated_at', { ascending: false })
 
   if (applicationsError) {
     return <ErrorState message={applicationsError.message} />

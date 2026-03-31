@@ -9,10 +9,25 @@ import { enqueueAutomationJob } from '@/lib/automation/queue'
 type ApplicationInsert = TablesInsert<'applications'>
 type ApplicationUpdate = TablesUpdate<'applications'>
 
+type ExistingApplicationRow = {
+  id: string
+  status: string | null
+  applied_at: string | null
+  follow_up_1_due: string | null
+  follow_up_2_due: string | null
+}
+
 type UpsertApplicationInput = {
   jobId: string
   status?: string
   notes?: string | null
+}
+
+function buildDefaultFollowUpSchedule(now: Date) {
+  return {
+    followUp1: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+    followUp2: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+  }
 }
 
 export async function upsertApplicationForJob({
@@ -27,23 +42,14 @@ export async function upsertApplicationForJob({
       ? status
       : 'ready'
 
-  const nowIso = new Date().toISOString()
-
-  const followUp1 =
-    normalizedStatus === 'applied'
-      ? new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
-      : null
-
-  const followUp2 =
-    normalizedStatus === 'applied'
-      ? new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString()
-      : null
+  const now = new Date()
+  const nowIso = now.toISOString()
 
   const { data: existing, error: existingError } = await supabase
     .from('applications')
-    .select('id')
+    .select('id, status, applied_at, follow_up_1_due, follow_up_2_due')
     .eq('job_id', jobId)
-    .maybeSingle()
+    .maybeSingle<ExistingApplicationRow>()
 
   if (existingError) {
     throw new Error(existingError.message)
@@ -56,10 +62,15 @@ export async function upsertApplicationForJob({
       updated_at: nowIso,
     }
 
-    if (normalizedStatus === 'applied') {
-      updatePayload.applied_at = nowIso
-      updatePayload.follow_up_1_due = followUp1
-      updatePayload.follow_up_2_due = followUp2
+    const isTransitioningToApplied =
+      normalizedStatus === 'applied' && existing.status !== 'applied'
+
+    if (isTransitioningToApplied) {
+      const schedule = buildDefaultFollowUpSchedule(now)
+
+      updatePayload.applied_at = existing.applied_at ?? nowIso
+      updatePayload.follow_up_1_due = existing.follow_up_1_due ?? schedule.followUp1
+      updatePayload.follow_up_2_due = existing.follow_up_2_due ?? schedule.followUp2
     }
 
     const { data, error } = await supabase
@@ -73,7 +84,7 @@ export async function upsertApplicationForJob({
       throw new Error(error.message)
     }
 
-    if (normalizedStatus === 'applied') {
+    if (isTransitioningToApplied) {
       await enqueueAutomationJob({
         jobType: 'schedule_followups',
         entityType: 'job',
@@ -88,13 +99,14 @@ export async function upsertApplicationForJob({
     job_id: jobId,
     status: normalizedStatus,
     notes: notes ?? null,
-    ...(normalizedStatus === 'applied'
-      ? {
-          applied_at: nowIso,
-          follow_up_1_due: followUp1,
-          follow_up_2_due: followUp2,
-        }
-      : {}),
+  }
+
+  if (normalizedStatus === 'applied') {
+    const schedule = buildDefaultFollowUpSchedule(now)
+
+    insertPayload.applied_at = nowIso
+    insertPayload.follow_up_1_due = schedule.followUp1
+    insertPayload.follow_up_2_due = schedule.followUp2
   }
 
   const { data, error } = await supabase

@@ -2,12 +2,21 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { ApplicationRow, JobRow } from '@/lib/supabase/model-types'
 import { isApplicationStatus, type ApplicationStatus } from '@/lib/statuses'
+import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
 
 type ApplicationListJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location'>
 
 type RawApplicationRow = Pick<
   ApplicationRow,
-  'id' | 'job_id' | 'status' | 'applied_at' | 'follow_up_1_due' | 'follow_up_2_due' | 'notes'
+  | 'id'
+  | 'job_id'
+  | 'status'
+  | 'applied_at'
+  | 'follow_up_1_due'
+  | 'follow_up_2_due'
+  | 'follow_up_1_sent_at'
+  | 'follow_up_2_sent_at'
+  | 'notes'
 > & {
   jobs: ApplicationListJob | ApplicationListJob[] | null
 }
@@ -19,6 +28,8 @@ type ApplicationListItem = {
   applied_at: string | null
   follow_up_1_due: string | null
   follow_up_2_due: string | null
+  follow_up_1_sent_at: string | null
+  follow_up_2_sent_at: string | null
   notes: string | null
   job: ApplicationListJob | null
 }
@@ -51,28 +62,22 @@ function toApplicationListItem(row: RawApplicationRow): ApplicationListItem {
     applied_at: row.applied_at,
     follow_up_1_due: row.follow_up_1_due,
     follow_up_2_due: row.follow_up_2_due,
+    follow_up_1_sent_at: row.follow_up_1_sent_at,
+    follow_up_2_sent_at: row.follow_up_2_sent_at,
     notes: row.notes,
     job: normalizeJob(row.jobs),
   }
 }
 
 function getPriority(app: ApplicationListItem) {
-  const now = new Date()
+  const followUpState = getFollowUpState({
+    follow_up_1_due: app.follow_up_1_due,
+    follow_up_2_due: app.follow_up_2_due,
+    follow_up_1_sent_at: app.follow_up_1_sent_at,
+    follow_up_2_sent_at: app.follow_up_2_sent_at,
+  })
 
-  const followUp1Due =
-    app.follow_up_1_due ? new Date(app.follow_up_1_due) : null
-  const followUp2Due =
-    app.follow_up_2_due ? new Date(app.follow_up_2_due) : null
-
-  const isFollowUpDue =
-    (followUp1Due && followUp1Due <= now) ||
-    (followUp2Due && followUp2Due <= now)
-
-  if (isFollowUpDue) {
-    return 4
-  }
-
-  if (app.status === 'follow_up_due') {
+  if (followUpState.hasDueNow) {
     return 4
   }
 
@@ -85,10 +90,10 @@ function getPriority(app: ApplicationListItem) {
   }
 
   if (app.status === 'interviewing') {
-    return 2
+    return 1
   }
 
-  return 1
+  return 0
 }
 
 function PipelineColumn({
@@ -131,6 +136,8 @@ export default async function ApplicationsPage() {
       applied_at,
       follow_up_1_due,
       follow_up_2_due,
+      follow_up_1_sent_at,
+      follow_up_2_sent_at,
       notes,
       jobs:jobs!applications_job_id_fkey (
         id,
@@ -159,7 +166,7 @@ const applications = ((data ?? []) as RawApplicationRow[])
   const grouped = {
     ready: applications.filter((a) => a.status === 'ready'),
     applied: applications.filter(
-      (a) => a.status === 'applied' || a.status === 'follow_up_due'
+      (a) => a.status === 'applied'
     ),
     interviewing: applications.filter((a) => a.status === 'interviewing'),
     closed: applications.filter(
@@ -297,14 +304,18 @@ function ApplicationCard({
         <div>
           <p className="text-zinc-500">Follow-up 1</p>
           <p className="font-medium text-zinc-900">
-            {formatDate(app.follow_up_1_due)}
+            {app.follow_up_1_sent_at
+              ? `Sent ${formatDate(app.follow_up_1_sent_at)}`
+              : formatDate(app.follow_up_1_due)}
           </p>
         </div>
 
         <div>
           <p className="text-zinc-500">Follow-up 2</p>
           <p className="font-medium text-zinc-900">
-            {formatDate(app.follow_up_2_due)}
+            {app.follow_up_2_sent_at
+              ? `Sent ${formatDate(app.follow_up_2_sent_at)}`
+              : formatDate(app.follow_up_2_due)}
           </p>
         </div>
       </div>
