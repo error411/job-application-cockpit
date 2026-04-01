@@ -2,50 +2,158 @@
 
 ## Current Focus
 
-Transitioning from core functionality → usable daily system.
+Shifting from feature development → **workflow consistency and system clarity**
 
-Key priorities:
-- onboarding experience
-- first-run usability
-- reducing friction to first application
+Primary goals:
+
+- eliminate duplicated logic
+- centralize workflow rules
+- ensure all pages reflect the same system state
 
 ---
 
 ## System Overview
 
-### Core Entities
+### Core Tables
 
-- jobs
-- applications
-- application_assets
-- candidate_profile
-- candidate_experience
-- job_scores
+- `jobs`
+- `applications`
+- `application_assets`
+- `candidate_profile`
+- `candidate_experience`
+- `job_scores`
+- `interview_rounds`
 
 ---
 
 ## Pipeline Model
 
-Applications move through:
+Applications use a **minimal status model**:
 
-- ready
-- applied
-- follow_up_due
-- interviewing
-- rejected / closed
+- `ready`
+- `applied`
+- `interviewing`
+- `closed`
 
-Interview tracking is event-based (no fixed columns).
+Notes:
+
+- `follow_up_due` is legacy and being phased out
+- follow-ups are derived from timestamps, not stored as status
+
+---
+
+## Follow-Up System
+
+Single source of truth:
+
+- `getFollowUpState`
+
+Inputs:
+
+- `applied_at`
+- `last_follow_up_at`
+
+Outputs:
+
+- due
+- overdue
+- upcoming
+
+This logic is shared across:
+
+- Today page
+- Dashboard
+- Apply mode
+
+---
+
+## Action Item System
+
+- Built via shared helpers (e.g. `buildActionItems`)
+- Produces normalized "what should I do next"
+
+Used by:
+
+- Dashboard (punch list)
+- Today page
+
+Goal:
+
+- eliminate page-specific queue logic
+
+---
+
+## Archive System
+
+Soft delete model:
+
+- `jobs.archived_at`
+- `jobs.archived_reason`
+
+Behavior:
+
+- archived jobs are excluded from:
+  - Today
+  - Apply
+  - Follow-ups
+  - Dashboard
+- restore is supported
+- hard delete is secondary
 
 ---
 
 ## Current Capabilities
 
 - Job capture and tracking
-- Resume + cover letter generation
-- PDF export (React PDF)
-- Interview round logging
-- Follow-up scheduling
+- Resume + cover letter generation (HTML + PDF)
+- Interview round logging (event-based)
+- Follow-up scheduling (derived logic)
+- Action-item driven workflow
 - Private site authentication
+
+---
+
+## Known Inconsistencies (In Progress)
+
+- Apply mode still has partially duplicated follow-up logic
+- Some pages independently filter archived jobs instead of using shared helpers
+- Legacy `follow_up_due` status still present in type system
+
+---
+
+## Next Cleanup Targets
+
+### 1. Shared Application Loader
+
+- [ ] Create `getActiveWorkflowApplications`
+  - [ ] filter active statuses
+  - [ ] exclude archived jobs
+  - [ ] normalize job joins
+
+---
+
+### 2. Apply Mode Alignment
+
+- [ ] Refactor `getApplyItems`
+  - [ ] use shared follow-up logic
+  - [ ] remove custom overdue calculations
+  - [ ] align priority with action-item system
+
+---
+
+### 3. Archive Consistency
+
+- [ ] Ensure ALL workflow surfaces exclude archived jobs via shared helper
+- [ ] Remove page-level filtering
+
+---
+
+### 4. Status Cleanup
+
+- [ ] Remove `follow_up_due` from:
+  - [ ] type definitions
+  - [ ] constants
+  - [ ] any remaining usage
 
 ---
 
@@ -65,32 +173,26 @@ Interview tracking is event-based (no fixed columns).
 ### Candidate System
 
 - [ ] Multi-candidate configuration
-  - [ ] Support multiple candidate profiles
   - [ ] Profile switcher (UI)
   - [ ] Scoped applications per candidate
-  - [ ] Asset generation per candidate context
+  - [ ] Asset generation per candidate
 
 ---
 
 ### Mobile Improvements
 
 - [ ] Improve navigation for mobile
-  - [ ] Bottom nav or simplified header
-  - [ ] Reduce density of dashboard UI
-- [ ] Suppress keyboard-heavy interactions
-  - [ ] Avoid hotkeys on mobile
-  - [ ] Improve input focus behavior
-- [ ] Optimize layout responsiveness
-  - [ ] Cards stack cleanly
-  - [ ] Metrics + pipeline readable on small screens
+- [ ] Reduce dashboard density
+- [ ] Improve input + focus behavior
+- [ ] Ensure pipeline readability on small screens
 
 ---
 
 ### UX / Product
 
-- [ ] Improve empty states across app
-- [ ] Add guided actions (hotspots / banners)
-- [ ] Refine pipeline visualization clarity
+- [ ] Improve empty states
+- [ ] Add guided actions (CTAs, prompts)
+- [ ] Refine pipeline visualization
 
 ---
 
@@ -102,14 +204,17 @@ Interview tracking is event-based (no fixed columns).
 
 ---
 
-## Notes
+## Principles
 
-Keep implementation:
+Keep the system:
+
 - minimal
+- explicit
 - user-driven
 - easy to reason about
 
 Avoid:
-- over-automation
-- hidden state
-- rigid workflows
+
+- implicit workflow logic
+- duplicated business rules
+- status bloat

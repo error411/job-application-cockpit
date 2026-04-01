@@ -7,6 +7,10 @@ import {
 import type { Tables } from '@/lib/supabase/types'
 import FollowUpActions from './follow-up-actions'
 import { formatDate, formatDateTime } from '@/lib/dates'
+import {
+  getActiveWorkflowApplications,
+  type ActiveWorkflowApplicationRow,
+} from '@/lib/applications/get-active-workflow-applications'
 
 type ApplicationRow = Tables<'applications'>
 type JobRow = Tables<'jobs'>
@@ -14,19 +18,7 @@ type AssetRow = Tables<'application_assets'>
 
 type FollowUpListJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location'>
 
-type RawFollowUpRow = Pick<
-  ApplicationRow,
-  | 'id'
-  | 'job_id'
-  | 'status'
-  | 'follow_up_1_due'
-  | 'follow_up_2_due'
-  | 'follow_up_1_sent_at'
-  | 'follow_up_2_sent_at'
-  | 'notes'
-> & {
-  jobs: FollowUpListJob | FollowUpListJob[] | null
-}
+type FollowUpListRow = ActiveWorkflowApplicationRow
 
 type FollowUpListAsset = Pick<
   AssetRow,
@@ -62,15 +54,15 @@ type FollowUpListItemWithState = FollowUpListItem & {
 //   return new Date(dateString).toLocaleString()
 // }
 
-function normalizeJob(
-  value: FollowUpListJob | FollowUpListJob[] | null
-): FollowUpListJob | null {
-  if (!value) return null
-  return Array.isArray(value) ? value[0] ?? null : value
-}
+// function normalizeJob(
+//   value: FollowUpListJob | FollowUpListJob[] | null
+// ): FollowUpListJob | null {
+//   if (!value) return null
+//   return Array.isArray(value) ? value[0] ?? null : value
+// }
 
 function toFollowUpListItem(
-  row: RawFollowUpRow,
+  row: FollowUpListRow,
   assetByJobId: Map<string, FollowUpListAsset>
 ): FollowUpListItem {
   return {
@@ -82,7 +74,14 @@ function toFollowUpListItem(
     follow_up_1_sent_at: row.follow_up_1_sent_at,
     follow_up_2_sent_at: row.follow_up_2_sent_at,
     notes: row.notes,
-    job: normalizeJob(row.jobs),
+    job: row.job
+      ? {
+          id: row.job.id,
+          company: row.job.company,
+          title: row.job.title,
+          location: row.job.location,
+        }
+      : null,
     asset: assetByJobId.get(row.job_id) ?? null,
   }
 }
@@ -226,29 +225,14 @@ function FollowUpCard({ app }: { app: FollowUpListItemWithState }) {
 
 export default async function FollowUpsPage() {
   const supabase = await createClient()
+    let applicationRows: FollowUpListRow[] = []
 
-  const { data, error } = await supabase
-    .from('applications')
-    .select(`
-      id,
-      job_id,
-      status,
-      follow_up_1_due,
-      follow_up_2_due,
-      follow_up_1_sent_at,
-      follow_up_2_sent_at,
-      notes,
-      jobs:jobs!applications_job_id_fkey (
-        id,
-        company,
-        title,
-        location
-      )
-    `)
-    .in('status', ['applied', 'interviewing'])
-    .order('updated_at', { ascending: false })
+  try {
+    applicationRows = await getActiveWorkflowApplications(supabase)
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to load follow-ups.'
 
-  if (error) {
     return (
       <main className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
@@ -256,13 +240,16 @@ export default async function FollowUpsPage() {
         </p>
         <h1>Follow-Ups</h1>
         <p className="text-sm text-red-600">
-          Error loading follow-ups: {error.message}
+          Error loading follow-ups: {message}
         </p>
       </main>
     )
   }
 
-  const applicationRows = (data ?? []) as RawFollowUpRow[]
+  applicationRows = applicationRows.filter(
+    (row) => row.status === 'applied' || row.status === 'interviewing'
+  )
+
   const jobIds = Array.from(new Set(applicationRows.map((row) => row.job_id)))
 
   const assetByJobId = new Map<string, FollowUpListAsset>()

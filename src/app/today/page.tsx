@@ -3,44 +3,48 @@ import { createClient } from '@/lib/supabase/server'
 import type { Tables } from '@/lib/supabase/types'
 import { buildActionItems } from '@/lib/applications/build-action-items'
 import { formatDate } from '@/lib/dates'
+import {
+  getActiveWorkflowApplications,
+  type ActiveWorkflowApplicationRow,
+} from '@/lib/applications/get-active-workflow-applications'
 
 type DbApplicationRow = Tables<'applications'>
-type JobRow = Tables<'jobs'>
+// type JobRow = Tables<'jobs'>
 type DbJobScoreRow = Tables<'job_scores'>
 
-type TodayJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location'>
+// type TodayJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location'>
 
-type RawApplicationRow = Pick<
-  DbApplicationRow,
-  | 'id'
-  | 'job_id'
-  | 'status'
-  | 'applied_at'
-  | 'follow_up_1_due'
-  | 'follow_up_2_due'
-  | 'follow_up_1_sent_at'
-  | 'follow_up_2_sent_at'
-  | 'notes'
-  | 'updated_at'
-> & {
-  jobs: TodayJob | TodayJob[] | null
-}
+// type RawApplicationRow = Pick<
+//   DbApplicationRow,
+//   | 'id'
+//   | 'job_id'
+//   | 'status'
+//   | 'applied_at'
+//   | 'follow_up_1_due'
+//   | 'follow_up_2_due'
+//   | 'follow_up_1_sent_at'
+//   | 'follow_up_2_sent_at'
+//   | 'notes'
+//   | 'updated_at'
+// > & {
+//   jobs: TodayJob | TodayJob[] | null
+// }
 
-type TodayApplicationRow = Pick<
-  DbApplicationRow,
-  | 'id'
-  | 'job_id'
-  | 'status'
-  | 'applied_at'
-  | 'follow_up_1_due'
-  | 'follow_up_2_due'
-  | 'follow_up_1_sent_at'
-  | 'follow_up_2_sent_at'
-  | 'notes'
-  | 'updated_at'
-> & {
-  job: TodayJob | null
-}
+// type TodayApplicationRow = Pick<
+//   DbApplicationRow,
+//   | 'id'
+//   | 'job_id'
+//   | 'status'
+//   | 'applied_at'
+//   | 'follow_up_1_due'
+//   | 'follow_up_2_due'
+//   | 'follow_up_1_sent_at'
+//   | 'follow_up_2_sent_at'
+//   | 'notes'
+//   | 'updated_at'
+// > & {
+//   job: TodayJob | null
+// }
 
 type TodayJobScoreRow = Pick<DbJobScoreRow, 'job_id' | 'score' | 'created_at'>
 
@@ -58,6 +62,8 @@ type TodayItem = {
   href: string
   dueDate?: string | null
 }
+
+type TodayApplicationRow = ActiveWorkflowApplicationRow
 
 // function startOfTodayLocal(): Date {
 //   const now = new Date()
@@ -123,26 +129,26 @@ function isDatePast(dateString: string | null | undefined): boolean {
 //   })
 // }
 
-function normalizeJob(value: TodayJob | TodayJob[] | null): TodayJob | null {
-  if (!value) return null
-  return Array.isArray(value) ? value[0] ?? null : value
-}
+// function normalizeJob(value: TodayJob | TodayJob[] | null): TodayJob | null {
+//   if (!value) return null
+//   return Array.isArray(value) ? value[0] ?? null : value
+// }
 
-function toTodayApplicationRow(row: RawApplicationRow): TodayApplicationRow {
-  return {
-    id: row.id,
-    job_id: row.job_id,
-    status: row.status,
-    applied_at: row.applied_at,
-    follow_up_1_due: row.follow_up_1_due,
-    follow_up_2_due: row.follow_up_2_due,
-    follow_up_1_sent_at: row.follow_up_1_sent_at,
-    follow_up_2_sent_at: row.follow_up_2_sent_at,
-    notes: row.notes,
-    updated_at: row.updated_at,
-    job: normalizeJob(row.jobs),
-  }
-}
+// function toTodayApplicationRow(row: RawApplicationRow): TodayApplicationRow {
+//   return {
+//     id: row.id,
+//     job_id: row.job_id,
+//     status: row.status,
+//     applied_at: row.applied_at,
+//     follow_up_1_due: row.follow_up_1_due,
+//     follow_up_2_due: row.follow_up_2_due,
+//     follow_up_1_sent_at: row.follow_up_1_sent_at,
+//     follow_up_2_sent_at: row.follow_up_2_sent_at,
+//     notes: row.notes,
+//     updated_at: row.updated_at,
+//     job: normalizeJob(row.jobs),
+//   }
+// }
 
 function buildLatestScoresMap(
   scores: TodayJobScoreRow[]
@@ -530,35 +536,15 @@ function ErrorState({ message }: { message: string }) {
 export default async function TodayPage() {
   const supabase = await createClient()
 
-  const { data: applications, error: applicationsError } = await supabase
-  .from('applications')
-  .select(`
-    id,
-    job_id,
-    status,
-    applied_at,
-    follow_up_1_due,
-    follow_up_2_due,
-    follow_up_1_sent_at,
-    follow_up_2_sent_at,
-    notes,
-    updated_at,
-    jobs:jobs!applications_job_id_fkey (
-      id,
-      company,
-      title,
-      location
-    )
-  `)
-  .order('updated_at', { ascending: false })
+    let typedApplications: TodayApplicationRow[] = []
 
-  if (applicationsError) {
-    return <ErrorState message={applicationsError.message} />
+  try {
+    typedApplications = await getActiveWorkflowApplications(supabase)
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to load applications.'
+    return <ErrorState message={message} />
   }
-
-  const typedApplications = ((applications ?? []) as RawApplicationRow[]).map(
-    toTodayApplicationRow
-  )
 
   const jobIds = Array.from(new Set(typedApplications.map((row) => row.job_id)))
 

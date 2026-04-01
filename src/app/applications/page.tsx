@@ -1,104 +1,36 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { ApplicationRow, JobRow } from '@/lib/supabase/model-types'
-import { isApplicationStatus, type ApplicationStatus } from '@/lib/statuses'
+import type { JobRow } from '@/lib/supabase/model-types'
 import {
   getFollowUpState,
   type FollowUpState,
 } from '@/lib/applications/get-follow-up-state'
 import { formatDate } from '@/lib/dates'
+import {
+  getActiveWorkflowApplications,
+  type ActiveWorkflowApplicationRow,
+} from '@/lib/applications/get-active-workflow-applications'
 
 type ApplicationListJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location'>
 
-type RawApplicationRow = Pick<
-  ApplicationRow,
-  | 'id'
-  | 'job_id'
-  | 'status'
-  | 'applied_at'
-  | 'follow_up_1_due'
-  | 'follow_up_2_due'
-  | 'follow_up_1_sent_at'
-  | 'follow_up_2_sent_at'
-  | 'notes'
-> & {
-  jobs: ApplicationListJob | ApplicationListJob[] | null
-}
-
-type ApplicationListItem = {
-  id: string
-  job_id: string
-  status: ApplicationStatus
-  applied_at: string | null
-  follow_up_1_due: string | null
-  follow_up_2_due: string | null
-  follow_up_1_sent_at: string | null
-  follow_up_2_sent_at: string | null
-  notes: string | null
-  job: ApplicationListJob | null
-}
+type ApplicationListItem = ActiveWorkflowApplicationRow
 
 type ApplicationListItemWithState = ApplicationListItem & {
   followUpState: FollowUpState
   priority: number
 }
 
-// function formatDate(value: string | null) {
-//   if (!value) return '—'
-//   return new Date(value).toLocaleDateString()
-// }
-
-function normalizeJob(
-  value: ApplicationListJob | ApplicationListJob[] | null
-): ApplicationListJob | null {
-  if (!value) return null
-  return Array.isArray(value) ? value[0] ?? null : value
-}
-
-function normalizeApplicationStatus(value: string | null): ApplicationStatus {
-  if (value && isApplicationStatus(value)) {
-    return value
-  }
-
-  return 'ready'
-}
-
-function toApplicationListItem(row: RawApplicationRow): ApplicationListItem {
-  return {
-    id: row.id,
-    job_id: row.job_id,
-    status: normalizeApplicationStatus(row.status),
-    applied_at: row.applied_at,
-    follow_up_1_due: row.follow_up_1_due,
-    follow_up_2_due: row.follow_up_2_due,
-    follow_up_1_sent_at: row.follow_up_1_sent_at,
-    follow_up_2_sent_at: row.follow_up_2_sent_at,
-    notes: row.notes,
-    job: normalizeJob(row.jobs),
-  }
-}
-
 function getPriority(app: ApplicationListItem, followUpState: FollowUpState) {
-  if (followUpState.hasDueNow) {
-    return 4
-  }
-
-  if (app.status === 'ready') {
-    return 3
-  }
-
-  if (app.status === 'applied') {
-    return 2
-  }
-
-  if (app.status === 'interviewing') {
-    return 1
-  }
-
+  if (followUpState.hasDueNow) return 4
+  if (app.status === 'ready') return 3
+  if (app.status === 'applied') return 2
+  if (app.status === 'interviewing') return 1
   return 0
 }
 
-function withComputedState(app: ApplicationListItem): ApplicationListItemWithState {
+function withComputedState(
+  app: ApplicationListItem
+): ApplicationListItemWithState {
   const followUpState = getFollowUpState({
     follow_up_1_due: app.follow_up_1_due,
     follow_up_2_due: app.follow_up_2_due,
@@ -130,22 +62,10 @@ function getCardTone(app: ApplicationListItemWithState, highlight: boolean) {
 }
 
 function getActionLabel(app: ApplicationListItemWithState) {
-  if (app.followUpState.hasDueNow) {
-    return 'Follow-up due now'
-  }
-
-  if (app.status === 'ready') {
-    return 'Ready to apply'
-  }
-
-  if (app.status === 'applied') {
-    return 'Applied and in flight'
-  }
-
-  if (app.status === 'interviewing') {
-    return 'Interview process active'
-  }
-
+  if (app.followUpState.hasDueNow) return 'Follow-up due now'
+  if (app.status === 'ready') return 'Ready to apply'
+  if (app.status === 'applied') return 'Applied and in flight'
+  if (app.status === 'interviewing') return 'Interview process active'
   return 'No immediate action'
 }
 
@@ -178,35 +98,24 @@ function PipelineColumn({
 export default async function ApplicationsPage() {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from('applications')
-    .select(`
-      id,
-      job_id,
-      status,
-      applied_at,
-      follow_up_1_due,
-      follow_up_2_due,
-      follow_up_1_sent_at,
-      follow_up_2_sent_at,
-      notes,
-      jobs:jobs!applications_job_id_fkey (
-        id,
-        company,
-        title,
-        location
-      )
-    `)
-    .order('updated_at', { ascending: false })
+  let applications: ApplicationListItemWithState[] = []
 
-  if (error) {
-    return <main className="p-6">Error loading applications: {error.message}</main>
+  try {
+    const rows = await getActiveWorkflowApplications(supabase)
+
+    applications = rows
+      .map(withComputedState)
+      .sort((a, b) => b.priority - a.priority)
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to load applications.'
+
+    return (
+      <main className="p-6">
+        Error loading applications: {message}
+      </main>
+    )
   }
-
-  const applications = ((data ?? []) as RawApplicationRow[])
-    .map(toApplicationListItem)
-    .map(withComputedState)
-    .sort((a, b) => b.priority - a.priority)
 
   const nextActions = applications.filter(
     (app) =>
@@ -321,8 +230,8 @@ function ApplicationCard({
                 app.followUpState.hasDueNow
                   ? 'bg-rose-50 text-rose-700'
                   : app.status === 'ready'
-                    ? 'bg-violet-50 text-violet-700'
-                    : 'bg-blue-50 text-blue-700'
+                  ? 'bg-violet-50 text-violet-700'
+                  : 'bg-blue-50 text-blue-700'
               }`}
             >
               {getActionLabel(app)}
@@ -350,7 +259,9 @@ function ApplicationCard({
       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div>
           <p className="text-zinc-500">Applied</p>
-          <p className="font-medium text-zinc-900">{formatDate(app.applied_at)}</p>
+          <p className="font-medium text-zinc-900">
+            {formatDate(app.applied_at)}
+          </p>
         </div>
 
         <div>

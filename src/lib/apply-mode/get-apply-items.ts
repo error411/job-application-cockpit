@@ -1,44 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
 import type { ApplyItem } from './types'
+import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
 import {
-  ACTIVE_APPLICATION_STATUSES,
-  isApplicationStatus,
-  type ApplicationStatus,
-} from '@/lib/statuses'
-
-type SupabaseClient = Awaited<ReturnType<typeof createClient>>
-
-type ApplicationRow = {
-  id: string
-  job_id: string
-  status: ApplicationStatus | null
-  applied_at: string | null
-  follow_up_1_due: string | null
-  follow_up_2_due: string | null
-  follow_up_1_sent_at: string | null
-  follow_up_2_sent_at: string | null
-  notes: string | null
-  jobs:
-    | {
-        id: string
-        company: string
-        title: string
-        location: string | null
-      }
-    | {
-        id: string
-        company: string
-        title: string
-        location: string | null
-      }[]
-    | null
-}
-
-type JobScoreRow = {
-  job_id: string
-  score: number
-  created_at: string
-}
+  getActiveWorkflowApplications,
+  type ActiveWorkflowApplicationRow,
+} from '@/lib/applications/get-active-workflow-applications'
 
 type ApplicationAssetRow = {
   job_id: string
@@ -49,62 +14,162 @@ type ApplicationAssetRow = {
   created_at: string
 }
 
-function normalizeApplicationStatus(value: string | null): ApplicationStatus {
-  if (value && isApplicationStatus(value)) {
-    return value
+type JobScoreRow = {
+  job_id: string
+  score: number
+  created_at: string
+}
+
+type ApplyItemsQueryBuilder = {
+  select: (query: string) => {
+    in: (
+      column: string,
+      values: readonly string[]
+    ) => {
+      order: (
+        column: string,
+        options: { ascending: boolean }
+      ) => Promise<{
+        data: unknown[] | null
+        error: { message: string } | null
+      }>
+    }
+  }
+}
+
+type ApplyItemsSupabase = {
+  from: (table: 'job_scores' | 'application_assets' | 'applications') => unknown
+}
+
+function getPriorityScore(params: {
+  application: ActiveWorkflowApplicationRow
+  latestScore: number | null
+  hasAssets: boolean
+}) {
+  const { application, latestScore, hasAssets } = params
+  const status = application.status
+  const scoreBoost = latestScore ?? 0
+
+  const followUpState = getFollowUpState({
+    follow_up_1_due: application.follow_up_1_due,
+    follow_up_2_due: application.follow_up_2_due,
+    follow_up_1_sent_at: application.follow_up_1_sent_at,
+    follow_up_2_sent_at: application.follow_up_2_sent_at,
+  })
+
+  if (followUpState.stage1?.isDueNow) {
+    return followUpState.stage1.isOverdue ? 100 + scoreBoost : 85 + scoreBoost
   }
 
-  return 'ready'
+  if (followUpState.stage2?.isDueNow) {
+    return followUpState.stage2.isOverdue ? 95 + scoreBoost : 80 + scoreBoost
+  }
+
+  if (status === 'ready' && hasAssets) {
+    return 70 + scoreBoost
+  }
+
+  if (status === 'ready' && !hasAssets) {
+    return 60 + scoreBoost
+  }
+
+  if (status === 'interviewing') {
+    return 55 + scoreBoost
+  }
+
+  if (status === 'applied') {
+    return 45 + scoreBoost
+  }
+
+  return scoreBoost
+}
+
+function getReason(params: {
+  application: ActiveWorkflowApplicationRow
+  latestScore: number | null
+  hasAssets: boolean
+}) {
+  const { application, latestScore, hasAssets } = params
+  const status = application.status
+
+  const followUpState = getFollowUpState({
+    follow_up_1_due: application.follow_up_1_due,
+    follow_up_2_due: application.follow_up_2_due,
+    follow_up_1_sent_at: application.follow_up_1_sent_at,
+    follow_up_2_sent_at: application.follow_up_2_sent_at,
+  })
+
+  if (followUpState.stage1?.isDueNow) {
+    return followUpState.stage1.isOverdue
+      ? 'Follow-up 1 overdue'
+      : 'Follow-up 1 due today'
+  }
+
+  if (followUpState.stage2?.isDueNow) {
+    return followUpState.stage2.isOverdue
+      ? 'Follow-up 2 overdue'
+      : 'Follow-up 2 due today'
+  }
+
+  if (status === 'ready' && latestScore !== null && hasAssets) {
+    return `Ready to apply (${latestScore}/100, assets complete)`
+  }
+
+  if (status === 'ready' && latestScore !== null && !hasAssets) {
+    return `High-value target (${latestScore}/100) missing assets`
+  }
+
+  if (status === 'ready' && hasAssets) {
+    return 'Assets ready, application ready'
+  }
+
+  if (status === 'ready') {
+    return 'Ready for next action'
+  }
+
+  if (status === 'interviewing') {
+    return 'Interview process active'
+  }
+
+  if (status === 'applied' && followUpState.hasUpcoming) {
+    return 'Applied, next follow-up scheduled'
+  }
+
+  if (status === 'applied') {
+    return 'Applied, waiting for follow-up window'
+  }
+
+  return 'Ready to work'
 }
 
 export async function getApplyItems(
-  supabase: SupabaseClient
+  supabase: ApplyItemsSupabase
 ): Promise<ApplyItem[]> {
-  const { data: applicationData, error: applicationError } = await supabase
-    .from('applications')
-    .select(`
-      id,
-      job_id,
-      status,
-      applied_at,
-      follow_up_1_due,
-      follow_up_2_due,
-      follow_up_1_sent_at,
-      follow_up_2_sent_at,
-      notes,
-      jobs (
-        id,
-        company,
-        title,
-        location
-      )
-    `)
-    .in('status', ACTIVE_APPLICATION_STATUSES)
+  const applicationRows = await getActiveWorkflowApplications(supabase)
 
-  if (applicationError) {
-    throw new Error(applicationError.message)
-  }
-
-  const applicationRows = (applicationData ?? []) as ApplicationRow[]
   const jobIds = Array.from(new Set(applicationRows.map((row) => row.job_id)))
 
   const latestScoreByJobId = new Map<string, number>()
   const hasAssetsByJobId = new Map<string, boolean>()
-  const assetByJobId = new Map<string, ApplicationAssetRow>()
+  const followUp1ByJobId = new Map<string, string | null>()
+  const followUp2ByJobId = new Map<string, string | null>()
 
   if (jobIds.length > 0) {
+    const jobScoresQuery = supabase.from('job_scores') as ApplyItemsQueryBuilder
+    const applicationAssetsQuery = supabase.from(
+      'application_assets'
+    ) as ApplyItemsQueryBuilder
+
     const [
       { data: scoreData, error: scoreError },
       { data: assetData, error: assetError },
     ] = await Promise.all([
-      supabase
-        .from('job_scores')
+      jobScoresQuery
         .select('job_id, score, created_at')
         .in('job_id', jobIds)
         .order('created_at', { ascending: false }),
 
-      supabase
-        .from('application_assets')
+      applicationAssetsQuery
         .select(`
           job_id,
           resume_markdown,
@@ -135,94 +200,57 @@ export async function getApplyItems(
     }
 
     for (const row of assetRows) {
-      if (!assetByJobId.has(row.job_id)) {
-        assetByJobId.set(row.job_id, row)
-
-        const hasAssets = Boolean(
-          row.resume_markdown?.trim() && row.cover_letter_markdown?.trim()
+      if (!hasAssetsByJobId.has(row.job_id)) {
+        hasAssetsByJobId.set(
+          row.job_id,
+          Boolean(
+            row.resume_markdown?.trim() && row.cover_letter_markdown?.trim()
+          )
         )
+      }
 
-        hasAssetsByJobId.set(row.job_id, hasAssets)
+      if (!followUp1ByJobId.has(row.job_id)) {
+        followUp1ByJobId.set(row.job_id, row.follow_up_1_email_markdown ?? null)
+      }
+
+      if (!followUp2ByJobId.has(row.job_id)) {
+        followUp2ByJobId.set(row.job_id, row.follow_up_2_email_markdown ?? null)
       }
     }
   }
 
-  const now = Date.now()
-
   const items: ApplyItem[] = applicationRows.map((row) => {
-    const job = Array.isArray(row.jobs) ? (row.jobs[0] ?? null) : row.jobs
-    const asset = assetByJobId.get(row.job_id)
     const latestScore = latestScoreByJobId.get(row.job_id) ?? null
     const hasAssets = hasAssetsByJobId.get(row.job_id) ?? false
-    const status = normalizeApplicationStatus(row.status)
-
-    let priority = latestScore ?? 0
-
-    if (!hasAssets) {
-      priority += 10
-    }
-
-    if (status === 'ready') {
-      priority += 5
-    }
-
-    if (status === 'interviewing') {
-      priority += 15
-    }
-
-    let followUpOverdue = false
-
-    if (row.follow_up_1_due && !row.follow_up_1_sent_at) {
-      const diff = new Date(row.follow_up_1_due).getTime() - now
-      if (diff < 0) {
-        priority += 25
-        followUpOverdue = true
-      }
-    }
-
-    if (row.follow_up_2_due && !row.follow_up_2_sent_at) {
-      const diff = new Date(row.follow_up_2_due).getTime() - now
-      if (diff < 0) {
-        priority += 25
-        followUpOverdue = true
-      }
-    }
-
-    let reason = 'Ready to work'
-
-    if (followUpOverdue) {
-      reason = 'Follow-up overdue'
-    } else if (latestScore !== null && !hasAssets) {
-      reason = `High-value target (${latestScore}/100) missing assets`
-    } else if (latestScore !== null && hasAssets) {
-      reason = `Ready to apply (${latestScore}/100, assets complete)`
-    } else if (hasAssets) {
-      reason = 'Assets ready, but not yet scored'
-    } else if (status === 'interviewing') {
-      reason = 'Interview process active'
-    } else if (status === 'ready') {
-      reason = 'Ready for next action'
-    }
+    const priorityScore = getPriorityScore({
+      application: row,
+      latestScore,
+      hasAssets,
+    })
 
     return {
       id: row.id,
       jobId: row.job_id,
-      status,
-      company: job?.company ?? 'Unknown company',
-      title: job?.title ?? 'Untitled role',
-      location: job?.location ?? '—',
+      status: row.status,
+      company: row.job?.company ?? 'Unknown company',
+      title: row.job?.title ?? 'Untitled role',
+      location: row.job?.location ?? '—',
       notes: row.notes ?? null,
       appliedAt: row.applied_at ?? null,
       followUp1Due: row.follow_up_1_due ?? null,
       followUp2Due: row.follow_up_2_due ?? null,
       followUp1SentAt: row.follow_up_1_sent_at ?? null,
       followUp2SentAt: row.follow_up_2_sent_at ?? null,
-      followUp1EmailMarkdown: asset?.follow_up_1_email_markdown ?? null,
-      followUp2EmailMarkdown: asset?.follow_up_2_email_markdown ?? null,
+      followUp1EmailMarkdown: followUp1ByJobId.get(row.job_id) ?? null,
+      followUp2EmailMarkdown: followUp2ByJobId.get(row.job_id) ?? null,
       hasAssets,
       latestScore,
-      priorityScore: priority,
-      reason,
+      priorityScore,
+      reason: getReason({
+        application: row,
+        latestScore,
+        hasAssets,
+      }),
     }
   })
 
