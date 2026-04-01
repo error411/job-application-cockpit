@@ -1,4 +1,3 @@
-import { buildActionItems } from '@/lib/applications/build-action-items'
 import {
   getActiveWorkflowApplications,
   type ActiveWorkflowApplicationRow,
@@ -41,14 +40,62 @@ type ApplyItemsSupabase = {
   from: (table: 'job_scores' | 'application_assets' | 'applications') => unknown
 }
 
+function getPriorityScore(row: ActiveWorkflowApplicationRow, latestScore: number | null) {
+  const scoreBoost = latestScore ?? 0
+
+  if (row.status === 'ready') {
+    return 60 + scoreBoost
+  }
+
+  if (row.status === 'applied') {
+    if (row.follow_up_1_due && !row.follow_up_1_sent_at) {
+      return 85 + scoreBoost
+    }
+
+    if (row.follow_up_2_due && !row.follow_up_2_sent_at) {
+      return 80 + scoreBoost
+    }
+
+    return 40 + scoreBoost
+  }
+
+  if (row.status === 'interviewing') {
+    return 50 + scoreBoost
+  }
+
+  return 20 + scoreBoost
+}
+
+function getReason(row: ActiveWorkflowApplicationRow, latestScore: number | null) {
+  if (row.status === 'ready') {
+    return latestScore !== null
+      ? `Ready to apply (${latestScore}/100)`
+      : 'Ready to apply'
+  }
+
+  if (row.status === 'applied') {
+    if (row.follow_up_1_due && !row.follow_up_1_sent_at) {
+      return 'Applied, first follow-up scheduled'
+    }
+
+    if (row.follow_up_2_due && !row.follow_up_2_sent_at) {
+      return 'Applied, second follow-up scheduled'
+    }
+
+    return 'Applied'
+  }
+
+  if (row.status === 'interviewing') {
+    return 'Interview process active'
+  }
+
+  return row.status ?? 'unknown'
+}
+
 export async function getApplyItems(
   supabase: ApplyItemsSupabase
 ): Promise<ApplyItem[]> {
   const applicationRows = await getActiveWorkflowApplications(supabase)
-
-  const applicationById = new Map<string, ActiveWorkflowApplicationRow>(
-    applicationRows.map((row) => [row.id, row])
-  )
 
   const jobIds = Array.from(new Set(applicationRows.map((row) => row.job_id)))
 
@@ -122,26 +169,9 @@ export async function getApplyItems(
     }
   }
 
-  const actionItems = buildActionItems(applicationRows, latestScoreByJobId)
-
-  const bestActionByApplicationId = new Map<
-    string,
-    (typeof actionItems)[number]
-  >()
-
-  for (const action of actionItems) {
-    const existing = bestActionByApplicationId.get(action.applicationId)
-
-    if (!existing || action.priorityScore > existing.priorityScore) {
-      bestActionByApplicationId.set(action.applicationId, action)
-    }
-  }
-
-  const items: ApplyItem[] = Array.from(bestActionByApplicationId.values())
-    .map((action) => {
-      const row = applicationById.get(action.applicationId)
-      if (!row) return null
-
+  const items: ApplyItem[] = applicationRows
+    .map((row) => {
+      const latestScore = latestScoreByJobId.get(row.job_id) ?? null
       const hasAssets = hasAssetsByJobId.get(row.job_id) ?? false
 
       return {
@@ -160,12 +190,12 @@ export async function getApplyItems(
         followUp1EmailMarkdown: followUp1ByJobId.get(row.job_id) ?? null,
         followUp2EmailMarkdown: followUp2ByJobId.get(row.job_id) ?? null,
         hasAssets,
-        latestScore: action.score,
-        priorityScore: action.priorityScore,
-        reason: action.reason,
+        latestScore,
+        priorityScore: getPriorityScore(row, latestScore),
+        reason: getReason(row, latestScore),
       }
     })
-    .filter((item): item is ApplyItem => item !== null)
+    .filter((item) => item.status !== null)
 
   items.sort((a, b) => b.priorityScore - a.priorityScore)
 

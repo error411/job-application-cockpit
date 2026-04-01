@@ -1,170 +1,72 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { Tables } from '@/lib/supabase/types'
-import { buildActionItems } from '@/lib/applications/build-action-items'
-import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
 import { formatDate } from '@/lib/dates'
+import { getActiveWorkflowApplications } from '@/lib/workflow/get-active-workflow-applications'
+import type { WorkflowApplication } from '@/lib/workflow/types'
 
-type ApplicationRow = Tables<'applications'>
-type JobRow = Tables<'jobs'>
-type JobScoreRow = Tables<'job_scores'>
-
-type HomeJob = Pick<
-  JobRow,
-  'id' | 'company' | 'title' | 'location' | 'status' | 'created_at' | 'archived_at'
->
-
-type HomeApplicationJob = Pick<
-  JobRow,
-  'id' | 'company' | 'title' | 'location' | 'archived_at'
->
-
-type RawApplicationRow = Pick<
-  ApplicationRow,
-  | 'id'
-  | 'job_id'
-  | 'status'
-  | 'applied_at'
-  | 'follow_up_1_due'
-  | 'follow_up_2_due'
-  | 'follow_up_1_sent_at'
-  | 'follow_up_2_sent_at'
-  | 'updated_at'
-  | 'notes'
-> & {
-  jobs: HomeApplicationJob | HomeApplicationJob[] | null
-}
-
-type HomeApplication = Pick<
-  ApplicationRow,
-  | 'id'
-  | 'job_id'
-  | 'status'
-  | 'applied_at'
-  | 'follow_up_1_due'
-  | 'follow_up_2_due'
-  | 'follow_up_1_sent_at'
-  | 'follow_up_2_sent_at'
-  | 'updated_at'
-  | 'notes'
-> & {
-  job: HomeApplicationJob | null
-}
-
-type HomeScore = Pick<JobScoreRow, 'job_id' | 'score' | 'created_at'>
-
-type PunchListItem = {
+type RecentJob = {
   id: string
-  kind: 'follow_up' | 'apply'
   company: string
   title: string
-  location: string
+  location: string | null
   status: string | null
-  score: number | null
-  reason: string
-  href: string
-  dueDate?: string | null
-  priority: number
+  updated_at: string
+  applications?:
+    | Array<{
+        status: string | null
+        updated_at: string | null
+        created_at: string | null
+      }>
+    | null
 }
 
-function normalizeJob(
-  value: HomeApplicationJob | HomeApplicationJob[] | null
-): HomeApplicationJob | null {
-  if (!value) return null
-  return Array.isArray(value) ? value[0] ?? null : value
+function startOfTodayLocal(): Date {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
 }
 
-function toHomeApplication(row: RawApplicationRow): HomeApplication {
-  return {
-    id: row.id,
-    job_id: row.job_id,
-    status: row.status,
-    applied_at: row.applied_at,
-    follow_up_1_due: row.follow_up_1_due,
-    follow_up_2_due: row.follow_up_2_due,
-    follow_up_1_sent_at: row.follow_up_1_sent_at,
-    follow_up_2_sent_at: row.follow_up_2_sent_at,
-    updated_at: row.updated_at,
-    notes: row.notes,
-    job: normalizeJob(row.jobs),
-  }
-}
-
-function buildLatestScoresMap(scores: HomeScore[]): Map<string, number | null> {
-  const map = new Map<string, number | null>()
-
-  for (const row of scores) {
-    if (!map.has(row.job_id)) {
-      map.set(row.job_id, row.score)
-    }
-  }
-
-  return map
-}
-
-function buildPunchList(
-  applications: HomeApplication[],
-  latestScoresByJobId: Map<string, number | null>
-): PunchListItem[] {
-  return buildActionItems(applications, latestScoresByJobId).map((item) => ({
-    id: item.id,
-    kind: item.kind === 'follow_up' ? 'follow_up' : 'apply',
-    company: item.company,
-    title: item.title,
-    location: item.location,
-    status: item.status,
-    score: item.score,
-    reason: item.reason,
-    href: item.href,
-    dueDate: item.dueDate,
-    priority: item.priorityScore,
-  }))
-}
-
-function toneClasses(tone: 'red' | 'green' | 'blue' | 'violet' | 'zinc') {
-  if (tone === 'red') {
-    return 'border-rose-200 bg-gradient-to-br from-rose-50 to-white'
-  }
-
-  if (tone === 'green') {
-    return 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white'
-  }
-
-  if (tone === 'blue') {
-    return 'border-blue-200 bg-gradient-to-br from-blue-50 to-white'
-  }
-
-  if (tone === 'violet') {
-    return 'border-violet-200 bg-gradient-to-br from-violet-50 to-white'
-  }
-
-  return 'border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-zinc-100'
-}
-
-function SummaryCard({
-  label,
-  value,
-  hint,
-  tone,
-}: {
-  label: string
-  value: string | number
-  hint: string
-  tone: 'red' | 'green' | 'blue' | 'violet' | 'zinc'
-}) {
-  return (
-    <div
-      className={`app-panel rounded-2xl border p-4 shadow-sm ${toneClasses(tone)}`}
-    >
-      <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-        {value}
-      </p>
-      <p className="mt-1 text-sm text-zinc-600">{hint}</p>
-    </div>
+function endOfTodayLocal(): Date {
+  const start = startOfTodayLocal()
+  return new Date(
+    start.getFullYear(),
+    start.getMonth(),
+    start.getDate(),
+    23,
+    59,
+    59,
+    999
   )
+}
+
+function parseDate(value: string | null | undefined): Date | null {
+  if (!value) return null
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function isDatePast(dateString: string | null | undefined): boolean {
+  const date = parseDate(dateString)
+  if (!date) return false
+
+  return date < startOfTodayLocal()
+}
+
+function isDateToday(dateString: string | null | undefined): boolean {
+  const date = parseDate(dateString)
+  if (!date) return false
+
+  const start = startOfTodayLocal()
+  const end = endOfTodayLocal()
+
+  return date >= start && date <= end
+}
+
+function isSnoozed(app: WorkflowApplication): boolean {
+  const snoozedUntil = parseDate(app.workflowMeta?.snoozedUntil)
+  if (!snoozedUntil) return false
+
+  return snoozedUntil > new Date()
 }
 
 function getStatusTone(status: string | null | undefined): string {
@@ -175,185 +77,87 @@ function getStatusTone(status: string | null | undefined): string {
       return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
     case 'interviewing':
       return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+    case 'rejected':
+    case 'closed':
+      return 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'
+    case 'new':
+      return 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
+    case 'scored':
+      return 'bg-violet-50 text-violet-700 ring-1 ring-violet-200'
+    case 'queued':
+      return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+    case 'assets_generated':
+      return 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200'
+    case 'ready_to_apply':
+      return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
     default:
       return 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
   }
 }
 
-function PunchListCard({
-  item,
-  index,
+function getPrimaryApplicationStatusForJob(job: RecentJob): string | null {
+  const applications = job.applications ?? []
+  if (!applications.length) return null
+
+  const sorted = [...applications].sort((a, b) => {
+    const aTime = new Date(a.updated_at ?? a.created_at ?? 0).getTime()
+    const bTime = new Date(b.updated_at ?? b.created_at ?? 0).getTime()
+    return bTime - aTime
+  })
+
+  return sorted[0]?.status ?? null
+}
+
+function getDashboardJobStatus(job: RecentJob): string {
+  return getPrimaryApplicationStatusForJob(job) ?? job.status ?? 'unknown'
+}
+
+function getDashboardJobStatusLabel(job: RecentJob): string {
+  const applicationStatus = getPrimaryApplicationStatusForJob(job)
+  if (applicationStatus) return applicationStatus
+
+  switch (job.status) {
+    case 'assets_generated':
+      return 'assets generated'
+    case 'ready_to_apply':
+      return 'ready to apply'
+    default:
+      return job.status ?? 'unknown'
+  }
+}
+
+function SummaryCard({
+  label,
+  value,
+  hint,
+  tone = 'zinc',
 }: {
-  item: PunchListItem
-  index: number
+  label: string
+  value: string | number
+  hint: string
+  tone?: 'red' | 'green' | 'blue' | 'violet' | 'zinc'
 }) {
-  const isTop = index === 0
-  const isFollowUp = item.kind === 'follow_up'
+  const toneClasses =
+    tone === 'red'
+      ? 'border-rose-200 bg-gradient-to-br from-rose-50 to-white'
+      : tone === 'green'
+        ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white'
+        : tone === 'blue'
+          ? 'border-blue-200 bg-gradient-to-br from-blue-50 to-white'
+          : tone === 'violet'
+            ? 'border-violet-200 bg-gradient-to-br from-violet-50 to-white'
+            : 'border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-zinc-100'
 
   return (
-    <article
-      className={[
-        'app-panel overflow-hidden rounded-2xl border bg-white shadow-sm',
-        isTop ? 'border-zinc-300 ring-1 ring-zinc-200' : 'border-zinc-200',
-      ].join(' ')}
-    >
-      <div
-        className={[
-          'border-b px-5 py-4 sm:px-6',
-          isTop
-            ? 'border-zinc-200 bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-800 text-white'
-            : 'border-zinc-100 bg-gradient-to-r from-white via-zinc-50/60 to-white',
-        ].join(' ')}
-      >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={[
-                  'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[0.18em] uppercase',
-                  isTop
-                    ? 'bg-white/15 text-white ring-1 ring-white/15'
-                    : 'bg-zinc-900 text-white',
-                ].join(' ')}
-              >
-                #{index + 1}
-              </span>
-
-              <span
-                className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                  isFollowUp
-                    ? 'bg-orange-50 text-orange-700 ring-1 ring-orange-200'
-                    : 'bg-violet-50 text-violet-700 ring-1 ring-violet-200'
-                }`}
-              >
-                {isFollowUp ? 'Follow-Up' : 'Apply'}
-              </span>
-
-              <span
-                className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${getStatusTone(
-                  item.status
-                )}`}
-              >
-                {item.status ?? '—'}
-              </span>
-
-              {isTop ? (
-                <span className="inline-flex items-center rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white ring-1 ring-white/15">
-                  Top priority
-                </span>
-              ) : null}
-            </div>
-
-            <div className="space-y-1">
-              <p
-                className={[
-                  'text-sm font-medium',
-                  isTop ? 'text-zinc-200' : 'text-zinc-500',
-                ].join(' ')}
-              >
-                {item.company}
-              </p>
-              <h3
-                className={[
-                  'text-xl font-semibold tracking-tight',
-                  isTop ? 'text-white' : 'text-zinc-950',
-                ].join(' ')}
-              >
-                {item.title}
-              </h3>
-              <p
-                className={[
-                  'text-sm',
-                  isTop ? 'text-zinc-300' : 'text-zinc-600',
-                ].join(' ')}
-              >
-                {item.location}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 lg:min-w-[220px]">
-            <div
-              className={[
-                'rounded-2xl px-3 py-3 text-center',
-                isTop
-                  ? 'border border-white/10 bg-white/5'
-                  : 'border border-zinc-200 bg-white',
-              ].join(' ')}
-            >
-              <p
-                className={[
-                  'text-[11px] font-medium tracking-[0.16em] uppercase',
-                  isTop ? 'text-zinc-300' : 'text-zinc-500',
-                ].join(' ')}
-              >
-                Score
-              </p>
-              <p
-                className={[
-                  'mt-1 text-lg font-semibold',
-                  isTop ? 'text-white' : 'text-zinc-950',
-                ].join(' ')}
-              >
-                {item.score !== null ? `${item.score}/100` : '—'}
-              </p>
-            </div>
-
-            <div
-              className={[
-                'rounded-2xl px-3 py-3 text-center',
-                isTop
-                  ? 'border border-white/10 bg-white/5'
-                  : 'border border-zinc-200 bg-white',
-              ].join(' ')}
-            >
-              <p
-                className={[
-                  'text-[11px] font-medium tracking-[0.16em] uppercase',
-                  isTop ? 'text-zinc-300' : 'text-zinc-500',
-                ].join(' ')}
-              >
-                Due
-              </p>
-              <p
-                className={[
-                  'mt-1 text-sm font-semibold',
-                  isTop ? 'text-white' : 'text-zinc-950',
-                ].join(' ')}
-              >
-                {item.dueDate ? formatDate(item.dueDate) : 'No due date'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4 px-5 py-5 sm:px-6">
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 px-4 py-4">
-          <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
-            Recommended next step
-          </p>
-          <p className="mt-2 text-base font-semibold tracking-tight text-zinc-950">
-            {item.reason}
-          </p>
-          <p className="mt-2 text-sm leading-6 text-zinc-700">
-            {isFollowUp
-              ? 'This follow-up is currently actionable based on due timestamps and existing pipeline rules.'
-              : 'This application is ready to move forward and is being surfaced ahead of lower-priority work.'}
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3 border-t border-zinc-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-zinc-500">
-            Highest-priority work should be handled first.
-          </p>
-
-          <Link href={item.href} className="app-button-primary">
-            Open
-          </Link>
-        </div>
-      </div>
-    </article>
+    <div className={`app-panel rounded-2xl border p-4 shadow-sm ${toneClasses}`}>
+      <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+        {value}
+      </p>
+      <p className="mt-1 text-sm text-zinc-600">{hint}</p>
+    </div>
   )
 }
 
@@ -394,75 +198,32 @@ function SectionCard({
   )
 }
 
-function PipelineOverviewCard({
-  jobsCount,
-  scoredCount,
+function PipelineOverview({
   readyCount,
   appliedCount,
   interviewingCount,
 }: {
-  jobsCount: number
-  scoredCount: number
   readyCount: number
   appliedCount: number
   interviewingCount: number
 }) {
-  const safeJobsCount = Math.max(jobsCount, 1)
+  const total = readyCount + appliedCount + interviewingCount
+  const safeTotal = Math.max(total, 1)
 
-  const scoredWidth = (scoredCount / safeJobsCount) * 100
-  const readyWidth = (readyCount / safeJobsCount) * 100
-  const appliedWidth = (appliedCount / safeJobsCount) * 100
-  const interviewingWidth = (interviewingCount / safeJobsCount) * 100
+  const readyWidth = (readyCount / safeTotal) * 100
+  const appliedWidth = (appliedCount / safeTotal) * 100
+  const interviewingWidth = (interviewingCount / safeTotal) * 100
 
   return (
-    <section className="app-panel rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
-      <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
-        <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
-          Pipeline Overview
-        </h2>
-        <p className="text-sm font-medium text-zinc-500">{jobsCount} jobs</p>
-      </div>
-
-      <div className="pt-5">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-lg bg-emerald-500 px-1.5 text-xs font-semibold text-white">
-              {scoredCount}
-            </span>
-            <span className="text-sm font-medium text-zinc-700">Scored</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-lg bg-blue-500 px-1.5 text-xs font-semibold text-white">
-              {readyCount}
-            </span>
-            <span className="text-sm font-medium text-zinc-700">Ready</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-lg bg-violet-500 px-1.5 text-xs font-semibold text-white">
-              {appliedCount}
-            </span>
-            <span className="text-sm font-medium text-zinc-700">Applied</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-lg bg-amber-500 px-1.5 text-xs font-semibold text-white">
-              {interviewingCount}
-            </span>
-            <span className="text-sm font-medium text-zinc-700">
-              Interviewing
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-5 overflow-hidden rounded-lg bg-zinc-200">
+    <SectionCard
+      title="Pipeline Overview"
+      description={`${total} active applications across lifecycle stages.`}
+      href="/jobs"
+      hrefLabel="Open Jobs"
+    >
+      <div className="space-y-5">
+        <div className="overflow-hidden rounded-lg bg-zinc-200">
           <div className="flex h-4 w-full">
-            <div
-              className="bg-emerald-500"
-              style={{ width: `${scoredWidth}%` }}
-              title={`Scored: ${scoredCount}`}
-            />
             <div
               className="bg-blue-500"
               style={{ width: `${readyWidth}%` }}
@@ -481,349 +242,343 @@ function PipelineOverviewCard({
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-4 divide-x divide-zinc-200">
-          <div className="px-2 text-center first:pl-0">
-            <p className="text-4xl font-semibold tracking-tight text-zinc-950">
-              {scoredCount}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-lg bg-blue-500 px-1.5 text-xs font-semibold text-white">
+                {readyCount}
+              </span>
+              <span className="text-sm font-medium text-zinc-700">Ready</span>
+            </div>
+            <p className="mt-3 text-sm text-zinc-500">
+              Jobs ready for application work.
             </p>
-            <p className="mt-1 text-sm text-zinc-500">Scored</p>
           </div>
 
-          <div className="px-2 text-center">
-            <p className="text-4xl font-semibold tracking-tight text-zinc-950">
-              {readyCount}
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-lg bg-violet-500 px-1.5 text-xs font-semibold text-white">
+                {appliedCount}
+              </span>
+              <span className="text-sm font-medium text-zinc-700">Applied</span>
+            </div>
+            <p className="mt-3 text-sm text-zinc-500">
+              Applications currently in post-submit follow-up mode.
             </p>
-            <p className="mt-1 text-sm text-zinc-500">Ready</p>
           </div>
 
-          <div className="px-2 text-center">
-            <p className="text-4xl font-semibold tracking-tight text-zinc-950">
-              {appliedCount}
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-lg bg-amber-500 px-1.5 text-xs font-semibold text-white">
+                {interviewingCount}
+              </span>
+              <span className="text-sm font-medium text-zinc-700">
+                Interviewing
+              </span>
+            </div>
+            <p className="mt-3 text-sm text-zinc-500">
+              Active interview process items.
             </p>
-            <p className="mt-1 text-sm text-zinc-500">Applied</p>
-          </div>
-
-          <div className="px-2 text-center last:pr-0">
-            <p className="text-4xl font-semibold tracking-tight text-zinc-950">
-              {interviewingCount}
-            </p>
-            <p className="mt-1 text-sm text-zinc-500">Interviewing</p>
           </div>
         </div>
       </div>
-    </section>
+    </SectionCard>
   )
 }
 
-function ErrorState({
-  title,
-  message,
+function UrgentAttention({
+  overdueFollowUps,
+  dueTodayFollowUps,
+  readyToApply,
+  snoozedCount,
 }: {
-  title: string
-  message: string
+  overdueFollowUps: number
+  dueTodayFollowUps: number
+  readyToApply: number
+  snoozedCount: number
 }) {
   return (
-    <main className="space-y-6">
-      <section className="space-y-2">
-        <p className="text-xs font-semibold tracking-[0.2em] text-zinc-500 uppercase">
-          Overview
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">
-          Dashboard
-        </h1>
-      </section>
+    <SectionCard
+      title="Urgent Attention"
+      description="Summary only. The action queue itself belongs on Today."
+      href="/today"
+      hrefLabel="Open Today"
+    >
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4">
+          <p className="text-[11px] font-medium tracking-[0.16em] text-rose-700 uppercase">
+            Overdue
+          </p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
+            {overdueFollowUps}
+          </p>
+          <p className="mt-1 text-sm text-zinc-600">Follow-ups past due.</p>
+        </div>
 
-      <section className="app-panel rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
-        <p className="text-xs font-semibold tracking-[0.16em] text-red-700 uppercase">
-          Load error
-        </p>
-        <h2 className="mt-2 text-lg font-semibold text-red-950">{title}</h2>
-        <p className="mt-2 text-sm text-red-800">{message}</p>
-      </section>
-    </main>
+        <div className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4">
+          <p className="text-[11px] font-medium tracking-[0.16em] text-orange-700 uppercase">
+            Due Today
+          </p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
+            {dueTodayFollowUps}
+          </p>
+          <p className="mt-1 text-sm text-zinc-600">
+            Follow-ups due today.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
+          <p className="text-[11px] font-medium tracking-[0.16em] text-violet-700 uppercase">
+            Ready to Apply
+          </p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
+            {readyToApply}
+          </p>
+          <p className="mt-1 text-sm text-zinc-600">
+            Ready-stage applications not currently snoozed.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+          <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-600 uppercase">
+            Snoozed
+          </p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
+            {snoozedCount}
+          </p>
+          <p className="mt-1 text-sm text-zinc-600">
+            Workflow items hidden until later.
+          </p>
+        </div>
+      </div>
+    </SectionCard>
   )
 }
 
-export default async function HomePage() {
+function QuickLinks() {
+  return (
+    <SectionCard
+      title="Quick Links"
+      description="Use Dashboard to understand state, then jump into the right place."
+    >
+      <div className="grid gap-3">
+        <Link href="/today" className="rounded-2xl border border-zinc-200 bg-white p-4 transition hover:bg-zinc-50">
+          <p className="font-medium text-zinc-950">Open Today</p>
+          <p className="mt-1 text-sm text-zinc-600">
+            Work the queue, handle follow-ups, and move applications forward.
+          </p>
+        </Link>
+
+        <Link href="/jobs" className="rounded-2xl border border-zinc-200 bg-white p-4 transition hover:bg-zinc-50">
+          <p className="font-medium text-zinc-950">Browse Jobs</p>
+          <p className="mt-1 text-sm text-zinc-600">
+            Review all opportunities, search, filter, and edit records.
+          </p>
+        </Link>
+
+        <Link href="/jobs/new" className="rounded-2xl border border-zinc-200 bg-white p-4 transition hover:bg-zinc-50">
+          <p className="font-medium text-zinc-950">Add Job</p>
+          <p className="mt-1 text-sm text-zinc-600">
+            Capture a new opportunity quickly.
+          </p>
+        </Link>
+      </div>
+    </SectionCard>
+  )
+}
+
+function RecentActivity({ jobs }: { jobs: RecentJob[] }) {
+  return (
+    <SectionCard
+      title="Recent Activity"
+      description="Recently updated active jobs."
+      href="/jobs"
+      hrefLabel="View all jobs"
+    >
+      {jobs.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
+          No recent activity yet.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {jobs.map((job) => (
+            <Link
+              key={job.id}
+              href={`/jobs/${job.id}`}
+              className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-4 transition hover:bg-zinc-50 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold tracking-tight text-zinc-950">
+                  {job.company} · {job.title}
+                </p>
+                <p className="mt-1 truncate text-sm text-zinc-600">
+                  {job.location ?? '—'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${getStatusTone(
+                    getDashboardJobStatus(job)
+                  )}`}
+                >
+                  {getDashboardJobStatusLabel(job)}
+                </span>
+                <span className="text-xs text-zinc-500">
+                  Updated {formatDate(job.updated_at)}
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  )
+}
+
+export default async function DashboardPage() {
   const supabase = await createClient()
 
   const [
-    { data: jobs, error: jobsError },
-    { data: applications, error: applicationsError },
+    activeJobsResult,
+    recentJobsResult,
+    workflowApplications,
   ] = await Promise.all([
     supabase
       .from('jobs')
-      .select('id, company, title, location, status, created_at, archived_at')
-      .order('created_at', { ascending: false }),
+      .select('id', { count: 'exact', head: true })
+      .is('archived_at', null),
     supabase
-      .from('applications')
-      .select(`
+      .from('jobs')
+      .select(
+        `
         id,
-        job_id,
+        company,
+        title,
+        location,
         status,
-        applied_at,
-        follow_up_1_due,
-        follow_up_2_due,
-        follow_up_1_sent_at,
-        follow_up_2_sent_at,
         updated_at,
-        notes,
-        jobs:jobs!applications_job_id_fkey (
-          id,
-          company,
-          title,
-          location,
-          archived_at
+        applications (
+          status,
+          updated_at,
+          created_at
         )
-      `)
-      .order('updated_at', { ascending: false }),
+      `
+      )
+      .is('archived_at', null)
+      .order('updated_at', { ascending: false })
+      .limit(6),
+    getActiveWorkflowApplications(),
   ])
 
-  if (jobsError) {
-    return <ErrorState title="Failed to load jobs." message={jobsError.message} />
+  if (activeJobsResult.error) {
+    throw new Error(activeJobsResult.error.message)
   }
 
-  if (applicationsError) {
-    return (
-      <ErrorState
-        title="Failed to load applications."
-        message={applicationsError.message}
-      />
-    )
+  if (recentJobsResult.error) {
+    throw new Error(recentJobsResult.error.message)
   }
 
-  const typedJobs: HomeJob[] = (jobs ?? []).filter(
-    (job) => job.archived_at == null
-  )
+  const activeJobsCount = activeJobsResult.count ?? 0
+  const recentJobs = (recentJobsResult.data ?? []) as RecentJob[]
 
-  const typedApplications = ((applications ?? []) as RawApplicationRow[])
-    .map(toHomeApplication)
-    .filter((app) => app.job?.archived_at == null)
-
-  const jobIds = typedApplications.map((row) => row.job_id)
-  let latestScoresByJobId = new Map<string, number | null>()
-
-  if (jobIds.length > 0) {
-    const { data: scores, error: scoresError } = await supabase
-      .from('job_scores')
-      .select('job_id, score, created_at')
-      .in('job_id', jobIds)
-      .order('created_at', { ascending: false })
-
-    if (scoresError) {
-      return (
-        <ErrorState
-          title="Failed to load job scores."
-          message={scoresError.message}
-        />
-      )
-    }
-
-    latestScoresByJobId = buildLatestScoresMap((scores ?? []) as HomeScore[])
-  }
-
-  const applicationsWithFollowUpState = typedApplications.map((app) => ({
-    ...app,
-    followUpState: getFollowUpState({
-      follow_up_1_due: app.follow_up_1_due,
-      follow_up_2_due: app.follow_up_2_due,
-      follow_up_1_sent_at: app.follow_up_1_sent_at,
-      follow_up_2_sent_at: app.follow_up_2_sent_at,
-    }),
-  }))
-
-  const dueNowCount = applicationsWithFollowUpState.filter(
-    (app) => app.followUpState.hasDueNow
-  ).length
-
-  const readyCount = typedApplications.filter(
-    (app) => app.status === 'ready'
-  ).length
-
-  const appliedCount = typedApplications.filter(
-    (app) => app.status === 'applied'
-  ).length
-
-  const interviewingCount = typedApplications.filter(
+  const readyCount = workflowApplications.filter((app) => app.status === 'ready').length
+  const appliedCount = workflowApplications.filter((app) => app.status === 'applied').length
+  const interviewingCount = workflowApplications.filter(
     (app) => app.status === 'interviewing'
   ).length
 
-  const scoredCount = typedJobs.filter((job) =>
-    latestScoresByJobId.has(job.id)
+  const overdueFollowUps = workflowApplications.filter(
+    (app) => !isSnoozed(app) && isDatePast(app.followUpDate)
   ).length
 
-  const recentJobs = typedJobs.slice(0, 5)
-  const punchList = buildPunchList(typedApplications, latestScoresByJobId).slice(
-    0,
-    6
-  )
+  const dueTodayFollowUps = workflowApplications.filter(
+    (app) => !isSnoozed(app) && isDateToday(app.followUpDate)
+  ).length
 
-  const jobsThisWeek = typedJobs.filter((job) => {
-    if (!job.created_at) return false
+  const snoozedCount = workflowApplications.filter(isSnoozed).length
 
-    const created = new Date(job.created_at)
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-
-    return created >= sevenDaysAgo
-  }).length
-
-  const topPunch = punchList[0] ?? null
+  const readyToApplyCount = workflowApplications.filter(
+    (app) => app.status === 'ready' && !isSnoozed(app)
+  ).length
 
   return (
-    <main className="space-y-8">
-      <section className="space-y-4">
+    <div className="space-y-8">
+      <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-2">
-          <p className="text-xs font-semibold tracking-[0.2em] text-zinc-500 uppercase">
-            Overview
+          <p className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">
+            Dashboard
           </p>
           <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">
-            Dashboard
+            Overview of pipeline state
           </h1>
           <p className="max-w-3xl text-sm leading-6 text-zinc-600">
-            Snapshot of what needs attention next across applications,
-            follow-ups, and recent pipeline activity.
+            Use Dashboard to understand what is going on, then jump into Today
+            for execution or Jobs for record management.
           </p>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <SummaryCard
-            label="Follow-ups due"
-            value={dueNowCount}
-            hint="Immediate follow-up work based on due timestamps."
-            tone={dueNowCount > 0 ? 'red' : 'zinc'}
-          />
-          <SummaryCard
-            label="Ready to apply"
-            value={readyCount}
-            hint="Applications that are currently actionable."
-            tone={readyCount > 0 ? 'violet' : 'zinc'}
-          />
-          <SummaryCard
-            label="Applications"
-            value={typedApplications.length}
-            hint="Total tracked active application records."
-            tone="blue"
-          />
-          <SummaryCard
-            label="Jobs this week"
-            value={jobsThisWeek}
-            hint="New active roles added in the last 7 days."
-            tone="green"
-          />
-          <SummaryCard
-            label="Immediate focus"
-            value={topPunch ? topPunch.company : 'Clear'}
-            hint={
-              topPunch
-                ? topPunch.reason
-                : 'No urgent punch-list item right now.'
-            }
-            tone="zinc"
-          />
+        <div className="flex flex-wrap gap-2">
+          <Link href="/today" className="app-button-primary">
+            Open Today
+          </Link>
+          <Link href="/jobs" className="app-button">
+            View Jobs
+          </Link>
         </div>
       </section>
 
-      <PipelineOverviewCard
-        jobsCount={typedJobs.length}
-        scoredCount={scoredCount}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <SummaryCard
+          label="Total Jobs"
+          value={activeJobsCount}
+          hint="Active, non-archived opportunities."
+          tone="zinc"
+        />
+        <SummaryCard
+          label="Ready"
+          value={readyCount}
+          hint="Applications ready for work."
+          tone="blue"
+        />
+        <SummaryCard
+          label="Applied"
+          value={appliedCount}
+          hint="Submitted and awaiting progression."
+          tone="violet"
+        />
+        <SummaryCard
+          label="Interviewing"
+          value={interviewingCount}
+          hint="In active interview process."
+          tone="green"
+        />
+        <SummaryCard
+          label="Overdue"
+          value={overdueFollowUps}
+          hint="Follow-ups that need attention."
+          tone="red"
+        />
+      </section>
+
+      <PipelineOverview
         readyCount={readyCount}
         appliedCount={appliedCount}
         interviewingCount={interviewingCount}
       />
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <SectionCard
-          title="Today's punch list"
-          description="Highest-priority work surfaced from due follow-ups, ready applications, and follow-up timing windows."
-          href="/today"
-          hrefLabel="Open Today"
-        >
-          {punchList.length ? (
-            <div className="space-y-4">
-              {punchList.map((item, index) => (
-                <PunchListCard key={item.id} item={item} index={index} />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-5">
-              <h3 className="text-lg font-semibold tracking-tight text-zinc-950">
-                Nothing urgent right now
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-zinc-600">
-                No due follow-ups and no ready applications currently match the
-                dashboard rules.
-              </p>
-            </div>
-          )}
-        </SectionCard>
+      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <UrgentAttention
+          overdueFollowUps={overdueFollowUps}
+          dueTodayFollowUps={dueTodayFollowUps}
+          readyToApply={readyToApplyCount}
+          snoozedCount={snoozedCount}
+        />
 
-        <div className="space-y-6">
-          <SectionCard
-            title="Recent jobs"
-            description="Most recently added active opportunities entering the pipeline."
-            href="/jobs"
-            hrefLabel="View jobs"
-          >
-            {recentJobs.length ? (
-              <div className="space-y-3">
-                {recentJobs.map((job, index) => (
-                  <article
-                    key={job.id}
-                    className="rounded-2xl border border-zinc-200 bg-white px-4 py-4"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center rounded-full bg-zinc-900 px-2.5 py-1 text-[11px] font-semibold tracking-[0.18em] text-white uppercase">
-                            #{index + 1}
-                          </span>
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${getStatusTone(
-                              job.status
-                            )}`}
-                          >
-                            {job.status ?? '—'}
-                          </span>
-                        </div>
-
-                        <h3 className="text-base font-semibold tracking-tight text-zinc-950">
-                          {job.title}
-                        </h3>
-                        <p className="text-sm text-zinc-600">{job.company}</p>
-                        <p className="text-sm text-zinc-500">
-                          {job.location || 'No location'}
-                        </p>
-                      </div>
-
-                      <Link href={`/jobs/${job.id}`} className="app-button">
-                        Open
-                      </Link>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-zinc-600">No active jobs yet.</p>
-            )}
-          </SectionCard>
-
-          <SectionCard
-            title="Profile"
-            description="Manage candidate details, defaults, and resume-backed profile information used across applications."
-            href="/profile"
-            hrefLabel="Open profile"
-          >
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4">
-              <p className="text-sm leading-6 text-zinc-700">
-                Profile is intentionally out of the main nav now. Keep the header
-                focused on execution, and use the dashboard as the control center
-                for setup and maintenance tasks.
-              </p>
-            </div>
-          </SectionCard>
-        </div>
+        <QuickLinks />
       </section>
-    </main>
+
+      <RecentActivity jobs={recentJobs} />
+    </div>
   )
 }

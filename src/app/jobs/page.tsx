@@ -6,7 +6,15 @@ import { formatDate } from '@/lib/dates'
 type JobRow = Pick<
   Database['public']['Tables']['jobs']['Row'],
   'id' | 'company' | 'title' | 'location' | 'status' | 'created_at' | 'archived_at'
->
+> & {
+  applications?:
+    | Array<{
+        status: string | null
+        updated_at: string | null
+        created_at: string | null
+      }>
+    | null
+}
 
 type JobScoreRow = Pick<
   Database['public']['Tables']['job_scores']['Row'],
@@ -29,16 +37,60 @@ function getScoreTone(score: number | null) {
 
 function getStatusTone(status: string | null | undefined) {
   switch (status) {
-    case 'new':
+    case 'ready':
       return 'bg-sky-50 text-sky-700 ring-1 ring-sky-200'
+    case 'applied':
+      return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+    case 'interviewing':
+      return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+    case 'rejected':
+    case 'closed':
+      return 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'
+    case 'new':
+      return 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
     case 'scored':
       return 'bg-violet-50 text-violet-700 ring-1 ring-violet-200'
     case 'queued':
       return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+    case 'assets_generated':
+      return 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200'
+    case 'ready_to_apply':
+      return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
     case 'archived':
       return 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'
     default:
       return 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
+  }
+}
+
+function getPrimaryApplicationStatus(job: JobRow): string | null {
+  const applications = job.applications ?? []
+  if (!applications.length) return null
+
+  const sorted = [...applications].sort((a, b) => {
+    const aTime = new Date(a.updated_at ?? a.created_at ?? 0).getTime()
+    const bTime = new Date(b.updated_at ?? b.created_at ?? 0).getTime()
+    return bTime - aTime
+  })
+
+  return sorted[0]?.status ?? null
+}
+
+function getDisplayStatus(job: JobRow): string {
+  return getPrimaryApplicationStatus(job) ?? job.status ?? 'unknown'
+}
+
+function getDisplayStatusLabel(job: JobRow): string {
+  const applicationStatus = getPrimaryApplicationStatus(job)
+  if (applicationStatus) return applicationStatus
+
+  switch (job.status) {
+    case 'assets_generated':
+      return 'assets generated'
+    case 'ready_to_apply':
+      return 'ready to apply'
+    default:
+      return job.status ?? 'unknown'
   }
 }
 
@@ -96,10 +148,10 @@ function EmptyState() {
             Add job
           </Link>
           <Link
-            href="/applications"
+            href="/today"
             className="app-button inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
           >
-            View applications
+            Open Today
           </Link>
         </div>
       </div>
@@ -143,7 +195,22 @@ export default async function JobsPage() {
 
   const { data: jobs, error: jobsError } = await supabase
     .from('jobs')
-    .select('id, company, title, location, status, created_at, archived_at')
+    .select(
+      `
+      id,
+      company,
+      title,
+      location,
+      status,
+      created_at,
+      archived_at,
+      applications (
+        status,
+        updated_at,
+        created_at
+      )
+    `
+    )
     .order('created_at', { ascending: false })
 
   if (jobsError) {
@@ -205,10 +272,10 @@ export default async function JobsPage() {
 
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/applications"
+              href="/today"
               className="app-button inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
             >
-              Applications
+              Today
             </Link>
             <Link
               href="/jobs/new"
@@ -250,6 +317,9 @@ export default async function JobsPage() {
         <section className="space-y-4">
           {activeJobs.map((job, index) => {
             const latestScore = latestScoresByJobId.get(job.id) ?? null
+            const displayStatus = getDisplayStatus(job)
+            const displayStatusLabel = getDisplayStatusLabel(job)
+            const hasApplicationStatus = Boolean(getPrimaryApplicationStatus(job))
 
             return (
               <article
@@ -265,10 +335,10 @@ export default async function JobsPage() {
                         </span>
                         <span
                           className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${getStatusTone(
-                            job.status
+                            displayStatus
                           )}`}
                         >
-                          {job.status ?? 'unknown'}
+                          {displayStatusLabel}
                         </span>
                         <span
                           className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${getScoreTone(
@@ -334,11 +404,12 @@ export default async function JobsPage() {
                         Pipeline state
                       </p>
                       <p className="mt-2 text-sm font-medium text-zinc-900">
-                        {job.status ?? 'unknown'}
+                        {displayStatusLabel}
                       </p>
                       <p className="mt-1 text-xs text-zinc-500">
-                        Stored on the job record. Downstream flow remains driven
-                        by existing pipeline logic.
+                        {hasApplicationStatus
+                          ? 'Driven by the linked application lifecycle.'
+                          : 'No application yet. Showing job prep state.'}
                       </p>
                     </div>
                   </div>

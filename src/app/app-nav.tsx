@@ -7,21 +7,17 @@ type NavItem = {
   href: string
   label: string
 }
-// added profile
+
 const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Dashboard' },
   { href: '/today', label: 'Today' },
-  { href: '/apply', label: 'Apply Hub' },
   { href: '/jobs', label: 'Jobs' },
-  { href: '/applications', label: 'Applications' },
-  { href: '/follow-ups', label: 'Follow-Ups' },
-  { label: 'Profile', href: '/profile' },
+  { href: '/profile', label: 'Profile' },
 ]
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/'
 
-  // Jobs should stay active for all nested routes
   if (href === '/jobs') {
     return pathname === '/jobs' || pathname.startsWith('/jobs/')
   }
@@ -45,7 +41,6 @@ export function AppNav() {
           >
             {item.label}
           </Link>
-          
         )
       })}
     </nav>
