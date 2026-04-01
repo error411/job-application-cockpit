@@ -17,6 +17,7 @@ export type ActionQueueApplication = FollowUpTimingFields & {
 export type ActionQueueItem = {
   kind: 'follow_up' | 'application'
   id: string
+  applicationId: string
   jobId: string
   company: string
   title: string
@@ -54,6 +55,7 @@ export function buildActionItems(
       items.push({
         kind: 'follow_up',
         id: `${app.id}-fu1`,
+        applicationId: app.id,
         jobId: app.job_id,
         company,
         title,
@@ -75,6 +77,7 @@ export function buildActionItems(
       items.push({
         kind: 'follow_up',
         id: `${app.id}-fu2`,
+        applicationId: app.id,
         jobId: app.job_id,
         company,
         title,
@@ -96,6 +99,7 @@ export function buildActionItems(
       items.push({
         kind: 'application',
         id: app.id,
+        applicationId: app.id,
         jobId: app.job_id,
         company,
         title,
@@ -117,6 +121,7 @@ export function buildActionItems(
       items.push({
         kind: 'application',
         id: `${app.id}-follow-up-upcoming`,
+        applicationId: app.id,
         jobId: app.job_id,
         company,
         title,
@@ -133,6 +138,7 @@ export function buildActionItems(
       items.push({
         kind: 'application',
         id: `${app.id}-interviewing`,
+        applicationId: app.id,
         jobId: app.job_id,
         company,
         title,
