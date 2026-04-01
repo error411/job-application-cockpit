@@ -63,7 +63,7 @@ export async function enqueueAutomationJob(input: {
 }
 
 export async function getDueAutomationJobs(limit = 10) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const now = new Date().toISOString()
 
@@ -83,7 +83,7 @@ export async function getDueAutomationJobs(limit = 10) {
 }
 
 export async function markAutomationJobProcessing(jobId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const updatePayload: AutomationJobUpdate = {
     status: 'processing',
@@ -106,7 +106,7 @@ export async function markAutomationJobProcessing(jobId: string) {
 }
 
 export async function markAutomationJobCompleted(jobId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const updatePayload: AutomationJobUpdate = {
     status: 'completed',
@@ -137,7 +137,7 @@ export async function markAutomationJobFailed(
   job: QueuedAutomationJob,
   errorMessage: string,
 ) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const nextAttempts = job.attempts + 1
   const hitMaxAttempts = nextAttempts >= job.max_attempts
