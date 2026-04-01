@@ -45,6 +45,27 @@ export type ActiveWorkflowApplicationRow = Pick<
   job: WorkflowJob | null
 }
 
+type WorkflowApplicationsQuery = {
+  select: (query: string) => {
+    in: (
+      column: string,
+      values: readonly string[]
+    ) => {
+      order: (
+        column: string,
+        options: { ascending: boolean }
+      ) => Promise<{
+        data: RawWorkflowApplicationRow[] | null
+        error: { message: string } | null
+      }>
+    }
+  }
+}
+
+type WorkflowApplicationsSupabase = {
+  from: (table: 'applications') => unknown
+}
+
 function normalizeJob(
   value: WorkflowJob | WorkflowJob[] | null
 ): WorkflowJob | null {
@@ -79,56 +100,40 @@ function toActiveWorkflowApplicationRow(
 }
 
 export async function getActiveWorkflowApplications(
-  supabase: {
-    from: (table: 'applications') => unknown
-  }
+  supabase: WorkflowApplicationsSupabase
 ): Promise<ActiveWorkflowApplicationRow[]> {
-  const query = supabase
-  .from('applications') as {
-    select: (query: string) => {
-      in: (
-        column: string,
-        values: readonly string[]
-      ) => {
-        order: (
-          column: string,
-          options: { ascending: boolean }
-        ) => Promise<{
-          data: RawWorkflowApplicationRow[] | null
-          error: { message: string } | null
-        }>
-      }
-    }
-  }
+  const query = supabase.from('applications') as WorkflowApplicationsQuery
 
-const { data, error } = await query
-  .select(`
-    id,
-    job_id,
-    status,
-    applied_at,
-    follow_up_1_due,
-    follow_up_2_due,
-    follow_up_1_sent_at,
-    follow_up_2_sent_at,
-    notes,
-    updated_at,
-    jobs:jobs!applications_job_id_fkey (
+  const { data, error } = await query
+    .select(`
       id,
-      company,
-      title,
-      location,
-      archived_at
-    )
-  `)
-  .in('status', ACTIVE_APPLICATION_STATUSES)
-  .order('updated_at', { ascending: false })
+      job_id,
+      status,
+      applied_at,
+      follow_up_1_due,
+      follow_up_2_due,
+      follow_up_1_sent_at,
+      follow_up_2_sent_at,
+      notes,
+      updated_at,
+      jobs:jobs!applications_job_id_fkey (
+        id,
+        company,
+        title,
+        location,
+        archived_at
+      )
+    `)
+    .in('status', ACTIVE_APPLICATION_STATUSES)
+    .order('updated_at', { ascending: false })
 
   if (error) {
     throw new Error(error.message)
   }
 
-  return ((data ?? []) as RawWorkflowApplicationRow[])
+  const rows = (data ?? []) as RawWorkflowApplicationRow[]
+
+  return rows
     .map(toActiveWorkflowApplicationRow)
-    .filter((app) => app.job?.archived_at == null)
+    .filter((app) => app.job !== null && app.job.archived_at == null)
 }
