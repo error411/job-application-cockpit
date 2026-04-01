@@ -1,5 +1,5 @@
 import OpenAI from 'openai'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -88,7 +88,7 @@ function getNextFollowupStageToGenerate(
 }
 
 export async function generateFollowupAssetsForJob(jobId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const [
     { data: applicationData, error: applicationError },

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { TablesInsert, TablesUpdate } from '@/lib/supabase/types'
 import {
   isApplicationStatus,
@@ -35,7 +35,7 @@ export async function upsertApplicationForJob({
   status,
   notes,
 }: UpsertApplicationInput) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const normalizedStatus: ApplicationStatus =
     typeof status === 'string' && isApplicationStatus(status)

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { openai } from '@/lib/openai/client'
 import type {
   CandidateProfileRow,
@@ -71,7 +71,7 @@ function formatDateRange(
 }
 
 export async function scoreJobService(jobId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')

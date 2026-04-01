@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { TablesUpdate } from '@/lib/supabase/types'
 
 type CandidateExperienceUpdate = TablesUpdate<'candidate_experience'>
@@ -39,7 +39,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const body = (await req.json()) as RequestBody
     const { id } = await params
 

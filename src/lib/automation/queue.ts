@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { Json } from '@/lib/supabase/types'
 import type {
   AutomationEntityType,
@@ -21,7 +21,7 @@ export async function enqueueAutomationJob(input: {
   payload?: JsonObject
   scheduledFor?: string
 }) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: existing, error: existingError } = await supabase
     .from('automation_jobs')

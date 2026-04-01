@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { WorkflowApplication, WorkflowDecision } from './types'
 
 type RawWorkflowMeta =
@@ -105,7 +105,7 @@ function mapRow(row: RawWorkflowRow): WorkflowApplication {
 }
 
 export async function getActiveWorkflowApplications(): Promise<WorkflowApplication[]> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from('applications')

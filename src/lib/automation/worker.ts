@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { enqueueAutomationJob } from '@/lib/automation/queue'
 import { generateAssetsForJob } from '@/lib/services/generate-assets'
 import { generateFollowupAssetsForJob } from '@/lib/services/generate-followup-assets'
@@ -40,7 +40,7 @@ type ApplicationAssetFollowupRow = {
 }
 
 async function maybeQueueFollowupAssets(jobId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const [
     { data: applicationData, error: applicationError },

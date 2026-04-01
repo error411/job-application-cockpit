@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { Tables, TablesUpdate } from '@/lib/supabase/types'
 import { getActiveFollowUpStage } from '@/lib/applications/get-active-follow-up-stage'
 
@@ -24,7 +24,7 @@ type FollowUpApplicationRow = Pick<
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const body = (await req.json()) as RequestBody
     const jobId = body.jobId
 

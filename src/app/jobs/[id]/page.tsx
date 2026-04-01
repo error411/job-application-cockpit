@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type {
   ApplicationAssetRow,
   ApplicationRow,
@@ -68,7 +68,7 @@ export default async function JobDetailPage({
 }: PageProps) {
   const { id } = await params
   const { from, error } = await searchParams
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const backHref = from === 'apply' ? '/apply' : '/jobs'
   const backLabel = from === 'apply' ? '← Back to Apply Mode' : '← Back to Jobs'

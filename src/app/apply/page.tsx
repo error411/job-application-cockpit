@@ -1,13 +1,13 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import ApplyModeClient from './apply-mode-client'
 import ProcessAutomationButton from './process-automation-button'
 import { getApplyItems } from '@/lib/apply-mode/get-apply-items'
 import type { ApplyItem } from '@/lib/apply-mode/types'
 
 export default async function ApplyPage() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   let items: ApplyItem[] = []
 

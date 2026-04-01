@@ -2,7 +2,7 @@ import { Readable } from 'node:stream'
 import { NextResponse } from 'next/server'
 import { renderToStream } from '@react-pdf/renderer'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getCoverLetterPayload } from '@/lib/cover-letter/get-cover-letter-payload'
 import { CoverLetterPdfDocument } from '@/lib/cover-letter/render-cover-letter-pdf'
 
@@ -32,7 +32,7 @@ function buildFilename(company?: string | null, title?: string | null): string {
 
 export async function GET(_request: Request, context: RouteContext) {
   const { jobId } = await context.params
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')

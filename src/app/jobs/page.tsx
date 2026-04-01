@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { Database } from '@/lib/supabase/types'
 import { formatDate } from '@/lib/dates'
 
@@ -191,7 +191,7 @@ function ErrorState({ message }: { message: string }) {
 }
 
 export default async function JobsPage() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: jobs, error: jobsError } = await supabase
     .from('jobs')

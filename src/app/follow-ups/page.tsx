@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   getFollowUpState,
   type FollowUpState,
@@ -224,7 +224,7 @@ function FollowUpCard({ app }: { app: FollowUpListItemWithState }) {
 }
 
 export default async function FollowUpsPage() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
     let applicationRows: FollowUpListRow[] = []
 
   try {

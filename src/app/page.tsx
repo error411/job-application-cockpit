@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { formatDate } from '@/lib/dates'
 import { getActiveWorkflowApplications } from '@/lib/workflow/get-active-workflow-applications'
 import type { WorkflowApplication } from '@/lib/workflow/types'
@@ -437,7 +437,7 @@ function RecentActivity({ jobs }: { jobs: RecentJob[] }) {
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const [
     activeJobsResult,

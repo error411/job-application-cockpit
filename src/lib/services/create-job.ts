@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function createJobWithApplication(input: {
   company: string
@@ -7,7 +7,7 @@ export async function createJobWithApplication(input: {
   url?: string | null
   description: string
 }) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')

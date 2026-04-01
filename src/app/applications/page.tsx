@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { JobRow } from '@/lib/supabase/model-types'
 import {
   getFollowUpState,
@@ -96,7 +96,7 @@ function PipelineColumn({
 }
 
 export default async function ApplicationsPage() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   let applications: ApplicationListItemWithState[] = []
 

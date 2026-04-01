@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 function toNullableString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0
@@ -40,7 +40,7 @@ export type CoverLetterPayload = {
 export async function getCoverLetterPayload(
   jobId: string
 ): Promise<CoverLetterPayload> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const [
     { data: asset, error: assetError },

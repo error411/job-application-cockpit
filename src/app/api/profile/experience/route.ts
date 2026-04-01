@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { TablesInsert } from '@/lib/supabase/types'
 
 type CandidateExperienceInsert = TablesInsert<'candidate_experience'>
@@ -36,7 +36,7 @@ function normalizeStringArray(value: string[] | null | undefined) {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const body = (await req.json()) as RequestBody
 
     if (!body.candidate_profile_id?.trim()) {

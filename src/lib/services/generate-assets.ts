@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { openai } from '@/lib/openai/client'
 import type {
   ApplicationAssetInsert,
@@ -113,7 +113,7 @@ function normalizeCandidateProfile(
 }
 
 export async function generateAssetsForJob(jobId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')

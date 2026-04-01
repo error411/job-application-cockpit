@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getApplyItems } from '@/lib/apply-mode/get-apply-items'
 
 export const dynamic = 'force-dynamic'
@@ -7,7 +7,7 @@ export const revalidate = 0
 
 export async function GET() {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const items = await getApplyItems(supabase)
 
     return NextResponse.json({ items })

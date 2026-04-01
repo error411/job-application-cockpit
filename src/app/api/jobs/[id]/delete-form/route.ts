@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 type RouteContext = {
   params: Promise<{
@@ -9,7 +9,7 @@ type RouteContext = {
 
 export async function POST(req: Request, context: RouteContext) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { id } = await context.params
     const formData = await req.formData()
     const from = formData.get('from')

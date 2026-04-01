@@ -1,6 +1,6 @@
 // lib/resume/get-resume-html.ts
 import { buildResumeHtmlDocument } from '@/lib/resume/render-resume-html'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 function toNullableString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0
@@ -27,7 +27,7 @@ function normalizeProfile(
 }
 
 export async function getResumeHtml(jobId: string): Promise<string> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const [
     { data: asset, error: assetError },
