@@ -18,6 +18,15 @@ export function createAdminClient() {
     throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY')
   }
 
+  const looksLikeJwt = serviceRoleKey.startsWith('eyJ')
+  const looksLikeSecret = serviceRoleKey.startsWith('sb_secret_')
+
+  if (!looksLikeJwt && !looksLikeSecret) {
+    throw new Error(
+      'SUPABASE_SERVICE_ROLE_KEY does not look like a valid Supabase service_role or secret key'
+    )
+  }
+
   adminClient = createSupabaseClient<Database>(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
