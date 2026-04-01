@@ -114,7 +114,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { id } = await params
 
     const { error } = await supabase
