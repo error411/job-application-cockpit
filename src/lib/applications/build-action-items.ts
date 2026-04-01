@@ -3,6 +3,7 @@ import type {
   ActionQueueItem,
   WorkflowActionBucket,
 } from '@/lib/workflow/types'
+import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
 
 export type ActionQueueGroup = {
   key: WorkflowActionBucket
@@ -15,19 +16,6 @@ function startOfTodayLocal(): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate())
 }
 
-function endOfTodayLocal(): Date {
-  const start = startOfTodayLocal()
-  return new Date(
-    start.getFullYear(),
-    start.getMonth(),
-    start.getDate(),
-    23,
-    59,
-    59,
-    999
-  )
-}
-
 function parseDate(value: string | null | undefined): Date | null {
   if (!value) return null
 
@@ -37,8 +25,16 @@ function parseDate(value: string | null | undefined): Date | null {
 
 function differenceInDays(from: Date, to: Date): number {
   const msPerDay = 1000 * 60 * 60 * 24
-  const fromStart = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime()
-  const toStart = new Date(to.getFullYear(), to.getMonth(), to.getDate()).getTime()
+  const fromStart = new Date(
+    from.getFullYear(),
+    from.getMonth(),
+    from.getDate()
+  ).getTime()
+  const toStart = new Date(
+    to.getFullYear(),
+    to.getMonth(),
+    to.getDate()
+  ).getTime()
 
   return Math.floor((toStart - fromStart) / msPerDay)
 }
@@ -66,6 +62,10 @@ function getJobHref(application: WorkflowApplication) {
   return `/jobs/${application.jobId}`
 }
 
+function getFollowUpHref(application: WorkflowApplication) {
+  return `/follow-ups#job-${application.jobId}`
+}
+
 function buildFollowUpAction(application: WorkflowApplication): ActionQueueItem | null {
   if (application.status !== 'applied') return null
   if (application.followUpCompletedAt) return null
@@ -73,42 +73,44 @@ function buildFollowUpAction(application: WorkflowApplication): ActionQueueItem 
   const dueDate = parseDate(application.followUpDate)
   if (!dueDate) return null
 
-  const todayStart = startOfTodayLocal()
-  const todayEnd = endOfTodayLocal()
+  const followUpState = getFollowUpState({
+    follow_up_1_due: application.followUpDate,
+    follow_up_2_due: null,
+    follow_up_1_sent_at: application.followUpCompletedAt,
+    follow_up_2_sent_at: null,
+  })
 
-  const isOverdue = dueDate < todayStart
-  const isToday = dueDate >= todayStart && dueDate <= todayEnd
+  if (!followUpState.hasDueNow) {
+    return null
+  }
 
-  if (!isOverdue && !isToday) return null
-
-  const overdueDays = isOverdue ? Math.max(1, differenceInDays(dueDate, todayStart)) : null
+  const now = new Date()
+  const isOverdue = dueDate.getTime() < now.getTime()
+  const overdueDays = Math.max(1, differenceInDays(dueDate, startOfTodayLocal()))
   const scoreBoost = application.score ?? 0
   const snoozedUntil = application.workflowMeta?.snoozedUntil ?? null
+  const snoozed = isSnoozed(application)
 
   return {
     id: `${application.id}-follow-up`,
     applicationId: application.id,
     jobId: application.jobId,
     kind: 'follow_up',
-    bucket: isSnoozed(application)
-      ? 'snoozed'
-      : isOverdue
-        ? 'overdue'
-        : 'today',
+    bucket: snoozed ? 'snoozed' : isOverdue ? 'overdue' : 'today',
     company: getCompany(application),
     title: getTitle(application),
     location: getLocation(application),
     status: application.status,
     score: application.score,
-    reason: isOverdue ? 'Follow-up overdue' : 'Follow-up due today',
-    priorityScore: isSnoozed(application)
+    reason: isOverdue ? 'Follow-up overdue' : 'Follow-up due now',
+    priorityScore: snoozed
       ? 5 + scoreBoost
       : isOverdue
         ? 100 + scoreBoost
         : 85 + scoreBoost,
-    href: getJobHref(application),
+    href: getFollowUpHref(application),
     dueDate: application.followUpDate,
-    overdueDays,
+    overdueDays: isOverdue ? overdueDays : null,
     decision: application.workflowMeta?.decision ?? null,
     snoozedUntil,
     lastReviewedAt: application.workflowMeta?.lastReviewedAt ?? null,

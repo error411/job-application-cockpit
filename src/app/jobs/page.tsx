@@ -5,7 +5,7 @@ import { formatDate } from '@/lib/dates'
 
 type JobRow = Pick<
   Database['public']['Tables']['jobs']['Row'],
-  'id' | 'company' | 'title' | 'location' | 'status' | 'created_at' | 'archived_at'
+  'id' | 'company' | 'title' | 'location' | 'status' | 'created_at' | 'archived_at' | 'url'
 > & {
   applications?:
     | Array<{
@@ -82,7 +82,7 @@ function getDisplayStatus(job: JobRow): string {
 
 function getDisplayStatusLabel(job: JobRow): string {
   const applicationStatus = getPrimaryApplicationStatus(job)
-  if (applicationStatus) return applicationStatus
+  if (applicationStatus) return applicationStatus.replaceAll('_', ' ')
 
   switch (job.status) {
     case 'assets_generated':
@@ -90,7 +90,7 @@ function getDisplayStatusLabel(job: JobRow): string {
     case 'ready_to_apply':
       return 'ready to apply'
     default:
-      return job.status ?? 'unknown'
+      return (job.status ?? 'unknown').replaceAll('_', ' ')
   }
 }
 
@@ -108,16 +108,16 @@ function JobsSummaryCard({
   return (
     <div
       className={[
-        'app-panel rounded-2xl border p-4 shadow-sm',
+        'rounded-2xl border p-5 shadow-sm',
         emphasize
           ? 'border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-zinc-100'
           : 'border-zinc-200 bg-white',
       ].join(' ')}
     >
-      <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
+      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+      <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
         {value}
       </p>
       <p className="mt-1 text-sm text-zinc-600">{hint}</p>
@@ -127,9 +127,9 @@ function JobsSummaryCard({
 
 function EmptyState() {
   return (
-    <section className="app-panel rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+    <section className="rounded-2xl border border-zinc-200 bg-white p-10 shadow-sm">
       <div className="mx-auto max-w-2xl text-center">
-        <p className="text-xs font-semibold tracking-[0.2em] text-zinc-500 uppercase">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
           Jobs
         </p>
         <h2 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-950">
@@ -145,7 +145,7 @@ function EmptyState() {
             href="/jobs/new"
             className="app-button-primary inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
           >
-            Add job
+            Add Job
           </Link>
           <Link
             href="/today"
@@ -163,7 +163,7 @@ function ErrorState({ message }: { message: string }) {
   return (
     <main className="space-y-6">
       <section className="space-y-3">
-        <p className="text-xs font-semibold tracking-[0.2em] text-zinc-500 uppercase">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
           Pipeline
         </p>
         <div className="space-y-2">
@@ -177,8 +177,8 @@ function ErrorState({ message }: { message: string }) {
         </div>
       </section>
 
-      <section className="app-panel rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
-        <p className="text-xs font-semibold tracking-[0.16em] text-red-700 uppercase">
+      <section className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-red-700">
           Load error
         </p>
         <h2 className="mt-2 text-lg font-semibold text-red-950">
@@ -201,6 +201,7 @@ export default async function JobsPage() {
       company,
       title,
       location,
+      url,
       status,
       created_at,
       archived_at,
@@ -258,7 +259,7 @@ export default async function JobsPage() {
       <section className="space-y-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
-            <p className="text-xs font-semibold tracking-[0.2em] text-zinc-500 uppercase">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
               Pipeline
             </p>
             <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">
@@ -324,17 +325,17 @@ export default async function JobsPage() {
             return (
               <article
                 key={job.id}
-                className="app-panel overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm"
+                className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm"
               >
-                <div className="border-b border-zinc-100 bg-gradient-to-r from-white via-zinc-50/60 to-white px-5 py-4 sm:px-6">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0 space-y-2">
+                <div className="border-b border-zinc-100 bg-gradient-to-r from-white via-zinc-50/60 to-white px-5 py-5 sm:px-6">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center rounded-full bg-zinc-900 px-2.5 py-1 text-[11px] font-semibold tracking-[0.18em] text-white uppercase">
+                        <span className="inline-flex items-center rounded-full bg-zinc-900 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
                           #{index + 1}
                         </span>
                         <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${getStatusTone(
+                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium capitalize ${getStatusTone(
                             displayStatus
                           )}`}
                         >
@@ -353,7 +354,7 @@ export default async function JobsPage() {
                         <p className="text-sm font-medium text-zinc-500">
                           {job.company}
                         </p>
-                        <h2 className="text-xl font-semibold tracking-tight text-zinc-950">
+                        <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
                           {job.title}
                         </h2>
                         <p className="text-sm text-zinc-600">
@@ -362,21 +363,21 @@ export default async function JobsPage() {
                       </div>
                     </div>
 
-                    <div className="grid shrink-0 grid-cols-2 gap-2 sm:min-w-[220px]">
-                      <div className="rounded-2xl border border-zinc-200 bg-white px-3 py-3 text-center">
-                        <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
+                    <div className="grid shrink-0 grid-cols-2 gap-3 sm:min-w-[260px]">
+                      <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 text-center">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
                           Latest score
                         </p>
-                        <p className="mt-1 text-lg font-semibold text-zinc-950">
+                        <p className="mt-2 text-lg font-semibold text-zinc-950">
                           {latestScore !== null ? `${latestScore}/100` : '—'}
                         </p>
                       </div>
 
-                      <div className="rounded-2xl border border-zinc-200 bg-white px-3 py-3 text-center">
-                        <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
+                      <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 text-center">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
                           Added
                         </p>
-                        <p className="mt-1 text-sm font-semibold text-zinc-950">
+                        <p className="mt-2 text-sm font-semibold text-zinc-950">
                           {formatDate(job.created_at)}
                         </p>
                       </div>
@@ -385,9 +386,9 @@ export default async function JobsPage() {
                 </div>
 
                 <div className="space-y-4 px-5 py-5 sm:px-6">
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
                     <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 px-4 py-4">
-                      <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
                         Score signal
                       </p>
                       <p className="mt-2 text-sm leading-6 text-zinc-700">
@@ -400,10 +401,10 @@ export default async function JobsPage() {
                     </div>
 
                     <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-4">
-                      <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
                         Pipeline state
                       </p>
-                      <p className="mt-2 text-sm font-medium text-zinc-900">
+                      <p className="mt-2 text-sm font-medium capitalize text-zinc-900">
                         {displayStatusLabel}
                       </p>
                       <p className="mt-1 text-xs text-zinc-500">
@@ -414,22 +415,41 @@ export default async function JobsPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-3 border-t border-zinc-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs text-zinc-500">Job ID: {job.id}</p>
-
+                  <div className="flex flex-col gap-4 border-t border-zinc-100 pt-4">
                     <div className="flex flex-wrap gap-3">
                       <Link
                         href={`/jobs/${job.id}`}
-                        className="app-button inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
+                        className="app-button-primary inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
                       >
-                        View
+                        Open Job
                       </Link>
+
                       <Link
                         href={`/jobs/${job.id}/score`}
-                        className="app-button-primary inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
+                        className="app-button inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
                       >
                         Score
                       </Link>
+
+                      {job.url ? (
+                        <a
+                          href={job.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="app-button inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
+                        >
+                          Original Post
+                        </a>
+                      ) : null}
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs text-zinc-500">Job ID: {job.id}</p>
+                      <p className="text-xs text-zinc-500">
+                        {hasApplicationStatus
+                          ? 'Application record linked'
+                          : 'No application record yet'}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -442,7 +462,7 @@ export default async function JobsPage() {
       {archivedJobs.length ? (
         <section className="space-y-4">
           <div className="space-y-1">
-            <p className="text-xs font-semibold tracking-[0.16em] text-zinc-500 uppercase">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
               History
             </p>
             <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
@@ -458,7 +478,7 @@ export default async function JobsPage() {
             {archivedJobs.map((job) => (
               <article
                 key={job.id}
-                className="app-panel overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 shadow-sm"
+                className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 shadow-sm"
               >
                 <div className="border-b border-zinc-100 bg-gradient-to-r from-zinc-50 via-white to-zinc-50 px-5 py-4 sm:px-6">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -482,18 +502,18 @@ export default async function JobsPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-zinc-200 bg-white px-3 py-3 text-center">
-                      <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
+                    <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 text-center">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
                         Added
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-zinc-950">
+                      <p className="mt-2 text-sm font-semibold text-zinc-950">
                         {formatDate(job.created_at)}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                   <p className="text-xs text-zinc-500">Job ID: {job.id}</p>
 
                   <div className="flex flex-wrap gap-3">

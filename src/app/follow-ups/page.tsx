@@ -11,6 +11,7 @@ import {
   getActiveWorkflowApplications,
   type ActiveWorkflowApplicationRow,
 } from '@/lib/applications/get-active-workflow-applications'
+import GenerateMissingButton from './generate-missing-button'
 
 type ApplicationRow = Tables<'applications'>
 type JobRow = Tables<'jobs'>
@@ -44,22 +45,33 @@ type FollowUpListItemWithState = FollowUpListItem & {
   followUpState: FollowUpState
 }
 
-// function formatDate(dateString: string | null) {
-//   if (!dateString) return '—'
-//   return new Date(dateString).toLocaleDateString()
-// }
+function hasText(value: string | null | undefined) {
+  return Boolean(value?.trim())
+}
 
-// function formatDateTime(dateString: string | null) {
-//   if (!dateString) return '—'
-//   return new Date(dateString).toLocaleString()
-// }
+function needsFollowUpContent(app: FollowUpListItemWithState) {
+  const needsStage1 =
+    Boolean(app.follow_up_1_due) &&
+    !app.follow_up_1_sent_at &&
+    !hasText(app.asset?.follow_up_1_email_markdown)
 
-// function normalizeJob(
-//   value: FollowUpListJob | FollowUpListJob[] | null
-// ): FollowUpListJob | null {
-//   if (!value) return null
-//   return Array.isArray(value) ? value[0] ?? null : value
-// }
+  const needsStage2 =
+    Boolean(app.follow_up_2_due) &&
+    !app.follow_up_2_sent_at &&
+    !hasText(app.asset?.follow_up_2_email_markdown)
+
+  return needsStage1 || needsStage2
+}
+
+function isFollowUpComplete(state: FollowUpState) {
+  const hasAnyStage = Boolean(state.stage1 || state.stage2)
+  if (!hasAnyStage) return false
+
+  const stage1Complete = state.stage1 ? state.stage1.isComplete : true
+  const stage2Complete = state.stage2 ? state.stage2.isComplete : true
+
+  return stage1Complete && stage2Complete
+}
 
 function toFollowUpListItem(
   row: FollowUpListRow,
@@ -99,9 +111,51 @@ function withFollowUpState(app: FollowUpListItem): FollowUpListItemWithState {
 }
 
 function getCardTone(app: FollowUpListItemWithState) {
-  return app.followUpState.hasDueNow
-    ? 'border-rose-200 bg-gradient-to-br from-rose-50 to-white'
-    : 'border-zinc-200 bg-white'
+  if (app.followUpState.hasOverdue) {
+    return 'border-rose-200 bg-gradient-to-br from-rose-50 to-white'
+  }
+
+  if (app.followUpState.hasDueNow) {
+    return 'border-amber-200 bg-gradient-to-br from-amber-50 to-white'
+  }
+
+  if (app.followUpState.hasUpcoming) {
+    return 'border-blue-200 bg-gradient-to-br from-blue-50 to-white'
+  }
+
+  return 'border-zinc-200 bg-white'
+}
+
+function getStatusBadge(app: FollowUpListItemWithState) {
+  if (app.followUpState.hasOverdue) {
+    return {
+      label: 'Overdue',
+      className:
+        'rounded-full bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-700',
+    }
+  }
+
+  if (app.followUpState.hasDueNow) {
+    return {
+      label: 'Due Now',
+      className:
+        'rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700',
+    }
+  }
+
+  if (app.followUpState.hasUpcoming) {
+    return {
+      label: 'Upcoming',
+      className:
+        'rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700',
+    }
+  }
+
+  return {
+    label: 'Complete',
+    className:
+      'rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700',
+  }
 }
 
 function FollowUpCard({ app }: { app: FollowUpListItemWithState }) {
@@ -119,22 +173,27 @@ function FollowUpCard({ app }: { app: FollowUpListItemWithState }) {
       ? app.follow_up_1_due
       : activeFollowUpStage === 2
         ? app.follow_up_2_due
-        : null
+        : app.followUpState.nextDueAt
+
+  const statusBadge = getStatusBadge(app)
 
   return (
-    <div className={`rounded-2xl border p-5 shadow-sm ${getCardTone(app)}`}>
+    <div
+      id={`job-${app.job_id}`}
+      className={`rounded-2xl border p-5 shadow-sm ${getCardTone(app)}`}
+    >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
               {activeFollowUpStage !== null
                 ? `Follow-Up ${activeFollowUpStage}`
-                : 'Scheduled'}
+                : app.followUpState.nextDueAt
+                  ? 'Scheduled'
+                  : 'Complete'}
             </span>
 
-            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-              {activeFollowUpStage !== null ? 'Due Now' : 'Upcoming'}
-            </span>
+            <span className={statusBadge.className}>{statusBadge.label}</span>
           </div>
 
           <h3 className="mt-4 text-lg font-semibold tracking-tight text-zinc-950">
@@ -223,9 +282,24 @@ function FollowUpCard({ app }: { app: FollowUpListItemWithState }) {
   )
 }
 
-export default async function FollowUpsPage() {
+export default async function FollowUpsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    generated?: string
+    failed?: string
+    queued?: string
+    error?: string
+  }>
+}) {
+  const params = (await searchParams) ?? {}
+  const generated = Number(params.generated ?? 0)
+  const failed = Number(params.failed ?? 0)
+  const queued = Number(params.queued ?? 0)
+  const errorMessage = params.error ?? null
+
   const supabase = createAdminClient()
-    let applicationRows: FollowUpListRow[] = []
+  let applicationRows: FollowUpListRow[] = []
 
   try {
     applicationRows = await getActiveWorkflowApplications(supabase)
@@ -251,17 +325,18 @@ export default async function FollowUpsPage() {
   )
 
   const jobIds = Array.from(new Set(applicationRows.map((row) => row.job_id)))
-
   const assetByJobId = new Map<string, FollowUpListAsset>()
 
   if (jobIds.length > 0) {
     const { data: assetData, error: assetError } = await supabase
       .from('application_assets')
-      .select(`
+      .select(
+        `
         job_id,
         follow_up_1_email_markdown,
         follow_up_2_email_markdown
-      `)
+      `
+      )
       .in('job_id', jobIds)
       .order('created_at', { ascending: false })
 
@@ -291,7 +366,18 @@ export default async function FollowUpsPage() {
     .map(withFollowUpState)
 
   const dueNow = applications.filter((app) => app.followUpState.hasDueNow)
-  const upcoming = applications.filter((app) => app.followUpState.hasUpcoming)
+  const upcoming = applications.filter(
+    (app) => !app.followUpState.hasDueNow && app.followUpState.hasUpcoming
+  )
+  const completed = applications.filter((app) =>
+    isFollowUpComplete(app.followUpState)
+  )
+
+  const needsGeneration = applications.filter(
+    (app) =>
+      (app.followUpState.hasDueNow || app.followUpState.hasUpcoming) &&
+      needsFollowUpContent(app)
+  )
 
   return (
     <div className="space-y-8">
@@ -299,6 +385,7 @@ export default async function FollowUpsPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
           Workflow
         </p>
+
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1>Follow-Ups</h1>
@@ -309,20 +396,31 @@ export default async function FollowUpsPage() {
             </p>
           </div>
 
-          {dueNow.length > 0 ? (
-            <form action="/api/automation-run-form" method="POST">
+          {needsGeneration.length > 0 ? (
+            <form action="/api/follow-ups/generate-missing" method="POST">
               <input type="hidden" name="from" value="/follow-ups" />
               <input
                 type="hidden"
                 name="limit"
-                value={String(Math.min(Math.max(dueNow.length, 1), 10))}
+                value={String(Math.min(Math.max(needsGeneration.length, 1), 25))}
               />
-              <button type="submit" className="app-button-primary">
-                Run Follow-Up Worker ({dueNow.length})
-              </button>
+              <GenerateMissingButton count={needsGeneration.length} />
             </form>
           ) : null}
         </div>
+
+        {errorMessage ? (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            Follow-up generation failed: {errorMessage}
+          </div>
+        ) : null}
+
+        {!errorMessage && queued > 0 ? (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            Queued {queued} follow-up job{queued === 1 ? '' : 's'}. Generated:{' '}
+            {generated}. Failed: {failed}.
+          </div>
+        ) : null}
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -347,12 +445,12 @@ export default async function FollowUpsPage() {
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-zinc-600">Tracked apps</p>
+          <p className="text-sm font-medium text-zinc-600">Completed</p>
           <p className="mt-3 text-4xl font-semibold tracking-tight text-zinc-950">
-            {applications.length}
+            {completed.length}
           </p>
           <p className="mt-2 text-sm text-zinc-500">
-            Applied or interviewing opportunities with follow-up relevance.
+            Applications with completed follow-up schedule.
           </p>
         </div>
 
