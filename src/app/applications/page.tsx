@@ -120,21 +120,15 @@ export default async function ApplicationsPage() {
     )
   }
 
-  const nextActions = applications.filter(
-    (app) =>
-      app.job !== null &&
-      app.status !== 'rejected' &&
-      app.status !== 'closed' &&
-      app.priority > 0
+    const nextActions = applications.filter(
+    (app) => app.job !== null && app.status !== 'closed' && app.priority > 0
   )
 
   const grouped = {
     ready: applications.filter((a) => a.status === 'ready'),
     applied: applications.filter((a) => a.status === 'applied'),
     interviewing: applications.filter((a) => a.status === 'interviewing'),
-    closed: applications.filter(
-      (a) => a.status === 'rejected' || a.status === 'closed'
-    ),
+        closed: applications.filter((a) => a.status === 'closed'),
   }
 
   return (

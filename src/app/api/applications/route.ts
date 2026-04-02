@@ -9,6 +9,8 @@ export async function POST(req: Request) {
       jobId: body.jobId,
       status: body.status,
       notes: body.notes,
+      disposition: body.disposition,
+      dispositionNotes: body.dispositionNotes,
     })
 
     return NextResponse.json({ item: data })

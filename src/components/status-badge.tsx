@@ -4,8 +4,7 @@ export type ApplicationStatus =
   | 'ready'
   | 'applied'
   | 'interviewing'
-  | 'offer'
-  | 'rejected'
+  | 'closed'
   | 'archived'
   | 'follow_up_due'
 
@@ -13,8 +12,7 @@ const statusClassMap: Record<ApplicationStatus, string> = {
   ready: 'bg-blue-50 text-blue-700 ring-blue-200',
   applied: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
   interviewing: 'bg-violet-50 text-violet-700 ring-violet-200',
-  offer: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  rejected: 'bg-slate-100 text-slate-600 ring-slate-200',
+  closed: 'bg-slate-100 text-slate-700 ring-slate-200',
   archived: 'bg-slate-100 text-slate-600 ring-slate-200',
   follow_up_due: 'bg-amber-50 text-amber-700 ring-amber-200',
 }

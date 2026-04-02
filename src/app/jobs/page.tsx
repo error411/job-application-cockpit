@@ -8,23 +8,29 @@ import { formatDate } from '@/lib/dates'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/status-badge'
 import { ScoreBadge } from '@/components/score-badge'
-import {
-  PageShell,
-  PageHeader,
-} from '@/components/ui/page-shell'
+import { PageShell, PageHeader } from '@/components/ui/page-shell'
 import {
   SectionCard,
   SectionCardHeader,
   SectionCardBody,
 } from '@/components/ui/section-card'
+import { DispositionBadge } from '@/components/disposition-badge'
 
 type JobRow = Pick<
   Database['public']['Tables']['jobs']['Row'],
-  'id' | 'company' | 'title' | 'location' | 'status' | 'created_at' | 'archived_at' | 'url'
+  | 'id'
+  | 'company'
+  | 'title'
+  | 'location'
+  | 'status'
+  | 'created_at'
+  | 'archived_at'
+  | 'url'
 > & {
   applications?:
     | Array<{
         status: string | null
+        disposition: string | null
         updated_at: string | null
         created_at: string | null
       }>
@@ -36,49 +42,7 @@ type JobScoreRow = Pick<
   'job_id' | 'score' | 'created_at'
 >
 
-// function getScoreLabel(score: number | null) {
-//   if (score === null) return 'Not scored'
-//   if (score >= 80) return 'Strong fit'
-//   if (score >= 60) return 'Possible fit'
-//   return 'Weak fit'
-// }
-
-// function getScoreTone(score: number | null) {
-//   if (score === null) return 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
-//   if (score >= 80) return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-//   if (score >= 60) return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-//   return 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
-// }
-
-// function getStatusTone(status: string | null | undefined) {
-//   switch (status) {
-//     case 'ready':
-//       return 'bg-sky-50 text-sky-700 ring-1 ring-sky-200'
-//     case 'applied':
-//       return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-//     case 'interviewing':
-//       return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-//     case 'rejected':
-//     case 'closed':
-//       return 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'
-//     case 'new':
-//       return 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
-//     case 'scored':
-//       return 'bg-violet-50 text-violet-700 ring-1 ring-violet-200'
-//     case 'queued':
-//       return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-//     case 'assets_generated':
-//       return 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200'
-//     case 'ready_to_apply':
-//       return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
-//     case 'archived':
-//       return 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'
-//     default:
-//       return 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
-//   }
-// }
-
-function getPrimaryApplicationStatus(job: JobRow): string | null {
+function getPrimaryApplication(job: JobRow) {
   const applications = job.applications ?? []
   if (!applications.length) return null
 
@@ -88,7 +52,15 @@ function getPrimaryApplicationStatus(job: JobRow): string | null {
     return bTime - aTime
   })
 
-  return sorted[0]?.status ?? null
+  return sorted[0] ?? null
+}
+
+function getPrimaryApplicationStatus(job: JobRow): string | null {
+  return getPrimaryApplication(job)?.status ?? null
+}
+
+function getPrimaryApplicationDisposition(job: JobRow): string | null {
+  return getPrimaryApplication(job)?.disposition ?? null
 }
 
 function getDisplayStatus(job: JobRow): string {
@@ -109,37 +81,6 @@ function getDisplayStatusLabel(job: JobRow): string {
   }
 }
 
-// function JobsSummaryCard({
-//   label,
-//   value,
-//   hint,
-//   emphasize = false,
-// }: {
-//   label: string
-//   value: string | number
-//   hint: string
-//   emphasize?: boolean
-// }) {
-//   return (
-//     <div
-//       className={[
-//         'rounded-2xl border p-5 shadow-sm',
-//         emphasize
-//           ? 'border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-zinc-100'
-//           : 'border-zinc-200 bg-white',
-//       ].join(' ')}
-//     >
-//       <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
-//         {label}
-//       </p>
-//       <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
-//         {value}
-//       </p>
-//       <p className="mt-1 text-sm text-zinc-600">{hint}</p>
-//     </div>
-//   )
-// }
-
 function Metric({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
@@ -157,7 +98,9 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
         {label}
       </p>
-      <p className="mt-2 text-sm font-medium text-slate-900">{value}</p>
+      <p className="mt-2 text-sm font-medium capitalize text-slate-900">
+        {value}
+      </p>
     </div>
   )
 }
@@ -186,10 +129,10 @@ function EmptyState() {
             <Link href="/today">Open Today</Link>
           </Button>
         </div>
-              </div>
-            </section>
-          )
-        }
+      </div>
+    </section>
+  )
+}
 
 function ErrorState({ message }: { message: string }) {
   return (
@@ -239,6 +182,7 @@ export default async function JobsPage() {
       archived_at,
       applications (
         status,
+        disposition,
         updated_at,
         created_at
       )
@@ -291,17 +235,6 @@ export default async function JobsPage() {
       <PageHeader
         title="Jobs"
         description="Track roles, scores, statuses, and next actions."
-        // actions={
-        //   <>
-        //     <Button asChild variant="secondary">
-        //       <Link href="/today">Today</Link>
-        //     </Button>
-
-        //     {/* <Button asChild variant="brand">
-        //       <Link href="/jobs/new">Add Job</Link>
-        //     </Button> */}
-        //   </>
-        // }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -315,7 +248,7 @@ export default async function JobsPage() {
         <EmptyState />
       ) : (
         <section className="space-y-4">
-          {activeJobs.map((job, index) => {
+          {activeJobs.map((job) => {
             const latestScore = latestScoresByJobId.get(job.id) ?? null
             const displayStatus = getDisplayStatus(job)
             const displayStatusLabel = getDisplayStatusLabel(job)
@@ -323,122 +256,136 @@ export default async function JobsPage() {
 
             return (
               <div
-  key={job.id}
-  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
->
-  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-    <div className="min-w-0 flex-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge status={displayStatus} />
-        <ScoreBadge score={latestScore} />
-      </div>
+                key={job.id}
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+              >
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge status={displayStatus} />
+                      <ScoreBadge score={latestScore} />
+                      <DispositionBadge
+                        disposition={getPrimaryApplicationDisposition(job)}
+                      />
+                    </div>
 
-      <div className="mt-4">
-        <p className="text-sm font-medium text-slate-500">{job.company}</p>
-        <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
-          {job.title}
-        </h2>
-        <p className="mt-1 text-sm text-slate-600">
-          {job.location || 'No location'}
-        </p>
-      </div>
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-slate-500">
+                        {job.company}
+                      </p>
+                      <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
+                        {job.title}
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {job.location || 'No location'}
+                      </p>
+                    </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <InfoBlock
-          label="Score"
-          value={latestScore !== null ? `${latestScore}/100` : 'Unscored'}
-        />
-        <InfoBlock label="Status" value={displayStatusLabel} />
-        <InfoBlock label="Added" value={formatDate(job.created_at)} />
-      </div>
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <InfoBlock
+                        label="Score"
+                        value={
+                          latestScore !== null ? `${latestScore}/100` : 'Unscored'
+                        }
+                      />
+                      <InfoBlock label="Status" value={displayStatusLabel} />
+                      <InfoBlock
+                        label="Disposition"
+                        value={
+                          getPrimaryApplicationDisposition(job)?.replaceAll(
+                            '_',
+                            ' '
+                          ) ?? 'Open'
+                        }
+                      />
+                      <InfoBlock label="Added" value={formatDate(job.created_at)} />
+                    </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-slate-500">Job ID: {job.id}</p>
-        <p className="text-xs text-slate-500">
-          {hasApplicationStatus
-            ? 'Application record linked'
-            : 'No application record yet'}
-        </p>
-      </div>
-    </div>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs text-slate-500">Job ID: {job.id}</p>
+                      <p className="text-xs text-slate-500">
+                        {hasApplicationStatus
+                          ? 'Application record linked'
+                          : 'No application record yet'}
+                      </p>
+                    </div>
+                  </div>
 
-    <div className="flex shrink-0 flex-row flex-wrap gap-2 lg:flex-col">
-      <Button asChild variant="brand">
-        <Link href={`/jobs/${job.id}`}>Open</Link>
-      </Button>
+                  <div className="flex shrink-0 flex-row flex-wrap gap-2 lg:flex-col">
+                    <Button asChild variant="brand">
+                      <Link href={`/jobs/${job.id}`}>Open</Link>
+                    </Button>
 
-      <Button asChild variant="secondary">
-        <Link href={`/jobs/${job.id}`}>Score</Link>
-      </Button>
+                    <Button asChild variant="secondary">
+                      <Link href={`/jobs/${job.id}`}>Score</Link>
+                    </Button>
 
-      {job.url ? (
-        <Button asChild variant="ghost">
-          <a href={job.url} target="_blank" rel="noreferrer">
-            Original
-          </a>
-        </Button>
-      ) : null}
-    </div>
-  </div>
-</div>
+                    {job.url ? (
+                      <Button asChild variant="ghost">
+                        <a href={job.url} target="_blank" rel="noreferrer">
+                          Original
+                        </a>
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             )
           })}
         </section>
       )}
 
       {archivedJobs.length ? (
-  <SectionCard>
-    <SectionCardHeader
-      title="Archived Jobs"
-      description="Hidden from active pipeline but kept for reference."
-    />
+        <SectionCard>
+          <SectionCardHeader
+            title="Archived Jobs"
+            description="Hidden from active pipeline but kept for reference."
+          />
 
-    <SectionCardBody>
-      <div className="space-y-4">
-        {archivedJobs.map((job) => (
-          <div
-            key={job.id}
-            className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
-          >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700">
-                    Archived
-                  </span>
+          <SectionCardBody>
+            <div className="space-y-4">
+              {archivedJobs.map((job) => (
+                <div
+                  key={job.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700">
+                          Archived
+                        </span>
+                      </div>
+
+                      <div className="mt-3">
+                        <p className="text-sm font-medium text-slate-500">
+                          {job.company}
+                        </p>
+                        <h3 className="mt-1 text-lg font-semibold text-slate-900">
+                          {job.title}
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-600">
+                          {job.location || 'No location'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-3">
+                      <div className="text-sm text-slate-500">
+                        Added {formatDate(job.created_at)}
+                      </div>
+
+                      <Button asChild variant="secondary">
+                        <Link href={`/jobs/${job.id}`}>View / Restore</Link>
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-
-                <div className="mt-3">
-                  <p className="text-sm font-medium text-slate-500">
-                    {job.company}
-                  </p>
-                  <h3 className="mt-1 text-lg font-semibold text-slate-900">
-                    {job.title}
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {job.location || 'No location'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end gap-3">
-                <div className="text-sm text-slate-500">
-                  Added {formatDate(job.created_at)}
-                </div>
-
-                <Button asChild variant="secondary">
-                  <Link href={`/jobs/${job.id}`}>
-                    View / Restore
-                  </Link>
-                </Button>
-              </div>
+              ))}
             </div>
-          </div>
-        ))}
-      </div>
-    </SectionCardBody>
-  </SectionCard>
-) : null}
+          </SectionCardBody>
+        </SectionCard>
+      ) : null}
     </PageShell>
   )
 }
