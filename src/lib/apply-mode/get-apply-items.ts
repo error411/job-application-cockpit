@@ -3,6 +3,7 @@ import {
   type ActiveWorkflowApplicationRow,
 } from '@/lib/applications/get-active-workflow-applications'
 import type { ApplyItem } from './types'
+import type { ApplicationDisposition } from '@/lib/statuses'
 
 type ApplicationAssetRow = {
   job_id: string
@@ -40,7 +41,34 @@ type ApplyItemsSupabase = {
   from: (table: 'job_scores' | 'application_assets' | 'applications') => unknown
 }
 
-function getPriorityScore(row: ActiveWorkflowApplicationRow, latestScore: number | null) {
+function isTerminalDisposition(
+  disposition: ApplicationDisposition | null
+): boolean {
+  switch (disposition) {
+    case 'rejected':
+    case 'accepted':
+    case 'withdrawn':
+    case 'ghosted':
+    case 'offer':
+      return true
+    case 'landed_interview':
+    case null:
+      return false
+  }
+}
+
+function shouldExcludeFromApplyMode(row: ActiveWorkflowApplicationRow): boolean {
+  if (row.status === 'closed') {
+    return true
+  }
+
+  return isTerminalDisposition(row.disposition)
+}
+
+function getPriorityScore(
+  row: ActiveWorkflowApplicationRow,
+  latestScore: number | null
+) {
   const scoreBoost = latestScore ?? 0
 
   if (row.status === 'ready') {
@@ -66,7 +94,10 @@ function getPriorityScore(row: ActiveWorkflowApplicationRow, latestScore: number
   return 20 + scoreBoost
 }
 
-function getReason(row: ActiveWorkflowApplicationRow, latestScore: number | null) {
+function getReason(
+  row: ActiveWorkflowApplicationRow,
+  latestScore: number | null
+) {
   if (row.status === 'ready') {
     return latestScore !== null
       ? `Ready to apply (${latestScore}/100)`
@@ -97,7 +128,13 @@ export async function getApplyItems(
 ): Promise<ApplyItem[]> {
   const applicationRows = await getActiveWorkflowApplications(supabase)
 
-  const jobIds = Array.from(new Set(applicationRows.map((row) => row.job_id)))
+  const filteredApplicationRows = applicationRows.filter(
+    (row) => !shouldExcludeFromApplyMode(row)
+  )
+
+  const jobIds = Array.from(
+    new Set(filteredApplicationRows.map((row) => row.job_id))
+  )
 
   const latestScoreByJobId = new Map<string, number | null>()
   const hasAssetsByJobId = new Map<string, boolean>()
@@ -169,7 +206,7 @@ export async function getApplyItems(
     }
   }
 
-  const items: ApplyItem[] = applicationRows
+  const items: ApplyItem[] = filteredApplicationRows
     .map((row) => {
       const latestScore = latestScoreByJobId.get(row.job_id) ?? null
       const hasAssets = hasAssetsByJobId.get(row.job_id) ?? false
@@ -178,6 +215,7 @@ export async function getApplyItems(
         id: row.id,
         jobId: row.job_id,
         status: row.status,
+        disposition: row.disposition,
         company: row.job?.company ?? 'Unknown company',
         title: row.job?.title ?? 'Untitled role',
         location: row.job?.location ?? '—',
