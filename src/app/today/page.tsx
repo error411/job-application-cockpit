@@ -324,9 +324,9 @@ export default async function TodayPage() {
                         </div>
 
                         <div className="flex shrink-0 flex-row flex-wrap gap-2 lg:flex-col">
-                          <Button asChild variant="brand">
+                          {/* <Button asChild variant="brand">
                             <Link href={item.href}>Open</Link>
-                          </Button>
+                          </Button> */}
 
                           <Button asChild variant="secondary">
                             <Link href={`/jobs/${item.jobId}`}>Job Detail</Link>

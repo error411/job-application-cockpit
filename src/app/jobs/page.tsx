@@ -312,18 +312,18 @@ export default async function JobsPage() {
                   </div>
 
                   <div className="flex shrink-0 flex-row flex-wrap gap-2 lg:flex-col">
-                    <Button asChild variant="brand">
-                      <Link href={`/jobs/${job.id}`}>Open</Link>
+                    <Button asChild variant="secondary">
+                      <Link href={`/jobs/${job.id}`}>Job Detail</Link>
                     </Button>
 
-                    <Button asChild variant="secondary">
+                    {/* <Button asChild variant="secondary">
                       <Link href={`/jobs/${job.id}`}>Score</Link>
-                    </Button>
+                    </Button> */}
 
                     {job.url ? (
-                      <Button asChild variant="ghost">
+                      <Button asChild variant="secondary">
                         <a href={job.url} target="_blank" rel="noreferrer">
-                          Original
+                          Original Post
                         </a>
                       </Button>
                     ) : null}
