@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import ApplyModeClient from './apply-mode-client'

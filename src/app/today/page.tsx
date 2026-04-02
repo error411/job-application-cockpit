@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkflowApplications } from '@/lib/applications/get-active-workflow-applications'
