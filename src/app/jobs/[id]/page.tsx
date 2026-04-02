@@ -11,6 +11,7 @@ import type {
 } from '@/lib/supabase/model-types'
 import { formatDate } from '@/lib/dates'
 import JobFollowUpActions from './job-follow-up-actions'
+import GenerateDraftAssetsButton from './generate-draft-assets-button'
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -340,17 +341,7 @@ export default async function JobDetailPage({
 
           <div className="mt-6 space-y-4">
             <div className="flex flex-wrap gap-3">
-              <form action="/api/generate-assets-form" method="post">
-                <input type="hidden" name="jobId" value={typedJob.id} />
-                <input
-                  type="hidden"
-                  name="from"
-                  value={from === 'apply' ? 'apply' : 'jobs'}
-                />
-                <button className="app-button-primary" type="submit">
-                  Generate Draft Assets
-                </button>
-              </form>
+              <GenerateDraftAssetsButton jobId={typedJob.id} />
 
               <form action="/api/score-form" method="post">
                 <input type="hidden" name="jobId" value={typedJob.id} />
