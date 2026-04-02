@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 type NewJobForm = {
   company: string
@@ -139,6 +140,8 @@ function MessageBanner({
 }
 
 export default function NewJobPage() {
+  const router = useRouter()
+
   const [form, setForm] = useState<NewJobForm>(initialForm)
   const [message, setMessage] = useState('')
   const [messageTone, setMessageTone] = useState<'success' | 'error' | 'info'>(
@@ -180,9 +183,13 @@ export default function NewJobPage() {
         return
       }
 
-      if (result.job?.id) {
-        setCreatedJobId(result.job.id)
+      if (!result.job?.id) {
+        setMessageTone('error')
+        setMessage('Job was created, but no job id was returned.')
+        return
       }
+
+      setCreatedJobId(result.job.id)
 
       if (result.scoringApplied) {
         const scoreText =
@@ -192,21 +199,27 @@ export default function NewJobPage() {
 
         setMessageTone('success')
         setMessage(
-          `Job saved and scored successfully.${scoreText} Current status: ${result.job?.status ?? 'scored'}.`
+          `Job saved and scored successfully.${scoreText} Opening job page...`
         )
-      } else if (result.job?.id) {
-        setMessageTone('info')
-        setMessage(
-          `Job saved, but scoring did not complete. ${
-            result.scoringError || 'You can score it manually from the job page.'
-          }`
-        )
-      } else {
-        setMessageTone('success')
-        setMessage('Job saved successfully.')
+
+        setForm(initialForm)
+
+        router.push(`/jobs/${result.job.id}`)
+        router.refresh()
+        return
       }
 
+      setMessageTone('info')
+      setMessage(
+        `Job saved, but scoring did not complete. ${
+          result.scoringError || 'Opening job page so you can review it manually.'
+        }`
+      )
+
       setForm(initialForm)
+
+      router.push(`/jobs/${result.job.id}`)
+      router.refresh()
     } catch {
       setMessageTone('error')
       setMessage('Error: Could not reach the server.')
@@ -282,11 +295,11 @@ export default function NewJobPage() {
               Result
             </p>
             <p className="mt-2 text-sm font-semibold text-zinc-950">
-              Status-aware
+              Auto-open job
             </p>
             <p className="mt-1 text-sm text-zinc-600">
-              The page now reports progress and returns the new scored job when
-              complete.
+              On success, the new job detail page opens automatically so you can
+              continue the workflow immediately.
             </p>
           </div>
         </div>
