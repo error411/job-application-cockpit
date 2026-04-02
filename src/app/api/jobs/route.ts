@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { enqueueAutomationJob } from '@/lib/automation/queue'
 import { createJobWithApplication } from '@/lib/services/create-job'
+import { scoreJobService } from '@/lib/services/score-job'
+
+type CreateJobResponse = {
+  job: {
+    id: string
+    company: string | null
+    title: string | null
+    status: string | null
+  }
+  application: {
+    id: string
+    job_id: string
+    status: string | null
+  }
+  score?: {
+    id?: string
+    score?: number | null
+  } | null
+  scoringApplied: boolean
+  scoringError?: string | null
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,8 +46,8 @@ export async function POST(req: NextRequest) {
       typeof description === 'string'
         ? description
         : typeof description_raw === 'string'
-        ? description_raw
-        : ''
+          ? description_raw
+          : ''
 
     const descriptionText = descriptionValue.trim()
 
@@ -39,21 +59,44 @@ export async function POST(req: NextRequest) {
       description: descriptionText,
     })
 
-    console.log('Enqueuing score_job for job:', job.id)
+    let score: CreateJobResponse['score'] = null
+    let scoringApplied = false
+    let scoringError: string | null = null
 
-    await enqueueAutomationJob({
-      jobType: 'score_job',
-      entityType: 'job',
-      entityId: job.id,
-    })
+    try {
+      const scoringResult = await scoreJobService(job.id)
 
-    console.log('Enqueued score_job for job:', job.id)
+      score = {
+        id:
+          scoringResult.score &&
+          typeof scoringResult.score === 'object' &&
+          'id' in scoringResult.score
+            ? String(scoringResult.score.id)
+            : undefined,
+        score:
+          scoringResult.score &&
+          typeof scoringResult.score === 'object' &&
+          'score' in scoringResult.score &&
+          typeof scoringResult.score.score === 'number'
+            ? scoringResult.score.score
+            : null,
+      }
+
+      scoringApplied = true
+    } catch (error) {
+      console.error('Immediate scoring failed after job create:', error)
+      scoringError =
+        error instanceof Error ? error.message : 'Failed to score job.'
+    }
 
     return NextResponse.json(
       {
         job,
         application,
-      },
+        score,
+        scoringApplied,
+        scoringError,
+      } satisfies CreateJobResponse,
       { status: 201 }
     )
   } catch (error) {
