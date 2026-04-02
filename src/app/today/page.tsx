@@ -213,11 +213,11 @@ export default async function TodayPage() {
       <PageHeader
         title="Today"
         description="Focus on the highest-value next actions across your pipeline."
-        actions={
-          <Button asChild variant="brand">
-            <Link href="/jobs/new">Add Job</Link>
-          </Button>
-        }
+        // actions={
+        //   <Button asChild variant="brand">
+        //     <Link href="/jobs/new">Add Job</Link>
+        //   </Button>
+        // }
       />
 
       {/* METRICS */}

@@ -291,17 +291,17 @@ export default async function JobsPage() {
       <PageHeader
         title="Jobs"
         description="Track roles, scores, statuses, and next actions."
-        actions={
-          <>
-            <Button asChild variant="secondary">
-              <Link href="/today">Today</Link>
-            </Button>
+        // actions={
+        //   <>
+        //     <Button asChild variant="secondary">
+        //       <Link href="/today">Today</Link>
+        //     </Button>
 
-            <Button asChild variant="brand">
-              <Link href="/jobs/new">Add Job</Link>
-            </Button>
-          </>
-        }
+        //     {/* <Button asChild variant="brand">
+        //       <Link href="/jobs/new">Add Job</Link>
+        //     </Button> */}
+        //   </>
+        // }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
