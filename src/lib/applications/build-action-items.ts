@@ -4,6 +4,7 @@ import type {
   WorkflowActionBucket,
 } from '@/lib/workflow/types'
 import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
+import type { ApplicationDisposition } from '@/lib/statuses'
 
 export type ActionQueueGroup = {
   key: WorkflowActionBucket
@@ -46,6 +47,30 @@ function isSnoozed(application: WorkflowApplication): boolean {
   return snoozedUntil > new Date()
 }
 
+function isTerminalDisposition(
+  disposition: ApplicationDisposition | null
+): boolean {
+  switch (disposition) {
+    case 'rejected':
+    case 'accepted':
+    case 'withdrawn':
+    case 'ghosted':
+    case 'offer':
+      return true
+    case 'landed_interview':
+    case null:
+      return false
+  }
+}
+
+function shouldExcludeFromActiveQueue(application: WorkflowApplication): boolean {
+  if (application.status === 'closed') {
+    return true
+  }
+
+  return isTerminalDisposition(application.disposition)
+}
+
 function getCompany(application: WorkflowApplication) {
   return application.job?.company ?? 'Unknown company'
 }
@@ -66,7 +91,9 @@ function getFollowUpHref(application: WorkflowApplication) {
   return `/follow-ups#job-${application.jobId}`
 }
 
-function buildFollowUpAction(application: WorkflowApplication): ActionQueueItem | null {
+function buildFollowUpAction(
+  application: WorkflowApplication
+): ActionQueueItem | null {
   if (application.status !== 'applied') return null
   if (application.followUpCompletedAt) return null
 
@@ -101,6 +128,7 @@ function buildFollowUpAction(application: WorkflowApplication): ActionQueueItem 
     title: getTitle(application),
     location: getLocation(application),
     status: application.status,
+    disposition: application.disposition,
     score: application.score,
     reason: isOverdue ? 'Follow-up overdue' : 'Follow-up due now',
     priorityScore: snoozed
@@ -114,7 +142,6 @@ function buildFollowUpAction(application: WorkflowApplication): ActionQueueItem 
     decision: application.workflowMeta?.decision ?? null,
     snoozedUntil,
     lastReviewedAt: application.workflowMeta?.lastReviewedAt ?? null,
-    disposition: application.disposition,
   }
 }
 
@@ -137,6 +164,7 @@ function buildReadyAction(application: WorkflowApplication): ActionQueueItem | n
       title: getTitle(application),
       location: getLocation(application),
       status: application.status,
+      disposition: application.disposition,
       score: application.score,
       reason: 'Deferred for later review',
       priorityScore: 1 + scoreBoost,
@@ -146,7 +174,6 @@ function buildReadyAction(application: WorkflowApplication): ActionQueueItem | n
       decision,
       snoozedUntil,
       lastReviewedAt: application.workflowMeta?.lastReviewedAt ?? null,
-      disposition: application.disposition,
     }
   }
 
@@ -161,6 +188,7 @@ function buildReadyAction(application: WorkflowApplication): ActionQueueItem | n
       title: getTitle(application),
       location: getLocation(application),
       status: application.status,
+      disposition: application.disposition,
       score: application.score,
       reason:
         application.score !== null
@@ -173,7 +201,6 @@ function buildReadyAction(application: WorkflowApplication): ActionQueueItem | n
       decision,
       snoozedUntil,
       lastReviewedAt: application.workflowMeta?.lastReviewedAt ?? null,
-      disposition: application.disposition,
     }
   }
 
@@ -191,6 +218,7 @@ function buildReadyAction(application: WorkflowApplication): ActionQueueItem | n
       title: getTitle(application),
       location: getLocation(application),
       status: application.status,
+      disposition: application.disposition,
       score: application.score,
       reason:
         decision === 'waiting_on_referral'
@@ -203,7 +231,6 @@ function buildReadyAction(application: WorkflowApplication): ActionQueueItem | n
       decision,
       snoozedUntil,
       lastReviewedAt: application.workflowMeta?.lastReviewedAt ?? null,
-      disposition: application.disposition,
     }
   }
 
@@ -217,6 +244,7 @@ function buildReadyAction(application: WorkflowApplication): ActionQueueItem | n
     title: getTitle(application),
     location: getLocation(application),
     status: application.status,
+    disposition: application.disposition,
     score: application.score,
     reason:
       application.score !== null
@@ -229,11 +257,12 @@ function buildReadyAction(application: WorkflowApplication): ActionQueueItem | n
     decision,
     snoozedUntil,
     lastReviewedAt: application.workflowMeta?.lastReviewedAt ?? null,
-    disposition: application.disposition,
   }
 }
 
-function buildInterviewAction(application: WorkflowApplication): ActionQueueItem | null {
+function buildInterviewAction(
+  application: WorkflowApplication
+): ActionQueueItem | null {
   if (application.status !== 'interviewing') return null
 
   const snoozed = isSnoozed(application)
@@ -249,6 +278,7 @@ function buildInterviewAction(application: WorkflowApplication): ActionQueueItem
     title: getTitle(application),
     location: getLocation(application),
     status: application.status,
+    disposition: application.disposition,
     score: application.score,
     reason: application.interviewDate
       ? 'Interview process active'
@@ -260,7 +290,6 @@ function buildInterviewAction(application: WorkflowApplication): ActionQueueItem
     decision: application.workflowMeta?.decision ?? null,
     snoozedUntil: application.workflowMeta?.snoozedUntil ?? null,
     lastReviewedAt: application.workflowMeta?.lastReviewedAt ?? null,
-    disposition: application.disposition,
   }
 }
 
@@ -270,6 +299,10 @@ export function buildActionItems(
   const items: ActionQueueItem[] = []
 
   for (const application of applications) {
+    if (shouldExcludeFromActiveQueue(application)) {
+      continue
+    }
+
     const followUpItem = buildFollowUpAction(application)
     if (followUpItem) items.push(followUpItem)
 
