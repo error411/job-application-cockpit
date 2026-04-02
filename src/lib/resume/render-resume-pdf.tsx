@@ -21,16 +21,16 @@ type ResumePdfProps = {
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 36,
-    paddingBottom: 36,
+    paddingTop: 34,
+    paddingBottom: 34,
     paddingHorizontal: 40,
-    fontSize: 10.5,
-    lineHeight: 1.45,
+    fontSize: 10.2,
+    lineHeight: 1.4,
     fontFamily: 'Helvetica',
     color: '#111827',
   },
   header: {
-    marginBottom: 14,
+    marginBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
     paddingBottom: 10,
@@ -41,30 +41,49 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   contactLine: {
-    fontSize: 9.5,
+    fontSize: 9.4,
     color: '#4B5563',
   },
   targetLine: {
-    marginTop: 6,
-    fontSize: 9.5,
+    marginTop: 5,
+    fontSize: 9.3,
     color: '#374151',
   },
-  section: {
-    marginBottom: 10,
-  },
   heading: {
-    fontSize: 11,
+    fontSize: 10.8,
     fontFamily: 'Helvetica-Bold',
-    marginBottom: 5,
     textTransform: 'uppercase',
     color: '#111827',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  headingFirst: {
+    marginTop: 0,
+  },
+  headingSpaced: {
+    marginTop: 12,
   },
   paragraph: {
-    marginBottom: 6,
+    marginBottom: 4,
+  },
+  jobTitle: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 10.4,
+    color: '#111827',
+    marginTop: 7,
+    marginBottom: 2,
+  },
+  jobTitleFirst: {
+    marginTop: 2,
+  },
+  jobMeta: {
+    fontSize: 9.2,
+    color: '#4B5563',
+    marginBottom: 4,
   },
   bulletRow: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: 3,
     paddingRight: 8,
   },
   bullet: {
@@ -73,6 +92,7 @@ const styles = StyleSheet.create({
   },
   bulletText: {
     flex: 1,
+    lineHeight: 1.38,
   },
 })
 
@@ -91,6 +111,10 @@ function normalizeText(value: string): string {
   return value.replace(/\u00a0/g, ' ').replace(/\s+\n/g, '\n').trim()
 }
 
+function stripTags(value: string): string {
+  return value.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')
+}
+
 function markdownToBlocks(markdown: string): Block[] {
   const rendered = md.render(markdown ?? '')
   const clean = sanitizeHtml(rendered, {
@@ -99,37 +123,39 @@ function markdownToBlocks(markdown: string): Block[] {
   })
 
   const blocks: Block[] = []
-  const liRegex = /<li>([\s\S]*?)<\/li>/gi
   const combinedRegex =
     /<h[1-3]>([\s\S]*?)<\/h[1-3]>|<p>([\s\S]*?)<\/p>|<ul>([\s\S]*?)<\/ul>/gi
+  const liRegex = /<li>([\s\S]*?)<\/li>/gi
 
   let match: RegExpExecArray | null
   while ((match = combinedRegex.exec(clean)) !== null) {
-    const [fullMatch, headingText, paragraphText, listText] = match
+    const [, headingText, paragraphText, listText] = match
 
     if (headingText) {
-      const text = normalizeText(
-        headingText.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')
-      )
-      if (text) blocks.push({ type: 'heading', text })
+      const text = normalizeText(stripTags(headingText))
+      if (text) {
+        blocks.push({ type: 'heading', text })
+      }
       continue
     }
 
     if (paragraphText) {
-      const text = normalizeText(
-        paragraphText.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')
-      )
-      if (text) blocks.push({ type: 'paragraph', text })
+      const text = normalizeText(stripTags(paragraphText))
+      if (text) {
+        blocks.push({ type: 'paragraph', text })
+      }
       continue
     }
 
     if (listText) {
+      liRegex.lastIndex = 0
+
       let liMatch: RegExpExecArray | null
-      while ((liMatch = liRegex.exec(fullMatch)) !== null) {
-        const text = normalizeText(
-          liMatch[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')
-        )
-        if (text) blocks.push({ type: 'bullet', text })
+      while ((liMatch = liRegex.exec(listText)) !== null) {
+        const text = normalizeText(stripTags(liMatch[1]))
+        if (text) {
+          blocks.push({ type: 'bullet', text })
+        }
       }
     }
   }
@@ -217,11 +243,7 @@ function stripDuplicateHeaderBlocks(
 
     const isContactBlock =
       block.type === 'paragraph' &&
-      isDuplicateContactLine(
-        block.text,
-        options.email,
-        options.phone
-      )
+      isDuplicateContactLine(block.text, options.email, options.phone)
 
     if (isNameBlock || isContactBlock) {
       startIndex += 1
@@ -232,6 +254,31 @@ function stripDuplicateHeaderBlocks(
   }
 
   return blocks.slice(startIndex)
+}
+
+function looksLikeJobTitle(text: string): boolean {
+  return (
+    text.includes('|') &&
+    text === text.toUpperCase() &&
+    !text.startsWith('TARGET ROLE:')
+  )
+}
+
+function looksLikeJobMeta(text: string): boolean {
+  return (
+    /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/.test(text) &&
+    text.includes('|')
+  )
+}
+
+function isFirstHeading(blocks: Block[], index: number): boolean {
+  return !blocks.slice(0, index).some((block) => block.type === 'heading')
+}
+
+function isFirstJobTitle(blocks: Block[], index: number): boolean {
+  return !blocks
+    .slice(0, index)
+    .some((block) => block.type === 'paragraph' && looksLikeJobTitle(block.text))
 }
 
 export function ResumePdfDocument(props: ResumePdfProps) {
@@ -261,16 +308,46 @@ export function ResumePdfDocument(props: ResumePdfProps) {
           {props.candidateName ? (
             <Text style={styles.name}>{props.candidateName}</Text>
           ) : null}
-          {contactLine ? <Text style={styles.contactLine}>{contactLine}</Text> : null}
-          {targetLine ? <Text style={styles.targetLine}>{targetLine}</Text> : null}
+
+          {contactLine ? (
+            <Text style={styles.contactLine}>{contactLine}</Text>
+          ) : null}
+
+          {targetLine ? (
+            <Text style={styles.targetLine}>{targetLine}</Text>
+          ) : null}
         </View>
 
         {blocks.map((block, index) => {
           if (block.type === 'heading') {
+            const headingStyle = isFirstHeading(blocks, index)
+              ? [styles.heading, styles.headingFirst]
+              : [styles.heading, styles.headingSpaced]
+
             return (
-              <View key={`heading-${index}`} style={styles.section}>
-                <Text style={styles.heading}>{block.text}</Text>
-              </View>
+              <Text key={`heading-${index}`} style={headingStyle}>
+                {block.text}
+              </Text>
+            )
+          }
+
+          if (block.type === 'paragraph' && looksLikeJobTitle(block.text)) {
+            const jobTitleStyle = isFirstJobTitle(blocks, index)
+              ? [styles.jobTitle, styles.jobTitleFirst]
+              : styles.jobTitle
+
+            return (
+              <Text key={`job-title-${index}`} style={jobTitleStyle}>
+                {block.text}
+              </Text>
+            )
+          }
+
+          if (block.type === 'paragraph' && looksLikeJobMeta(block.text)) {
+            return (
+              <Text key={`job-meta-${index}`} style={styles.jobMeta}>
+                {block.text}
+              </Text>
             )
           }
 
