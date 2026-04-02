@@ -499,59 +499,67 @@ export default async function JobDetailPage({
 
             {latestScore ? (
               <SectionCard title="Latest Score" eyebrow="Fit">
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-                  <p className="text-sm font-medium text-zinc-500">Score</p>
-                  <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
-                    {latestScore.score}/100
-                  </p>
-                </div>
+                <details className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+                  <summary className="cursor-pointer text-sm font-medium text-zinc-800">
+                    Show score breakdown ({latestScore.score}/100)
+                  </summary>
 
-                <div className="mt-5 grid gap-4 lg:grid-cols-3">
-                  <div className="rounded-xl border border-zinc-200 bg-white p-4">
-                    <h3 className="font-medium text-zinc-950">Matched Skills</h3>
-                    {matchedSkills.length ? (
-                      <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-zinc-700">
-                        {matchedSkills.map((skill: string, index: number) => (
-                          <li key={index}>{skill}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="mt-3 text-sm text-zinc-500">
-                        No matched skills listed.
+                  <div className="mt-4 space-y-5">
+                    <div>
+                      <p className="text-sm font-medium text-zinc-500">Score</p>
+                      <p className="mt-1 text-3xl font-semibold tracking-tight text-zinc-950">
+                        {latestScore.score}/100
                       </p>
-                    )}
-                  </div>
+                    </div>
 
-                  <div className="rounded-xl border border-zinc-200 bg-white p-4">
-                    <h3 className="font-medium text-zinc-950">Missing Skills</h3>
-                    {missingSkills.length ? (
-                      <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-zinc-700">
-                        {missingSkills.map((skill: string, index: number) => (
-                          <li key={index}>{skill}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="mt-3 text-sm text-zinc-500">
-                        No missing skills listed.
-                      </p>
-                    )}
-                  </div>
+                    <div className="grid gap-4 lg:grid-cols-3">
+                      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+                        <h3 className="font-medium text-zinc-950">Matched Skills</h3>
+                        {matchedSkills.length ? (
+                          <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-zinc-700">
+                            {matchedSkills.map((skill: string, index: number) => (
+                              <li key={index}>{skill}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-3 text-sm text-zinc-500">
+                            No matched skills listed.
+                          </p>
+                        )}
+                      </div>
 
-                  <div className="rounded-xl border border-zinc-200 bg-white p-4">
-                    <h3 className="font-medium text-zinc-950">Reasons</h3>
-                    {reasons.length ? (
-                      <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-zinc-700">
-                        {reasons.map((reason: string, index: number) => (
-                          <li key={index}>{reason}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="mt-3 text-sm text-zinc-500">
-                        No reasons listed.
-                      </p>
-                    )}
+                      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+                        <h3 className="font-medium text-zinc-950">Missing Skills</h3>
+                        {missingSkills.length ? (
+                          <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-zinc-700">
+                            {missingSkills.map((skill: string, index: number) => (
+                              <li key={index}>{skill}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-3 text-sm text-zinc-500">
+                            No missing skills listed.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+                        <h3 className="font-medium text-zinc-950">Reasons</h3>
+                        {reasons.length ? (
+                          <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-zinc-700">
+                            {reasons.map((reason: string, index: number) => (
+                              <li key={index}>{reason}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-3 text-sm text-zinc-500">
+                            No reasons listed.
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </details>
               </SectionCard>
             ) : (
               <SectionCard title="Latest Score" eyebrow="Fit">
@@ -577,14 +585,14 @@ export default async function JobDetailPage({
               eyebrow="Assets"
               actions={
                 <div className="flex flex-wrap gap-2">
-                  <a
+                  {/* <a
                     href={`/api/application-assets/${job.id}/resume-html`}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50"
                   >
                     Preview Resume HTML
-                  </a>
+                  </a> */}
 
                   <a
                     href={`/api/application-assets/${job.id}/resume-pdf`}
@@ -595,14 +603,14 @@ export default async function JobDetailPage({
                     Download Resume PDF
                   </a>
 
-                  <a
+                  {/* <a
                     href={`/api/application-assets/${job.id}/cover-letter-html`}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50"
                   >
                     Preview Cover Letter HTML
-                  </a>
+                  </a> */}
 
                   <a
                     href={`/api/application-assets/${job.id}/cover-letter-pdf`}
@@ -617,32 +625,32 @@ export default async function JobDetailPage({
             >
               {latestAsset ? (
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-                    <h3 className="text-base font-semibold text-zinc-950">
-                      Latest Resume Draft
-                    </h3>
+                  <details className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+                    <summary className="cursor-pointer text-sm font-medium text-zinc-800">
+                      Show latest resume draft
+                    </summary>
                     <div className="mt-3 whitespace-pre-wrap text-sm text-zinc-700">
                       {latestAsset.resume_markdown || 'No resume draft.'}
                     </div>
-                  </div>
+                  </details>
 
-                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-                    <h3 className="text-base font-semibold text-zinc-950">
-                      Latest Cover Letter Draft
-                    </h3>
+                  <details className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+                    <summary className="cursor-pointer text-sm font-medium text-zinc-800">
+                      Show latest cover letter draft
+                    </summary>
                     <div className="mt-3 whitespace-pre-wrap text-sm text-zinc-700">
                       {latestAsset.cover_letter_markdown || 'No cover letter draft.'}
                     </div>
-                  </div>
+                  </details>
 
-                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-                    <h3 className="text-base font-semibold text-zinc-950">
-                      Recruiter Note
-                    </h3>
+                  <details className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+                    <summary className="cursor-pointer text-sm font-medium text-zinc-800">
+                      Show recruiter note
+                    </summary>
                     <div className="mt-3 whitespace-pre-wrap text-sm text-zinc-700">
                       {latestAsset.recruiter_note || 'No recruiter note.'}
                     </div>
-                  </div>
+                  </details>
                 </div>
               ) : (
                 <p className="text-sm text-zinc-600">No draft assets yet.</p>
