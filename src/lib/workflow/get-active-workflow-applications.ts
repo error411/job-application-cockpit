@@ -1,4 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  isApplicationDisposition,
+  type ApplicationDisposition,
+} from '@/lib/statuses'
 import type { WorkflowApplication, WorkflowDecision } from './types'
 
 type RawWorkflowMeta =
@@ -19,6 +23,8 @@ type RawWorkflowRow = {
   job_id: string
   status: string | null
   applied_at: string | null
+  disposition: string | null
+  disposition_at: string | null
   follow_up_1_due: string | null
   follow_up_2_due: string | null
   follow_up_1_sent_at: string | null
@@ -43,6 +49,16 @@ function normalizeWorkflowMeta(value: RawWorkflowMeta) {
     snoozedUntil: meta.snoozed_until,
     lastReviewedAt: meta.last_reviewed_at,
   }
+}
+
+function normalizeDisposition(
+  value: string | null
+): ApplicationDisposition | null {
+  if (value && isApplicationDisposition(value)) {
+    return value
+  }
+
+  return null
 }
 
 function getDerivedFollowUp(row: RawWorkflowRow) {
@@ -87,6 +103,8 @@ function mapRow(row: RawWorkflowRow): WorkflowApplication {
     id: row.id,
     jobId: row.job_id,
     status: row.status,
+    disposition: normalizeDisposition(row.disposition),
+    dispositionAt: row.disposition_at,
     appliedAt: row.applied_at,
     score: null,
     followUpDate: followUp.followUpDate,
@@ -104,17 +122,19 @@ function mapRow(row: RawWorkflowRow): WorkflowApplication {
   }
 }
 
-export async function getActiveWorkflowApplications(): Promise<WorkflowApplication[]> {
+export async function getActiveWorkflowApplications(): Promise<
+  WorkflowApplication[]
+> {
   const supabase = createAdminClient()
 
-  const { data, error } = await supabase
-    .from('applications')
-    .select(
-      `
+  const { data, error } = await supabase.from('applications').select(
+    `
       id,
       job_id,
       status,
       applied_at,
+      disposition,
+      disposition_at,
       follow_up_1_due,
       follow_up_2_due,
       follow_up_1_sent_at,
@@ -131,7 +151,7 @@ export async function getActiveWorkflowApplications(): Promise<WorkflowApplicati
         last_reviewed_at
       )
     `
-    )
+  )
 
   if (error) {
     throw new Error(`Failed to load workflow applications: ${error.message}`)

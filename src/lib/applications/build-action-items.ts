@@ -114,6 +114,7 @@ function buildFollowUpAction(application: WorkflowApplication): ActionQueueItem 
     decision: application.workflowMeta?.decision ?? null,
     snoozedUntil,
     lastReviewedAt: application.workflowMeta?.lastReviewedAt ?? null,
+    disposition: application.disposition,
   }
 }
 
@@ -145,6 +146,7 @@ function buildReadyAction(application: WorkflowApplication): ActionQueueItem | n
       decision,
       snoozedUntil,
       lastReviewedAt: application.workflowMeta?.lastReviewedAt ?? null,
+      disposition: application.disposition,
     }
   }
 
@@ -171,6 +173,7 @@ function buildReadyAction(application: WorkflowApplication): ActionQueueItem | n
       decision,
       snoozedUntil,
       lastReviewedAt: application.workflowMeta?.lastReviewedAt ?? null,
+      disposition: application.disposition,
     }
   }
 
@@ -200,6 +203,7 @@ function buildReadyAction(application: WorkflowApplication): ActionQueueItem | n
       decision,
       snoozedUntil,
       lastReviewedAt: application.workflowMeta?.lastReviewedAt ?? null,
+      disposition: application.disposition,
     }
   }
 
@@ -225,6 +229,7 @@ function buildReadyAction(application: WorkflowApplication): ActionQueueItem | n
     decision,
     snoozedUntil,
     lastReviewedAt: application.workflowMeta?.lastReviewedAt ?? null,
+    disposition: application.disposition,
   }
 }
 
@@ -255,6 +260,7 @@ function buildInterviewAction(application: WorkflowApplication): ActionQueueItem
     decision: application.workflowMeta?.decision ?? null,
     snoozedUntil: application.workflowMeta?.snoozedUntil ?? null,
     lastReviewedAt: application.workflowMeta?.lastReviewedAt ?? null,
+    disposition: application.disposition,
   }
 }
 

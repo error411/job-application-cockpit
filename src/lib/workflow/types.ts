@@ -1,3 +1,5 @@
+import type { ApplicationDisposition } from '@/lib/statuses'
+
 export type WorkflowDecision =
   | 'needs_tailoring'
   | 'waiting_on_referral'
@@ -21,6 +23,8 @@ export type WorkflowApplication = {
   id: string
   jobId: string
   status: string | null
+  disposition: ApplicationDisposition | null
+  dispositionAt: string | null
   appliedAt: string | null
   score: number | null
   followUpDate: string | null
@@ -57,6 +61,7 @@ export type ActionQueueItem = {
   title: string
   location: string
   status: string | null
+  disposition: ApplicationDisposition | null
   score: number | null
   reason: string
   priorityScore: number

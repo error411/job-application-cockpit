@@ -1,7 +1,9 @@
 import type { Tables } from '@/lib/supabase/types'
 import {
   ACTIVE_APPLICATION_STATUSES,
+  isApplicationDisposition,
   isApplicationStatus,
+  type ApplicationDisposition,
   type ApplicationStatus,
 } from '@/lib/statuses'
 
@@ -25,6 +27,8 @@ type RawWorkflowApplicationRow = Pick<
   | 'follow_up_2_sent_at'
   | 'notes'
   | 'updated_at'
+  | 'disposition'
+  | 'disposition_at'
 > & {
   jobs: WorkflowJob | WorkflowJob[] | null
 }
@@ -40,8 +44,10 @@ export type ActiveWorkflowApplicationRow = Pick<
   | 'follow_up_2_sent_at'
   | 'notes'
   | 'updated_at'
+  | 'disposition_at'
 > & {
   status: ApplicationStatus
+  disposition: ApplicationDisposition | null
   job: WorkflowJob | null
 }
 
@@ -81,6 +87,16 @@ function normalizeApplicationStatus(value: string | null): ApplicationStatus {
   return 'ready'
 }
 
+function normalizeApplicationDisposition(
+  value: string | null
+): ApplicationDisposition | null {
+  if (value && isApplicationDisposition(value)) {
+    return value
+  }
+
+  return null
+}
+
 function toActiveWorkflowApplicationRow(
   row: RawWorkflowApplicationRow
 ): ActiveWorkflowApplicationRow {
@@ -95,6 +111,8 @@ function toActiveWorkflowApplicationRow(
     follow_up_2_sent_at: row.follow_up_2_sent_at,
     notes: row.notes,
     updated_at: row.updated_at,
+    disposition: normalizeApplicationDisposition(row.disposition),
+    disposition_at: row.disposition_at,
     job: normalizeJob(row.jobs),
   }
 }
@@ -116,6 +134,8 @@ export async function getActiveWorkflowApplications(
       follow_up_2_sent_at,
       notes,
       updated_at,
+      disposition,
+      disposition_at,
       jobs:jobs!applications_job_id_fkey (
         id,
         company,

@@ -1,10 +1,11 @@
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-// KEEP ALL YOUR IMPORTS (unchanged)
+
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/status-badge'
 import { ScoreBadge } from '@/components/score-badge'
+import { DispositionBadge } from '@/components/disposition-badge'
 import {
   SectionCard,
   SectionCardBody,
@@ -18,12 +19,23 @@ import {
 } from '@/lib/applications/build-action-items'
 import type { WorkflowDecision } from '@/lib/workflow/types'
 import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  isApplicationDisposition,
+  type ApplicationDisposition,
+} from '@/lib/statuses'
 
 type NormalizedTodayApplication = Parameters<typeof buildActionItems>[0][number]
 
 function toWorkflowDecision(value: unknown): WorkflowDecision | null {
   if (typeof value !== 'string' || value.length === 0) return null
   return value as WorkflowDecision
+}
+
+function toApplicationDisposition(
+  value: unknown
+): ApplicationDisposition | null {
+  if (typeof value !== 'string') return null
+  return isApplicationDisposition(value) ? value : null
 }
 
 function formatMaybeDate(value?: string | null) {
@@ -74,6 +86,13 @@ function normalizeApplications(rows: unknown[]): NormalizedTodayApplication[] {
       (row.applied_at as string | null | undefined) ??
       null
 
+    const disposition = toApplicationDisposition(row.disposition)
+
+    const dispositionAt =
+      (row.dispositionAt as string | null | undefined) ??
+      (row.disposition_at as string | null | undefined) ??
+      null
+
     const followUpDate =
       (row.followUpDate as string | null | undefined) ??
       (row.follow_up_1_due as string | null | undefined) ??
@@ -107,6 +126,8 @@ function normalizeApplications(rows: unknown[]): NormalizedTodayApplication[] {
       title,
       location,
       status: (row.status as string | null | undefined) ?? null,
+      disposition,
+      dispositionAt,
       appliedAt,
       score: (row.score as number | null | undefined) ?? null,
       followUpDate,
@@ -213,14 +234,8 @@ export default async function TodayPage() {
       <PageHeader
         title="Today"
         description="Focus on the highest-value next actions across your pipeline."
-        // actions={
-        //   <Button asChild variant="brand">
-        //     <Link href="/jobs/new">Add Job</Link>
-        //   </Button>
-        // }
       />
 
-      {/* METRICS */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <Metric label="Overdue" value={overdueItems.length} />
         <Metric label="Due Now" value={dueTodayItems.length} />
@@ -230,7 +245,6 @@ export default async function TodayPage() {
         <Metric label="Snoozed" value={snoozedItems.length} />
       </div>
 
-      {/* ACTION GROUPS */}
       {groups.length === 0 ? (
         <EmptyStateModern />
       ) : (
@@ -260,11 +274,17 @@ export default async function TodayPage() {
 
                             <ScoreBadge score={item.score} />
 
-                            {item.status ? <StatusBadge status={item.status} /> : null}
+                            {item.status ? (
+                              <StatusBadge status={item.status} />
+                            ) : null}
+
+                            <DispositionBadge disposition={item.disposition} />
                           </div>
 
                           <div className="mt-4">
-                            <p className="text-sm font-medium text-slate-500">{item.company}</p>
+                            <p className="text-sm font-medium text-slate-500">
+                              {item.company}
+                            </p>
                             <h3 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
                               {item.title}
                             </h3>
@@ -273,15 +293,26 @@ export default async function TodayPage() {
                             </p>
                           </div>
 
-                          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                             <InfoBlock label="Reason" value={item.reason} />
-                            <InfoBlock label="Due" value={formatMaybeDate(item.dueDate)} />
-                            <InfoBlock label="Priority" value={String(item.priorityScore)} />
+                            <InfoBlock
+                              label="Due"
+                              value={formatMaybeDate(item.dueDate)}
+                            />
+                            <InfoBlock
+                              label="Disposition"
+                              value={item.disposition?.replaceAll('_', ' ') ?? 'Open'}
+                            />
+                            <InfoBlock
+                              label="Priority"
+                              value={String(item.priorityScore)}
+                            />
                           </div>
 
                           {item.overdueDays ? (
                             <div className="mt-4 inline-flex items-center rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-200">
-                              {item.overdueDays} day{item.overdueDays === 1 ? '' : 's'} overdue
+                              {item.overdueDays} day
+                              {item.overdueDays === 1 ? '' : 's'} overdue
                             </div>
                           ) : null}
 
