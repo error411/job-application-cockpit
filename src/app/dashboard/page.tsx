@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth/require-user'
 import { formatDate } from '@/lib/dates'
-import { getActiveWorkflowApplications } from '@/lib/workflow/get-active-workflow-applications'
-import type { WorkflowApplication } from '@/lib/workflow/types'
+import {
+  getActiveWorkflowApplications,
+  type ActiveWorkflowApplicationRow,
+} from '@/lib/applications/get-active-workflow-applications'
 
 type RecentJob = {
   id: string
@@ -62,11 +64,18 @@ function isDateToday(dateString: string | null | undefined): boolean {
   return date >= start && date <= end
 }
 
-function isSnoozed(app: WorkflowApplication): boolean {
-  const snoozedUntil = parseDate(app.workflowMeta?.snoozedUntil)
-  if (!snoozedUntil) return false
+function getEarliestFollowUpDate(
+  app: ActiveWorkflowApplicationRow
+): string | null {
+  return app.follow_up_1_due ?? app.follow_up_2_due ?? null
+}
 
-  return snoozedUntil > new Date()
+function isApplicationOverdue(app: ActiveWorkflowApplicationRow): boolean {
+  return isDatePast(getEarliestFollowUpDate(app))
+}
+
+function isApplicationDueToday(app: ActiveWorkflowApplicationRow): boolean {
+  return isDateToday(getEarliestFollowUpDate(app))
 }
 
 function getStatusTone(status: string | null | undefined): string {
@@ -150,7 +159,7 @@ function SummaryCard({
 
   return (
     <div className={`app-panel rounded-2xl border p-4 shadow-sm ${toneClasses}`}>
-      <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
+      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
         {label}
       </p>
       <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
@@ -306,7 +315,7 @@ function UrgentAttention({
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4">
-          <p className="text-[11px] font-medium tracking-[0.16em] text-rose-700 uppercase">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-rose-700">
             Overdue
           </p>
           <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
@@ -316,38 +325,36 @@ function UrgentAttention({
         </div>
 
         <div className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4">
-          <p className="text-[11px] font-medium tracking-[0.16em] text-orange-700 uppercase">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-orange-700">
             Due Today
           </p>
           <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
             {dueTodayFollowUps}
           </p>
-          <p className="mt-1 text-sm text-zinc-600">
-            Follow-ups due today.
-          </p>
+          <p className="mt-1 text-sm text-zinc-600">Follow-ups due today.</p>
         </div>
 
         <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
-          <p className="text-[11px] font-medium tracking-[0.16em] text-violet-700 uppercase">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-violet-700">
             Ready to Apply
           </p>
           <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
             {readyToApply}
           </p>
           <p className="mt-1 text-sm text-zinc-600">
-            Ready-stage applications not currently snoozed.
+            Ready-stage applications awaiting action.
           </p>
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-          <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-600 uppercase">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-600">
             Snoozed
           </p>
           <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
             {snoozedCount}
           </p>
           <p className="mt-1 text-sm text-zinc-600">
-            Workflow items hidden until later.
+            Snoozing not currently surfaced in dashboard metrics.
           </p>
         </div>
       </div>
@@ -474,7 +481,7 @@ export default async function DashboardPage() {
         .is('archived_at', null)
         .order('updated_at', { ascending: false })
         .limit(6),
-      getActiveWorkflowApplications(),
+      getActiveWorkflowApplications(supabase),
     ])
 
   if (activeJobsResult.error) {
@@ -491,32 +498,34 @@ export default async function DashboardPage() {
   const readyCount = workflowApplications.filter(
     (app) => app.status === 'ready'
   ).length
+
   const appliedCount = workflowApplications.filter(
     (app) => app.status === 'applied'
   ).length
+
   const interviewingCount = workflowApplications.filter(
     (app) => app.status === 'interviewing'
   ).length
 
   const overdueFollowUps = workflowApplications.filter(
-    (app) => !isSnoozed(app) && isDatePast(app.followUpDate)
+    isApplicationOverdue
   ).length
 
   const dueTodayFollowUps = workflowApplications.filter(
-    (app) => !isSnoozed(app) && isDateToday(app.followUpDate)
+    isApplicationDueToday
   ).length
 
-  const snoozedCount = workflowApplications.filter(isSnoozed).length
+  const snoozedCount = 0
 
   const readyToApplyCount = workflowApplications.filter(
-    (app) => app.status === 'ready' && !isSnoozed(app)
+    (app) => app.status === 'ready'
   ).length
 
   return (
     <div className="space-y-8">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-2">
-          <p className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
             Dashboard
           </p>
           <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">
