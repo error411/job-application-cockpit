@@ -14,20 +14,48 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data, error } = await supabase
+    const { data: existing, error: fetchError } = await supabase
       .from('candidate_profile')
       .select('*')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (error || !data) {
+    if (fetchError) {
       return NextResponse.json(
-        { error: error?.message || 'Profile not found' },
-        { status: 404 }
+        { error: fetchError.message },
+        { status: 500 }
       )
     }
 
-    return NextResponse.json({ profile: data })
+    if (existing) {
+      return NextResponse.json({ profile: existing })
+    }
+
+    const { data: created, error: insertError } = await supabase
+      .from('candidate_profile')
+      .insert({
+        user_id: user.id,
+        full_name: '',
+        email: user.email ?? null,
+        phone: null,
+        location: null,
+        linkedin_url: null,
+        title: null,
+        summary: null,
+        strengths: [],
+        experience_bullets: [],
+      })
+      .select()
+      .single()
+
+    if (insertError) {
+      return NextResponse.json(
+        { error: insertError.message },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ profile: created })
   } catch (error) {
     return NextResponse.json(
       {
