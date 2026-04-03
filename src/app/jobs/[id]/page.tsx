@@ -389,185 +389,209 @@ export default async function JobDetailPage({
             </div>
           </div>
 
-          <div className="mt-6 space-y-4">
-            <div className="flex flex-wrap gap-3">
-              <GenerateDraftAssetsButton jobId={typedJob.id} />
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+  <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+      Primary Actions
+    </p>
+    <p className="mt-1 text-sm text-zinc-600">
+      Generate and review core application assets.
+    </p>
 
-              <form action="/api/score-form" method="post">
-                <input type="hidden" name="jobId" value={typedJob.id} />
-                <input
-                  type="hidden"
-                  name="from"
-                  value={from === 'apply' ? 'apply' : 'jobs'}
-                />
-                <button className="app-button" type="submit">
-                  Score This Job
-                </button>
-              </form>
+    <div className="mt-4 flex flex-wrap gap-3">
+      <GenerateDraftAssetsButton jobId={typedJob.id} />
 
-              {typedJob.url ? (
-                <a
-                  href={typedJob.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="app-button"
-                >
-                  View Original Job Post
-                </a>
-              ) : null}
-            </div>
+      <form action="/api/score-form" method="post">
+        <input type="hidden" name="jobId" value={typedJob.id} />
+        <input
+          type="hidden"
+          name="from"
+          value={from === 'apply' ? 'apply' : 'jobs'}
+        />
+        <button className="app-button" type="submit">
+          Score This Job
+        </button>
+      </form>
 
-            <div className="flex flex-wrap gap-3">
-              <form action="/api/applications-form" method="post">
-                <input type="hidden" name="jobId" value={typedJob.id} />
-                <input type="hidden" name="status" value="ready" />
-                <input
-                  type="hidden"
-                  name="from"
-                  value={from === 'apply' ? 'apply' : 'jobs'}
-                />
-                <button
-                  className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-                  type="submit"
-                >
-                  Mark Ready
-                </button>
-              </form>
+      {typedJob.url ? (
+        <a
+          href={typedJob.url}
+          target="_blank"
+          rel="noreferrer"
+          className="app-button"
+        >
+          View Original Job Post
+        </a>
+      ) : null}
+    </div>
+  </div>
 
-              <form action="/api/applications-form" method="post">
-                <input type="hidden" name="jobId" value={typedJob.id} />
-                <input type="hidden" name="status" value="applied" />
-                <input
-                  type="hidden"
-                  name="from"
-                  value={from === 'apply' ? 'apply' : 'jobs'}
-                />
-                <button
-                  className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-                  type="submit"
-                >
-                  Mark Applied
-                </button>
-              </form>
+  <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+      Workflow Stage
+    </p>
+    <p className="mt-1 text-sm text-zinc-600">
+      Move the application through the active pipeline.
+    </p>
 
-              <form action="/api/applications-form" method="post">
-                <input type="hidden" name="jobId" value={typedJob.id} />
-                <input type="hidden" name="status" value="interviewing" />
-                <input
-                  type="hidden"
-                  name="from"
-                  value={from === 'apply' ? 'apply' : 'jobs'}
-                />
-                <button
-                  className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-                  type="submit"
-                >
-                  Mark Interviewing
-                </button>
-              </form>
-            </div>
-                        <div className="space-y-3">
-              <p className="text-sm font-medium text-zinc-700">Disposition</p>
+    <div className="mt-4 flex flex-wrap gap-3">
+      <form action="/api/applications-form" method="post">
+        <input type="hidden" name="jobId" value={typedJob.id} />
+        <input type="hidden" name="status" value="ready" />
+        <input
+          type="hidden"
+          name="from"
+          value={from === 'apply' ? 'apply' : 'jobs'}
+        />
+        <button
+          className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          type="submit"
+        >
+          Mark Ready
+        </button>
+      </form>
 
-              <div className="flex flex-wrap gap-3">
-                <form action="/api/applications-form" method="post">
-                  <input type="hidden" name="jobId" value={typedJob.id} />
-                  <input type="hidden" name="disposition" value="landed_interview" />
-                  <input
-                    type="hidden"
-                    name="from"
-                    value={from === 'apply' ? 'apply' : 'jobs'}
-                  />
-                  <button
-                    className="rounded-md border border-violet-200 bg-white px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-50"
-                    type="submit"
-                  >
-                    Landed Interview
-                  </button>
-                </form>
+      <form action="/api/applications-form" method="post">
+        <input type="hidden" name="jobId" value={typedJob.id} />
+        <input type="hidden" name="status" value="applied" />
+        <input
+          type="hidden"
+          name="from"
+          value={from === 'apply' ? 'apply' : 'jobs'}
+        />
+        <button
+          className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          type="submit"
+        >
+          Mark Applied
+        </button>
+      </form>
 
-                <form action="/api/applications-form" method="post">
-                  <input type="hidden" name="jobId" value={typedJob.id} />
-                  <input type="hidden" name="disposition" value="rejected" />
-                  <input
-                    type="hidden"
-                    name="from"
-                    value={from === 'apply' ? 'apply' : 'jobs'}
-                  />
-                  <button
-                    className="rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
-                    type="submit"
-                  >
-                    Rejected
-                  </button>
-                </form>
+      <form action="/api/applications-form" method="post">
+        <input type="hidden" name="jobId" value={typedJob.id} />
+        <input type="hidden" name="status" value="interviewing" />
+        <input
+          type="hidden"
+          name="from"
+          value={from === 'apply' ? 'apply' : 'jobs'}
+        />
+        <button
+          className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          type="submit"
+        >
+          Mark Interviewing
+        </button>
+      </form>
+    </div>
+  </div>
 
-                <form action="/api/applications-form" method="post">
-                  <input type="hidden" name="jobId" value={typedJob.id} />
-                  <input type="hidden" name="disposition" value="offer" />
-                  <input
-                    type="hidden"
-                    name="from"
-                    value={from === 'apply' ? 'apply' : 'jobs'}
-                  />
-                  <button
-                    className="rounded-md border border-amber-200 bg-white px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50"
-                    type="submit"
-                  >
-                    Offer
-                  </button>
-                </form>
+  <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+      Outcome
+    </p>
+    <p className="mt-1 text-sm text-zinc-600">
+      Record the result when the process reaches an outcome.
+    </p>
 
-                <form action="/api/applications-form" method="post">
-                  <input type="hidden" name="jobId" value={typedJob.id} />
-                  <input type="hidden" name="disposition" value="accepted" />
-                  <input
-                    type="hidden"
-                    name="from"
-                    value={from === 'apply' ? 'apply' : 'jobs'}
-                  />
-                  <button
-                    className="rounded-md border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
-                    type="submit"
-                  >
-                    Accepted
-                  </button>
-                </form>
+    <div className="mt-4 flex flex-wrap gap-3">
+      <form action="/api/applications-form" method="post">
+        <input type="hidden" name="jobId" value={typedJob.id} />
+        <input type="hidden" name="disposition" value="landed_interview" />
+        <input
+          type="hidden"
+          name="from"
+          value={from === 'apply' ? 'apply' : 'jobs'}
+        />
+        <button
+          className="rounded-md border border-violet-200 bg-white px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-50"
+          type="submit"
+        >
+          Landed Interview
+        </button>
+      </form>
 
-                <form action="/api/applications-form" method="post">
-                  <input type="hidden" name="jobId" value={typedJob.id} />
-                  <input type="hidden" name="disposition" value="withdrawn" />
-                  <input
-                    type="hidden"
-                    name="from"
-                    value={from === 'apply' ? 'apply' : 'jobs'}
-                  />
-                  <button
-                    className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-                    type="submit"
-                  >
-                    Withdrawn
-                  </button>
-                </form>
+      <form action="/api/applications-form" method="post">
+        <input type="hidden" name="jobId" value={typedJob.id} />
+        <input type="hidden" name="disposition" value="rejected" />
+        <input
+          type="hidden"
+          name="from"
+          value={from === 'apply' ? 'apply' : 'jobs'}
+        />
+        <button
+          className="rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
+          type="submit"
+        >
+          Rejected
+        </button>
+      </form>
 
-                <form action="/api/applications-form" method="post">
-                  <input type="hidden" name="jobId" value={typedJob.id} />
-                  <input type="hidden" name="disposition" value="ghosted" />
-                  <input
-                    type="hidden"
-                    name="from"
-                    value={from === 'apply' ? 'apply' : 'jobs'}
-                  />
-                  <button
-                    className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    type="submit"
-                  >
-                    Ghosted
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
+      <form action="/api/applications-form" method="post">
+        <input type="hidden" name="jobId" value={typedJob.id} />
+        <input type="hidden" name="disposition" value="offer" />
+        <input
+          type="hidden"
+          name="from"
+          value={from === 'apply' ? 'apply' : 'jobs'}
+        />
+        <button
+          className="rounded-md border border-amber-200 bg-white px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50"
+          type="submit"
+        >
+          Offer
+        </button>
+      </form>
+
+      <form action="/api/applications-form" method="post">
+        <input type="hidden" name="jobId" value={typedJob.id} />
+        <input type="hidden" name="disposition" value="accepted" />
+        <input
+          type="hidden"
+          name="from"
+          value={from === 'apply' ? 'apply' : 'jobs'}
+        />
+        <button
+          className="rounded-md border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+          type="submit"
+        >
+          Accepted
+        </button>
+      </form>
+
+      <form action="/api/applications-form" method="post">
+        <input type="hidden" name="jobId" value={typedJob.id} />
+        <input type="hidden" name="disposition" value="withdrawn" />
+        <input
+          type="hidden"
+          name="from"
+          value={from === 'apply' ? 'apply' : 'jobs'}
+        />
+        <button
+          className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          type="submit"
+        >
+          Withdrawn
+        </button>
+      </form>
+
+      <form action="/api/applications-form" method="post">
+        <input type="hidden" name="jobId" value={typedJob.id} />
+        <input type="hidden" name="disposition" value="ghosted" />
+        <input
+          type="hidden"
+          name="from"
+          value={from === 'apply' ? 'apply' : 'jobs'}
+        />
+        <button
+          className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          type="submit"
+        >
+          Ghosted
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
