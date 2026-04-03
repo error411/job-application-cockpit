@@ -1,584 +1,448 @@
 import Link from 'next/link'
-import { requireUser } from '@/lib/auth/require-user'
-import { formatDate } from '@/lib/dates'
-import { getActiveWorkflowApplications } from '@/lib/workflow/get-active-workflow-applications'
-import type { WorkflowApplication } from '@/lib/workflow/types'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 
-type RecentJob = {
-  id: string
-  company: string
-  title: string
-  location: string | null
-  status: string | null
-  updated_at: string
-  applications?:
-    | Array<{
-        status: string | null
-        updated_at: string | null
-        created_at: string | null
-      }>
-    | null
+type HomePageProps = {
+  searchParams: Promise<{ error?: string; message?: string }>
 }
 
-function startOfTodayLocal(): Date {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
-}
-
-function endOfTodayLocal(): Date {
-  const start = startOfTodayLocal()
-  return new Date(
-    start.getFullYear(),
-    start.getMonth(),
-    start.getDate(),
-    23,
-    59,
-    59,
-    999
+function Pill({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">
+      {children}
+    </span>
   )
 }
 
-function parseDate(value: string | null | undefined): Date | null {
-  if (!value) return null
-
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-function isDatePast(dateString: string | null | undefined): boolean {
-  const date = parseDate(dateString)
-  if (!date) return false
-
-  return date < startOfTodayLocal()
-}
-
-function isDateToday(dateString: string | null | undefined): boolean {
-  const date = parseDate(dateString)
-  if (!date) return false
-
-  const start = startOfTodayLocal()
-  const end = endOfTodayLocal()
-
-  return date >= start && date <= end
-}
-
-function isSnoozed(app: WorkflowApplication): boolean {
-  const snoozedUntil = parseDate(app.workflowMeta?.snoozedUntil)
-  if (!snoozedUntil) return false
-
-  return snoozedUntil > new Date()
-}
-
-function getStatusTone(status: string | null | undefined): string {
-  switch (status) {
-    case 'ready':
-      return 'bg-sky-50 text-sky-700 ring-1 ring-sky-200'
-    case 'applied':
-      return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-    case 'interviewing':
-      return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-    case 'rejected':
-    case 'closed':
-      return 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'
-    case 'new':
-      return 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
-    case 'scored':
-      return 'bg-violet-50 text-violet-700 ring-1 ring-violet-200'
-    case 'queued':
-      return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-    case 'assets_generated':
-      return 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200'
-    case 'ready_to_apply':
-      return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
-    default:
-      return 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
-  }
-}
-
-function getPrimaryApplicationStatusForJob(job: RecentJob): string | null {
-  const applications = job.applications ?? []
-  if (!applications.length) return null
-
-  const sorted = [...applications].sort((a, b) => {
-    const aTime = new Date(a.updated_at ?? a.created_at ?? 0).getTime()
-    const bTime = new Date(b.updated_at ?? b.created_at ?? 0).getTime()
-    return bTime - aTime
-  })
-
-  return sorted[0]?.status ?? null
-}
-
-function getDashboardJobStatus(job: RecentJob): string {
-  return getPrimaryApplicationStatusForJob(job) ?? job.status ?? 'unknown'
-}
-
-function getDashboardJobStatusLabel(job: RecentJob): string {
-  const applicationStatus = getPrimaryApplicationStatusForJob(job)
-  if (applicationStatus) return applicationStatus
-
-  switch (job.status) {
-    case 'assets_generated':
-      return 'assets generated'
-    case 'ready_to_apply':
-      return 'ready to apply'
-    default:
-      return job.status ?? 'unknown'
-  }
-}
-
-function SummaryCard({
-  label,
-  value,
-  hint,
-  tone = 'zinc',
+function SectionIntro({
+  eyebrow,
+  title,
+  description,
 }: {
-  label: string
-  value: string | number
-  hint: string
-  tone?: 'red' | 'green' | 'blue' | 'violet' | 'zinc'
+  eyebrow: string
+  title: string
+  description: string
 }) {
-  const toneClasses =
-    tone === 'red'
-      ? 'border-rose-200 bg-gradient-to-br from-rose-50 to-white'
-      : tone === 'green'
-        ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white'
-        : tone === 'blue'
-          ? 'border-blue-200 bg-gradient-to-br from-blue-50 to-white'
-          : tone === 'violet'
-            ? 'border-violet-200 bg-gradient-to-br from-violet-50 to-white'
-            : 'border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-zinc-100'
-
   return (
-    <div className={`app-panel rounded-2xl border p-4 shadow-sm ${toneClasses}`}>
-      <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
-        {label}
+    <div className="max-w-3xl space-y-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700">
+        {eyebrow}
       </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-        {value}
-      </p>
-      <p className="mt-1 text-sm text-zinc-600">{hint}</p>
+      <h2 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+        {title}
+      </h2>
+      <p className="text-base leading-7 text-slate-600">{description}</p>
     </div>
   )
 }
 
-function SectionCard({
+function ValueCard({
   title,
   description,
-  href,
-  hrefLabel,
+}: {
+  title: string
+  description: string
+}) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h3 className="text-lg font-semibold tracking-tight text-slate-950">
+        {title}
+      </h3>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+    </div>
+  )
+}
+
+function StatTile({
+  label,
+  value,
+  tone = 'default',
+}: {
+  label: string
+  value: string
+  tone?: 'default' | 'cyan' | 'violet' | 'emerald' | 'rose'
+}) {
+  const toneClass =
+    tone === 'cyan'
+      ? 'border-cyan-200 bg-cyan-50'
+      : tone === 'violet'
+        ? 'border-violet-200 bg-violet-50'
+        : tone === 'emerald'
+          ? 'border-emerald-200 bg-emerald-50'
+          : tone === 'rose'
+            ? 'border-rose-200 bg-rose-50'
+            : 'border-slate-200 bg-white'
+
+  return (
+    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function PreviewShell({
+  title,
+  subtitle,
   children,
 }: {
   title: string
-  description?: string
-  href?: string
-  hrefLabel?: string
+  subtitle: string
   children: React.ReactNode
 }) {
   return (
-    <section className="app-panel rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
-      <div className="flex flex-col gap-3 border-b border-zinc-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
+    <div className="rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
             {title}
-          </h2>
-          {description ? (
-            <p className="text-sm text-zinc-600">{description}</p>
-          ) : null}
+          </p>
+          <p className="mt-0.5 text-sm text-slate-600">{subtitle}</p>
         </div>
-
-        {href && hrefLabel ? (
-          <Link href={href} className="app-button">
-            {hrefLabel}
-          </Link>
-        ) : null}
+        <div className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
+          <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
+          <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
+        </div>
       </div>
-
-      <div className="pt-5">{children}</div>
-    </section>
+      <div className="p-4">{children}</div>
+    </div>
   )
 }
 
-function PipelineOverview({
-  readyCount,
-  appliedCount,
-  interviewingCount,
-}: {
-  readyCount: number
-  appliedCount: number
-  interviewingCount: number
-}) {
-  const total = readyCount + appliedCount + interviewingCount
-  const safeTotal = Math.max(total, 1)
-
-  const readyWidth = (readyCount / safeTotal) * 100
-  const appliedWidth = (appliedCount / safeTotal) * 100
-  const interviewingWidth = (interviewingCount / safeTotal) * 100
-
+function AppPreview() {
   return (
-    <SectionCard
-      title="Pipeline Overview"
-      description={`${total} active applications across lifecycle stages.`}
-      href="/jobs"
-      hrefLabel="Open Jobs"
-    >
-      <div className="space-y-5">
-        <div className="overflow-hidden rounded-lg bg-zinc-200">
-          <div className="flex h-4 w-full">
-            <div
-              className="bg-blue-500"
-              style={{ width: `${readyWidth}%` }}
-              title={`Ready: ${readyCount}`}
-            />
-            <div
-              className="bg-violet-500"
-              style={{ width: `${appliedWidth}%` }}
-              title={`Applied: ${appliedCount}`}
-            />
-            <div
-              className="bg-amber-500"
-              style={{ width: `${interviewingWidth}%` }}
-              title={`Interviewing: ${interviewingCount}`}
-            />
-          </div>
-        </div>
+    <div className="rounded-[2rem] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-900 p-4 shadow-2xl sm:p-6">
+      <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-3 backdrop-blur sm:p-4">
+        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <PreviewShell
+            title="Today"
+            subtitle="Work the next best actions across your search"
+          >
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-medium text-slate-950">
+                      Recruiter follow-up due
+                    </p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Northstar Labs · Web Developer
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-medium text-rose-700">
+                    Overdue
+                  </span>
+                </div>
+              </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-lg bg-blue-500 px-1.5 text-xs font-semibold text-white">
-                {readyCount}
-              </span>
-              <span className="text-sm font-medium text-zinc-700">Ready</span>
+              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-medium text-slate-950">
+                      Resume and application ready
+                    </p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Studio Eight · Frontend Engineer
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[11px] font-medium text-cyan-700">
+                    Ready
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-medium text-slate-950">
+                      Interview prep and notes
+                    </p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Harbor Health · Full-Stack Engineer
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                    Interviewing
+                  </span>
+                </div>
+              </div>
             </div>
-            <p className="mt-3 text-sm text-zinc-500">
-              Jobs ready for application work.
-            </p>
-          </div>
+          </PreviewShell>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-lg bg-violet-500 px-1.5 text-xs font-semibold text-white">
-                {appliedCount}
-              </span>
-              <span className="text-sm font-medium text-zinc-700">Applied</span>
-            </div>
-            <p className="mt-3 text-sm text-zinc-500">
-              Applications currently in post-submit follow-up mode.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-lg bg-amber-500 px-1.5 text-xs font-semibold text-white">
-                {interviewingCount}
-              </span>
-              <span className="text-sm font-medium text-zinc-700">
-                Interviewing
-              </span>
-            </div>
-            <p className="mt-3 text-sm text-zinc-500">
-              Active interview process items.
-            </p>
-          </div>
-        </div>
-      </div>
-    </SectionCard>
-  )
-}
-
-function UrgentAttention({
-  overdueFollowUps,
-  dueTodayFollowUps,
-  readyToApply,
-  snoozedCount,
-}: {
-  overdueFollowUps: number
-  dueTodayFollowUps: number
-  readyToApply: number
-  snoozedCount: number
-}) {
-  return (
-    <SectionCard
-      title="Urgent Attention"
-      description="Summary only. The action queue itself belongs on Today."
-      href="/today"
-      hrefLabel="Open Today"
-    >
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4">
-          <p className="text-[11px] font-medium tracking-[0.16em] text-rose-700 uppercase">
-            Overdue
-          </p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
-            {overdueFollowUps}
-          </p>
-          <p className="mt-1 text-sm text-zinc-600">Follow-ups past due.</p>
-        </div>
-
-        <div className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4">
-          <p className="text-[11px] font-medium tracking-[0.16em] text-orange-700 uppercase">
-            Due Today
-          </p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
-            {dueTodayFollowUps}
-          </p>
-          <p className="mt-1 text-sm text-zinc-600">
-            Follow-ups due today.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
-          <p className="text-[11px] font-medium tracking-[0.16em] text-violet-700 uppercase">
-            Ready to Apply
-          </p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
-            {readyToApply}
-          </p>
-          <p className="mt-1 text-sm text-zinc-600">
-            Ready-stage applications not currently snoozed.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-          <p className="text-[11px] font-medium tracking-[0.16em] text-zinc-600 uppercase">
-            Snoozed
-          </p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
-            {snoozedCount}
-          </p>
-          <p className="mt-1 text-sm text-zinc-600">
-            Workflow items hidden until later.
-          </p>
-        </div>
-      </div>
-    </SectionCard>
-  )
-}
-
-function QuickLinks() {
-  return (
-    <SectionCard
-      title="Quick Links"
-      description="Use Dashboard to understand state, then jump into the right place."
-    >
-      <div className="grid gap-3">
-        <Link href="/today" className="rounded-2xl border border-zinc-200 bg-white p-4 transition hover:bg-zinc-50">
-          <p className="font-medium text-zinc-950">Open Today</p>
-          <p className="mt-1 text-sm text-zinc-600">
-            Work the queue, handle follow-ups, and move applications forward.
-          </p>
-        </Link>
-
-        <Link href="/jobs" className="rounded-2xl border border-zinc-200 bg-white p-4 transition hover:bg-zinc-50">
-          <p className="font-medium text-zinc-950">Browse Jobs</p>
-          <p className="mt-1 text-sm text-zinc-600">
-            Review all opportunities, search, filter, and edit records.
-          </p>
-        </Link>
-
-        <Link href="/jobs/new" className="rounded-2xl border border-zinc-200 bg-white p-4 transition hover:bg-zinc-50">
-          <p className="font-medium text-zinc-950">Add Job</p>
-          <p className="mt-1 text-sm text-zinc-600">
-            Capture a new opportunity quickly.
-          </p>
-        </Link>
-      </div>
-    </SectionCard>
-  )
-}
-
-function RecentActivity({ jobs }: { jobs: RecentJob[] }) {
-  return (
-    <SectionCard
-      title="Recent Activity"
-      description="Recently updated active jobs."
-      href="/jobs"
-      hrefLabel="View all jobs"
-    >
-      {jobs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-4 py-8 text-sm text-zinc-500">
-          No recent activity yet.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {jobs.map((job) => (
-            <Link
-              key={job.id}
-              href={`/jobs/${job.id}`}
-              className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-4 transition hover:bg-zinc-50 sm:flex-row sm:items-center sm:justify-between"
+          <div className="grid gap-4">
+            <PreviewShell
+              title="Dashboard"
+              subtitle="See the state of your pipeline at a glance"
             >
-              <div className="min-w-0">
-                <p className="truncate text-base font-semibold tracking-tight text-zinc-950">
-                  {job.company} · {job.title}
-                </p>
-                <p className="mt-1 truncate text-sm text-zinc-600">
-                  {job.location ?? '—'}
-                </p>
-              </div>
+              <div className="space-y-4">
+                <div className="overflow-hidden rounded-lg bg-slate-200">
+                  <div className="flex h-4 w-full">
+                    <div className="w-[30%] bg-cyan-500" />
+                    <div className="w-[48%] bg-violet-500" />
+                    <div className="w-[22%] bg-amber-400" />
+                  </div>
+                </div>
 
-              <div className="flex items-center gap-3">
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${getStatusTone(
-                    getDashboardJobStatus(job)
-                  )}`}
-                >
-                  {getDashboardJobStatusLabel(job)}
-                </span>
-                <span className="text-xs text-zinc-500">
-                  Updated {formatDate(job.updated_at)}
-                </span>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <StatTile label="Ready" value="12" tone="cyan" />
+                  <StatTile label="Applied" value="28" tone="violet" />
+                  <StatTile label="Interviewing" value="7" tone="emerald" />
+                  <StatTile label="Overdue" value="4" tone="rose" />
+                </div>
               </div>
-            </Link>
-          ))}
+            </PreviewShell>
+
+            <PreviewShell
+              title="Jobs"
+              subtitle="Track each opportunity without losing the thread"
+            >
+              <div className="space-y-2">
+                {[
+                  ['Salk Institute', 'Web Developer', 'Applied'],
+                  ['Cobalt Health', 'WordPress Developer', 'Interviewing'],
+                  ['Acme Labs', 'Frontend Engineer', 'Ready'],
+                ].map(([company, title, status]) => (
+                  <div
+                    key={`${company}-${title}`}
+                    className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-950">
+                        {company}
+                      </p>
+                      <p className="truncate text-sm text-slate-600">{title}</p>
+                    </div>
+                    <span className="ml-3 text-xs text-slate-500">{status}</span>
+                  </div>
+                ))}
+              </div>
+            </PreviewShell>
+          </div>
         </div>
-      )}
-    </SectionCard>
+      </div>
+    </div>
   )
 }
 
-export default async function DashboardPage() {
-  const { supabase } = await requireUser()
+function WorkflowStep({
+  step,
+  title,
+  description,
+}: {
+  step: string
+  title: string
+  description: string
+}) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-sm font-semibold text-white">
+        {step}
+      </div>
+      <h3 className="mt-4 text-lg font-semibold tracking-tight text-slate-950">
+        {title}
+      </h3>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+    </div>
+  )
+}
 
-  const [
-    activeJobsResult,
-    recentJobsResult,
-    workflowApplications,
-  ] = await Promise.all([
-    supabase
-      .from('jobs')
-      .select('id', { count: 'exact', head: true })
-      .is('archived_at', null),
-    supabase
-      .from('jobs')
-      .select(
-        `
-        id,
-        company,
-        title,
-        location,
-        status,
-        updated_at,
-        applications (
-          status,
-          updated_at,
-          created_at
-        )
-      `
-      )
-      .is('archived_at', null)
-      .order('updated_at', { ascending: false })
-      .limit(6),
-    getActiveWorkflowApplications(),
-  ])
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const params = await searchParams
+  const supabase = await createClient()
 
-  if (activeJobsResult.error) {
-    throw new Error(activeJobsResult.error.message)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (user) {
+    redirect('/dashboard')
   }
-
-  if (recentJobsResult.error) {
-    throw new Error(recentJobsResult.error.message)
-  }
-
-  const activeJobsCount = activeJobsResult.count ?? 0
-  const recentJobs = (recentJobsResult.data ?? []) as RecentJob[]
-
-  const readyCount = workflowApplications.filter((app) => app.status === 'ready').length
-  const appliedCount = workflowApplications.filter((app) => app.status === 'applied').length
-  const interviewingCount = workflowApplications.filter(
-    (app) => app.status === 'interviewing'
-  ).length
-
-  const overdueFollowUps = workflowApplications.filter(
-    (app) => !isSnoozed(app) && isDatePast(app.followUpDate)
-  ).length
-
-  const dueTodayFollowUps = workflowApplications.filter(
-    (app) => !isSnoozed(app) && isDateToday(app.followUpDate)
-  ).length
-
-  const snoozedCount = workflowApplications.filter(isSnoozed).length
-
-  const readyToApplyCount = workflowApplications.filter(
-    (app) => app.status === 'ready' && !isSnoozed(app)
-  ).length
 
   return (
-    <div className="space-y-8">
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-2">
-          <p className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">
-            Dashboard
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">
-            Overview of pipeline state
-          </h1>
-          <p className="max-w-3xl text-sm leading-6 text-zinc-600">
-            Use Dashboard to understand what is going on, then jump into Today
-            for execution or Jobs for record management.
-          </p>
+    <div className="space-y-20 py-6 sm:py-10">
+      <section className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+        <div className="space-y-6">
+          <Pill>Track jobs. Work Today. See your pipeline.</Pill>
+
+          <div className="space-y-4">
+            <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
+              ApplyEngine gives your job search a real operating system.
+            </h1>
+
+            <p className="max-w-2xl text-lg leading-8 text-slate-600">
+              Keep jobs organized, work your next best actions from Today, stay
+              on top of follow-ups, and use Dashboard to understand where your
+              search stands.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/login"
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+            >
+              Log in
+            </Link>
+
+            <a
+              href="#what-you-get"
+              className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              See what you get
+            </a>
+          </div>
+
+          <div className="grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-3">
+            <StatTile label="Dashboard" value="Pipeline state" />
+            <StatTile label="Today" value="Action queue" tone="cyan" />
+            <StatTile label="Follow-ups" value="No loose ends" tone="violet" />
+          </div>
+
+          {(params.error || params.message) && (
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+              {params.error ?? params.message}
+            </div>
+          )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Link href="/today" className="app-button-primary">
-            Open Today
-          </Link>
-          <Link href="/jobs" className="app-button">
-            View Jobs
-          </Link>
+        <AppPreview />
+      </section>
+
+      <section id="what-you-get" className="space-y-8">
+        <SectionIntro
+          eyebrow="What you get"
+          title="A job search workspace built around the way the process actually works"
+          description="ApplyEngine helps you manage jobs, daily execution, and follow-through in one system instead of scattering the process across tabs, notes, and memory."
+        />
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <ValueCard
+            title="Dashboard shows the state of the search"
+            description="See how many roles are Ready, Applied, Interviewing, or slipping into overdue follow-up so you can understand the pipeline fast."
+          />
+          <ValueCard
+            title="Today tells you what to work next"
+            description="Use the Today view to focus on the next best actions instead of wasting energy deciding where to start."
+          />
+          <ValueCard
+            title="Jobs keeps each opportunity organized"
+            description="Track roles, company details, statuses, notes, and application progress so each opportunity stays usable over time."
+          />
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <SummaryCard
-          label="Total Jobs"
-          value={activeJobsCount}
-          hint="Active, non-archived opportunities."
-          tone="zinc"
-        />
-        <SummaryCard
-          label="Ready"
-          value={readyCount}
-          hint="Applications ready for work."
-          tone="blue"
-        />
-        <SummaryCard
-          label="Applied"
-          value={appliedCount}
-          hint="Submitted and awaiting progression."
-          tone="violet"
-        />
-        <SummaryCard
-          label="Interviewing"
-          value={interviewingCount}
-          hint="In active interview process."
-          tone="green"
-        />
-        <SummaryCard
-          label="Overdue"
-          value={overdueFollowUps}
-          hint="Follow-ups that need attention."
-          tone="red"
-        />
+      <section className="grid gap-10 lg:grid-cols-[1fr_1fr] lg:items-center">
+        <div className="space-y-5">
+          <SectionIntro
+            eyebrow="Why it helps"
+            title="This is what changes when your search runs from a system"
+            description="You spend less time re-orienting yourself and more time actually moving applications forward."
+          />
+
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+              <p className="font-medium text-slate-950">
+                You know what deserves attention now
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                Overdue follow-ups, Ready applications, and active interview work
+                are visible instead of getting buried.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+              <p className="font-medium text-slate-950">
+                You stop dropping opportunities
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                Each role has a place, a status, and a history, so momentum does
+                not depend on memory.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+              <p className="font-medium text-slate-950">
+                You can see the health of the pipeline
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                Dashboard makes it easier to spot whether the search is moving,
+                stalled, or leaking follow-through.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <StatTile label="Track" value="Jobs and status" />
+            <StatTile label="Work" value="Today actions" tone="cyan" />
+            <StatTile label="Monitor" value="Dashboard" tone="violet" />
+            <StatTile label="Follow through" value="Follow-ups" tone="emerald" />
+          </div>
+        </div>
       </section>
 
-      <PipelineOverview
-        readyCount={readyCount}
-        appliedCount={appliedCount}
-        interviewingCount={interviewingCount}
-      />
-
-      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <UrgentAttention
-          overdueFollowUps={overdueFollowUps}
-          dueTodayFollowUps={dueTodayFollowUps}
-          readyToApply={readyToApplyCount}
-          snoozedCount={snoozedCount}
+      <section className="space-y-8">
+        <SectionIntro
+          eyebrow="How it works"
+          title="Simple workflow, clearer execution"
+          description="Capture opportunities, work the right next step, and keep the search current."
         />
 
-        <QuickLinks />
+        <div className="grid gap-4 md:grid-cols-3">
+          <WorkflowStep
+            step="1"
+            title="Add the job"
+            description="Capture new opportunities in Jobs so everything starts from one reliable place."
+          />
+          <WorkflowStep
+            step="2"
+            title="Work Today"
+            description="Use Today to handle applications, follow-ups, and interview tasks based on what matters most."
+          />
+          <WorkflowStep
+            step="3"
+            title="Review Dashboard"
+            description="Step back and see the state of the pipeline so you know where to push next."
+          />
+        </div>
       </section>
 
-      <RecentActivity jobs={recentJobs} />
+      <section className="rounded-[2rem] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-900 px-6 py-10 text-white shadow-xl sm:px-8">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200">
+            Get started
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            See your search the way ApplyEngine sees it
+          </h2>
+          <p className="mt-4 text-base leading-7 text-slate-200">
+            Log in to manage Jobs, work Today, stay on top of Follow-ups, and
+            keep Dashboard honest.
+          </p>
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/login"
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+            >
+              Log in
+            </Link>
+
+            <a
+              href="#what-you-get"
+              className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-5 text-sm font-semibold text-white transition hover:bg-white/15"
+            >
+              Review features
+            </a>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }
