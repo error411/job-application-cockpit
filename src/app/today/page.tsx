@@ -18,7 +18,7 @@ import {
   groupTodayActionItems,
 } from '@/lib/applications/build-action-items'
 import type { WorkflowDecision } from '@/lib/workflow/types'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { requireUser } from '@/lib/auth/require-user'
 import {
   isApplicationDisposition,
   type ApplicationDisposition,
@@ -194,7 +194,7 @@ function EmptyStateModern() {
 }
 
 export default async function TodayPage() {
-  const supabase = createAdminClient()
+  const { supabase } = await requireUser()
 
   let applicationRows: unknown[] = []
 

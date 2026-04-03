@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 import Link from 'next/link'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { requireUser } from '@/lib/auth/require-user'
 import type { JobRow } from '@/lib/supabase/model-types'
 import {
   getFollowUpState,
@@ -99,7 +99,7 @@ function PipelineColumn({
 }
 
 export default async function ApplicationsPage() {
-  const supabase = createAdminClient()
+  const { supabase } = await requireUser()
 
   let applications: ApplicationListItemWithState[] = []
 

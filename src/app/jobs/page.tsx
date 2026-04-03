@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 import Link from 'next/link'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { requireUser } from '@/lib/auth/require-user'
 import type { Database } from '@/lib/supabase/types'
 import { formatDate } from '@/lib/dates'
 import { Button } from '@/components/ui/button'
@@ -166,7 +166,7 @@ function ErrorState({ message }: { message: string }) {
 }
 
 export default async function JobsPage() {
-  const supabase = createAdminClient()
+  const { supabase } = await requireUser()
 
   const { data: jobs, error: jobsError } = await supabase
     .from('jobs')

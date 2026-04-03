@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 import Link from 'next/link'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { requireUser } from '@/lib/auth/require-user'
 import {
   getFollowUpState,
   type FollowUpState,
@@ -301,7 +301,7 @@ export default async function FollowUpsPage({
   const queued = Number(params.queued ?? 0)
   const errorMessage = params.error ?? null
 
-  const supabase = createAdminClient()
+  const { supabase } = await requireUser()
   let applicationRows: FollowUpListRow[] = []
 
   try {

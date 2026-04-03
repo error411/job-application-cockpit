@@ -1,18 +1,7 @@
 import './globals.css'
-import Link from 'next/link'
-import { AppNav } from './app-nav'
 import Image from 'next/image'
-
-// function ApplyEngineMark() {
-//   return (
-//     <div className="relative h-10 w-10 shrink-0">
-//       <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-600 to-cyan-400" />
-//       <div className="absolute inset-[4px] rounded-full bg-white" />
-//       <div className="absolute left-[6px] top-[7px] h-[23px] w-[23px] rounded-full border-[6px] border-blue-600 border-r-cyan-400 border-b-cyan-400" />
-//       <div className="absolute left-[14px] top-[12px] h-0 w-0 border-b-[7px] border-l-[12px] border-t-[7px] border-b-transparent border-l-cyan-400 border-t-transparent" />
-//     </div>
-//   )
-// }
+import { AppNav } from './app-nav'
+import { HeaderAuthActions } from '@/components/auth/header-auth-actions'
 
 export default function RootLayout({
   children,
@@ -47,13 +36,7 @@ export default function RootLayout({
 
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
                   <AppNav />
-
-                  <Link
-                    href="/jobs/new"
-                    className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-cyan-400 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-blue-700 hover:to-cyan-500"
-                  >
-                    Add Job
-                  </Link>
+                  <HeaderAuthActions />
                 </div>
               </div>
             </div>

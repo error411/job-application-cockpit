@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import type { TablesUpdate } from '@/lib/supabase/types'
 
 type CandidateExperienceUpdate = TablesUpdate<'candidate_experience'>
@@ -39,15 +39,21 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = createAdminClient()
+    const supabase = await createClient()
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = (await req.json()) as RequestBody
     const { id } = await params
 
     const updatePayload: CandidateExperienceRouteUpdate = {}
-
-    if (body.candidate_profile_id !== undefined) {
-      updatePayload.candidate_profile_id = body.candidate_profile_id
-    }
 
     if (body.company !== undefined) {
       updatePayload.company = body.company.trim()
@@ -93,6 +99,7 @@ export async function PATCH(
       .from('candidate_experience')
       .update(updatePayload)
       .eq('id', id)
+      .eq('user_id', user.id)
       .select()
       .single()
 
@@ -114,13 +121,24 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = createAdminClient()
+    const supabase = await createClient()
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
 
     const { error } = await supabase
       .from('candidate_experience')
       .delete()
       .eq('id', id)
+      .eq('user_id', user.id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

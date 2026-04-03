@@ -7,6 +7,10 @@ const PUBLIC_PATHS = [
   '/signup',
 ]
 
+const PUBLIC_PREFIXES = [
+  '/auth',
+]
+
 const PROTECTED_PREFIXES = [
   '/today',
   '/jobs',
@@ -29,7 +33,12 @@ function isStaticAsset(pathname: string) {
 }
 
 function isPublicPath(pathname: string) {
-  return PUBLIC_PATHS.includes(pathname)
+  return (
+    PUBLIC_PATHS.includes(pathname) ||
+    PUBLIC_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    )
+  )
 }
 
 function isProtectedPath(pathname: string) {
@@ -51,7 +60,7 @@ export async function middleware(request: NextRequest) {
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
@@ -85,7 +94,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  if ((pathname === '/login' || pathname === '/signup') && user) {
+  if (isPublicPath(pathname) && user && (pathname === '/login' || pathname === '/signup')) {
     const appUrl = request.nextUrl.clone()
     appUrl.pathname = '/today'
     appUrl.search = ''
