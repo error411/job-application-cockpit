@@ -1,40 +1,33 @@
 import { NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
   try {
-    const supabase = createAdminClient()
+    const supabase = await createClient()
 
-    const { data: profile, error: profileError } = await supabase
-      .from('candidate_profile')
-      .select('id')
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .single()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
-    if (profileError || !profile) {
-      return NextResponse.json(
-        { error: profileError?.message || 'Candidate profile not found.' },
-        { status: 404 }
-      )
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: experience, error: experienceError } = await supabase
+    const { data: experience, error } = await supabase
       .from('candidate_experience')
       .select('*')
-      .eq('candidate_profile_id', profile.id)
+      .eq('user_id', user.id)
       .order('sort_order', { ascending: true })
 
-    if (experienceError) {
-      return NextResponse.json(
-        { error: experienceError.message },
-        { status: 500 }
-      )
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ experience: experience ?? [] })
   } catch (error) {
     console.error('GET /api/profile/experience/current error:', error)
+
     return NextResponse.json(
       { error: 'Failed to load experience.' },
       { status: 500 }

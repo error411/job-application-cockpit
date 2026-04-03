@@ -1,22 +1,40 @@
 import { NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
-  const supabase = createAdminClient()
+  try {
+    const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from('candidate_profile')
-    .select('*')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .single()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
-  if (error || !data) {
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data, error } = await supabase
+      .from('candidate_profile')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+
+    if (error || !data) {
+      return NextResponse.json(
+        { error: error?.message || 'Profile not found' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({ profile: data })
+  } catch (error) {
     return NextResponse.json(
-      { error: error?.message || 'Profile not found' },
-      { status: 404 }
+      {
+        error: 'Failed to load profile',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
     )
   }
-
-  return NextResponse.json({ profile: data })
 }

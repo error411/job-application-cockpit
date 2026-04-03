@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
-import type { TablesInsert } from '@/lib/supabase/types'
-
-type CandidateExperienceInsert = TablesInsert<'candidate_experience'>
-
-type CandidateExperienceRouteInsert = Omit<
-  CandidateExperienceInsert,
-  'bullets' | 'technologies'
-> & {
-  bullets?: string[]
-  technologies?: string[]
-}
+import { createClient } from '@/lib/supabase/server'
 
 type RequestBody = {
-  candidate_profile_id: string
   company: string
   title: string
   bullets?: string[] | null
@@ -27,24 +15,25 @@ type RequestBody = {
 }
 
 function normalizeStringArray(value: string[] | null | undefined) {
-  if (value == null) return undefined
+  if (value == null) return []
 
-  return value
-    .map((item) => item.trim())
-    .filter(Boolean)
+  return value.map((item) => item.trim()).filter(Boolean)
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createAdminClient()
-    const body = (await req.json()) as RequestBody
+    const supabase = await createClient()
 
-    if (!body.candidate_profile_id?.trim()) {
-      return NextResponse.json(
-        { error: 'candidate_profile_id is required' },
-        { status: 400 }
-      )
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const body = (await req.json()) as RequestBody
 
     if (!body.company?.trim()) {
       return NextResponse.json(
@@ -60,18 +49,24 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const insertPayload: CandidateExperienceRouteInsert = {
-      candidate_profile_id: body.candidate_profile_id.trim(),
+    const insertPayload = {
+      user_id: user.id,
       company: body.company.trim(),
       title: body.title.trim(),
       bullets: normalizeStringArray(body.bullets),
       technologies: normalizeStringArray(body.technologies),
-      summary: body.summary ?? null,
-      location: body.location ?? null,
+      summary:
+        typeof body.summary === 'string' && body.summary.trim()
+          ? body.summary.trim()
+          : null,
+      location:
+        typeof body.location === 'string' && body.location.trim()
+          ? body.location.trim()
+          : null,
       start_date: body.start_date ?? null,
       end_date: body.end_date ?? null,
-      is_current: body.is_current ?? null,
-      sort_order: body.sort_order ?? null,
+      is_current: body.is_current ?? false,
+      sort_order: body.sort_order ?? 0,
     }
 
     const { data, error } = await supabase

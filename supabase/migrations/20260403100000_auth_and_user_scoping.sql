@@ -30,9 +30,11 @@ for each row
 execute function public.set_updated_at();
 
 -- candidate profile
-create table if not exists public.candidate_profiles (
+create table if not exists public.candidate_profile (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null unique references auth.users(id) on delete cascade,
+  user_id uuid unique references auth.users(id) on delete cascade,
+  full_name text,
+  email text,
   title text,
   summary text,
   location text,
@@ -41,20 +43,43 @@ create table if not exists public.candidate_profiles (
   linkedin_url text,
   github_url text,
   strengths text[] not null default '{}',
+  experience_bullets text[] not null default '{}',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
-drop trigger if exists set_candidate_profiles_updated_at on public.candidate_profiles;
-create trigger set_candidate_profiles_updated_at
-before update on public.candidate_profiles
+alter table public.candidate_profile
+  add column if not exists user_id uuid references auth.users(id) on delete cascade,
+  add column if not exists full_name text,
+  add column if not exists email text,
+  add column if not exists title text,
+  add column if not exists summary text,
+  add column if not exists location text,
+  add column if not exists phone text,
+  add column if not exists website_url text,
+  add column if not exists linkedin_url text,
+  add column if not exists github_url text,
+  add column if not exists strengths text[] not null default '{}',
+  add column if not exists experience_bullets text[] not null default '{}',
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+create unique index if not exists candidate_profile_user_id_key
+  on public.candidate_profile(user_id);
+
+create index if not exists candidate_profile_user_id_idx
+  on public.candidate_profile(user_id);
+
+drop trigger if exists set_candidate_profile_updated_at on public.candidate_profile;
+create trigger set_candidate_profile_updated_at
+before update on public.candidate_profile
 for each row
 execute function public.set_updated_at();
 
 -- candidate experience
 create table if not exists public.candidate_experience (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
   company text not null,
   title text not null,
   location text,
@@ -68,6 +93,19 @@ create table if not exists public.candidate_experience (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.candidate_experience
+  add column if not exists user_id uuid references auth.users(id) on delete cascade,
+  add column if not exists location text,
+  add column if not exists start_date date,
+  add column if not exists end_date date,
+  add column if not exists is_current boolean not null default false,
+  add column if not exists summary text,
+  add column if not exists bullets text[] not null default '{}',
+  add column if not exists technologies text[] not null default '{}',
+  add column if not exists sort_order integer not null default 0,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
 
 create index if not exists candidate_experience_user_id_idx
   on public.candidate_experience(user_id);
@@ -96,7 +134,7 @@ create index if not exists job_scores_user_id_idx on public.job_scores(user_id);
 
 -- RLS
 alter table public.profiles enable row level security;
-alter table public.candidate_profiles enable row level security;
+alter table public.candidate_profile enable row level security;
 alter table public.candidate_experience enable row level security;
 alter table public.jobs enable row level security;
 alter table public.applications enable row level security;
@@ -123,28 +161,28 @@ using (auth.uid() = id)
 with check (auth.uid() = id);
 
 -- generic own-row policies
-drop policy if exists "candidate_profiles_select_own" on public.candidate_profiles;
-create policy "candidate_profiles_select_own"
-on public.candidate_profiles
+drop policy if exists "candidate_profile_select_own" on public.candidate_profile;
+create policy "candidate_profile_select_own"
+on public.candidate_profile
 for select
 using (auth.uid() = user_id);
 
-drop policy if exists "candidate_profiles_insert_own" on public.candidate_profiles;
-create policy "candidate_profiles_insert_own"
-on public.candidate_profiles
+drop policy if exists "candidate_profile_insert_own" on public.candidate_profile;
+create policy "candidate_profile_insert_own"
+on public.candidate_profile
 for insert
 with check (auth.uid() = user_id);
 
-drop policy if exists "candidate_profiles_update_own" on public.candidate_profiles;
-create policy "candidate_profiles_update_own"
-on public.candidate_profiles
+drop policy if exists "candidate_profile_update_own" on public.candidate_profile;
+create policy "candidate_profile_update_own"
+on public.candidate_profile
 for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
-drop policy if exists "candidate_profiles_delete_own" on public.candidate_profiles;
-create policy "candidate_profiles_delete_own"
-on public.candidate_profiles
+drop policy if exists "candidate_profile_delete_own" on public.candidate_profile;
+create policy "candidate_profile_delete_own"
+on public.candidate_profile
 for delete
 using (auth.uid() = user_id);
 

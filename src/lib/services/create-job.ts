@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 
 export async function createJobWithApplication(input: {
   company: string
@@ -7,11 +7,21 @@ export async function createJobWithApplication(input: {
   url?: string | null
   description: string
 }) {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    throw new Error('Unauthorized')
+  }
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')
     .insert({
+      user_id: user.id,
       company: input.company.trim(),
       title: input.title.trim(),
       location: input.location?.trim() || null,
@@ -30,6 +40,7 @@ export async function createJobWithApplication(input: {
   const { data: application, error: appError } = await supabase
     .from('applications')
     .insert({
+      user_id: user.id,
       job_id: job.id,
       status: 'ready',
     })

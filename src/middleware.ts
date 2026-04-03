@@ -1,42 +1,107 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import {
-  getSiteAuthCookieName,
-  verifySiteAuthCookieValue,
-} from '@/lib/site-auth'
+import { createServerClient } from '@supabase/ssr'
 
-function isPublicPath(pathname: string): boolean {
+const PUBLIC_PATHS = [
+  '/',
+  '/login',
+  '/signup',
+]
+
+const PROTECTED_PREFIXES = [
+  '/today',
+  '/jobs',
+  '/apply',
+  '/applications',
+  '/follow-ups',
+  '/dashboard',
+  '/profile',
+  '/api/profile',
+]
+
+function isStaticAsset(pathname: string) {
   return (
-    pathname === '/unlock' ||
-    pathname.startsWith('/api/auth/unlock') ||
-    pathname.startsWith('/api/auth/logout') ||
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/favicon') ||
     pathname === '/robots.txt' ||
-    pathname === '/sitemap.xml'
+    pathname === '/sitemap.xml' ||
+    /\.[a-zA-Z0-9]+$/.test(pathname)
+  )
+}
+
+function isPublicPath(pathname: string) {
+  return PUBLIC_PATHS.includes(pathname)
+}
+
+function isProtectedPath(pathname: string) {
+  return PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   )
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname, search } = request.nextUrl
+  const { pathname } = request.nextUrl
 
-  if (isPublicPath(pathname)) {
+  if (isStaticAsset(pathname)) {
     return NextResponse.next()
   }
 
-  const cookie = request.cookies.get(getSiteAuthCookieName())?.value
+  let response = NextResponse.next({
+    request,
+  })
 
-  if (await verifySiteAuthCookieValue(cookie)) {
-    return NextResponse.next()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value)
+          })
+
+          response = NextResponse.next({
+            request,
+          })
+
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options)
+          })
+        },
+      },
+    }
+  )
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (isProtectedPath(pathname) && !user) {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/login'
+    loginUrl.searchParams.set('next', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
-  const unlockUrl = new URL('/unlock', request.url)
-  unlockUrl.searchParams.set('next', `${pathname}${search}`)
+  if ((pathname === '/login' || pathname === '/signup') && user) {
+    const appUrl = request.nextUrl.clone()
+    appUrl.pathname = '/today'
+    appUrl.search = ''
+    return NextResponse.redirect(appUrl)
+  }
 
-  return NextResponse.redirect(unlockUrl)
+  if (pathname === '/unlock') {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/login'
+    loginUrl.search = ''
+    return NextResponse.redirect(loginUrl)
+  }
+
+  return response
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js)$).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image).*)'],
 }

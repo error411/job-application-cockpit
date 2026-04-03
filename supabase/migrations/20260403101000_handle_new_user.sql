@@ -15,16 +15,22 @@ begin
   )
   on conflict (id) do nothing;
 
-  insert into public.candidate_profiles (
+  insert into public.candidate_profile (
     user_id,
+    full_name,
+    email,
     title,
     summary,
-    strengths
+    strengths,
+    experience_bullets
   )
   values (
     new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', ''),
+    new.email,
     '',
     '',
+    '{}',
     '{}'
   )
   on conflict (user_id) do nothing;

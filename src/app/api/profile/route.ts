@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { normalizeLinkedInUrl } from '@/lib/validation/linkedin'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createAdminClient()
+    const supabase = await createClient()
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await req.json()
 
     const {
-      id,
       full_name,
       email,
       phone,
@@ -20,9 +29,9 @@ export async function POST(req: NextRequest) {
       experience_bullets,
     } = body
 
-    if (!id || !full_name) {
+    if (!full_name?.trim()) {
       return NextResponse.json(
-        { error: 'id and full_name are required' },
+        { error: 'full_name is required' },
         { status: 400 }
       )
     }
@@ -43,23 +52,31 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const payload = {
+      user_id: user.id,
+      full_name: full_name.trim(),
+      email: typeof email === 'string' && email.trim() ? email.trim() : null,
+      phone: typeof phone === 'string' && phone.trim() ? phone.trim() : null,
+      location:
+        typeof location === 'string' && location.trim() ? location.trim() : null,
+      linkedin_url: normalizedLinkedInUrl,
+      title: typeof title === 'string' && title.trim() ? title.trim() : null,
+      summary:
+        typeof summary === 'string' && summary.trim() ? summary.trim() : null,
+      strengths: Array.isArray(strengths)
+        ? strengths.map((item) => String(item).trim()).filter(Boolean)
+        : [],
+      experience_bullets: Array.isArray(experience_bullets)
+        ? experience_bullets.map((item) => String(item).trim()).filter(Boolean)
+        : [],
+      updated_at: new Date().toISOString(),
+    }
+
     const { data, error } = await supabase
       .from('candidate_profile')
-      .update({
-        full_name,
-        email: email || null,
-        phone: phone || null,
-        location: location || null,
-        linkedin_url: normalizedLinkedInUrl,
-        title: title || null,
-        summary: summary || null,
-        strengths: Array.isArray(strengths) ? strengths : [],
-        experience_bullets: Array.isArray(experience_bullets)
-          ? experience_bullets
-          : [],
-        updated_at: new Date().toISOString(),
+      .upsert(payload, {
+        onConflict: 'user_id',
       })
-      .eq('id', id)
       .select()
       .single()
 
