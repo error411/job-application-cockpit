@@ -1,16 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-const PUBLIC_PATHS = [
-  '/',
-  '/login',
-  '/signup',
-]
-
-const PUBLIC_PREFIXES = [
-  '/auth',
-]
-
+const PUBLIC_PATHS = ['/', '/login', '/signup']
+const PUBLIC_PREFIXES = ['/auth']
 const PROTECTED_PREFIXES = [
   '/today',
   '/jobs',
@@ -54,34 +46,47 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  let response = NextResponse.next({
-    request,
-  })
+  if (pathname === '/unlock') {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/login'
+    loginUrl.search = ''
+    return NextResponse.redirect(loginUrl)
+  }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => {
-            request.cookies.set(name, value)
-          })
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-          response = NextResponse.next({
-            request,
-          })
-
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options)
-          })
-        },
+  if (!supabaseUrl || !supabaseKey) {
+    return NextResponse.json(
+      {
+        error: 'Missing Supabase environment variables in middleware',
       },
-    }
-  )
+      { status: 500 }
+    )
+  }
+
+  let response = NextResponse.next({ request })
+
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => {
+          request.cookies.set(name, value)
+        })
+
+        response = NextResponse.next({ request })
+
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options)
+        })
+      },
+    },
+  })
 
   const {
     data: { user },
@@ -94,18 +99,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  if (isPublicPath(pathname) && user && (pathname === '/login' || pathname === '/signup')) {
+  if (
+    isPublicPath(pathname) &&
+    user &&
+    (pathname === '/login' || pathname === '/signup')
+  ) {
     const appUrl = request.nextUrl.clone()
     appUrl.pathname = '/today'
     appUrl.search = ''
     return NextResponse.redirect(appUrl)
-  }
-
-  if (pathname === '/unlock') {
-    const loginUrl = request.nextUrl.clone()
-    loginUrl.pathname = '/login'
-    loginUrl.search = ''
-    return NextResponse.redirect(loginUrl)
   }
 
   return response
