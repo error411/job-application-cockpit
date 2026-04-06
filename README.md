@@ -1,186 +1,91 @@
-# Job Application Cockpit
+# ApplyEngine
 
-A focused, data-driven system for managing job applications, generating tailored assets, and executing a consistent application workflow.
-
----
+ApplyEngine is a focused job search workspace that helps you track opportunities, manage follow-ups, and execute your search like a system—not a scramble.
 
 ## Overview
 
-Job Application Cockpit is built to help you:
+Job searches break down when they’re spread across tabs, notes, and memory.
 
-- Capture and organize job opportunities
-- Score roles against your experience
-- Generate tailored resumes and cover letters
-- Track applications and interview progression
-- Stay consistent with structured follow-ups and action queues
+ApplyEngine brings everything into one place:
 
-This is a **private, single-user productivity system** designed for real daily use.
+* Track jobs and application status
+* Work the right next actions from a centralized “Today” view
+* Stay on top of follow-ups
+* Understand pipeline health with a dashboard
 
----
+## Core Features
 
-## Current Status
+### Dashboard
 
-The system is now transitioning from **feature-complete → workflow-consistent**.
+* Snapshot of pipeline state (Ready, Applied, Interviewing, Overdue)
+* Recent activity across jobs
+* Quick navigation into execution views
 
-Key capabilities:
+### Today
 
-- Job pipeline management
-- Resume + cover letter generation (HTML + PDF)
-- Interview tracking (event-based model)
-- Follow-up tracking (derived, not status-based)
-- Centralized action-item system (Today / Dashboard)
-- Soft archive system for jobs
-- Supabase-backed data model
-- Shared-password authentication
+* Action-oriented queue of what needs attention now
+* Highlights:
 
----
+  * Overdue follow-ups
+  * Due-today follow-ups
+  * Ready-to-apply opportunities
 
-## Core Concepts
+### Jobs
 
-### 1. Job vs Application
+* Central record of all opportunities
+* Track:
 
-- `jobs` = opportunity source of truth
-- `applications` = workflow state tied to a job
+  * Company, role, location
+  * Status and progression
+  * Application history
 
----
+### Follow-ups
 
-### 2. Pipeline Model (Applications)
-
-Applications move through:
-ready → applied → interviewing → closed
-
-
-Notes:
-
-- **Follow-ups are NOT a status**
-- Follow-up state is derived from timestamps via shared logic
-- Interview progression is event-based (no fixed columns)
-
----
-
-### 3. Follow-Up System
-
-- Driven by shared helper: `getFollowUpState`
-- Based on:
-  - `applied_at`
-  - `last_follow_up_at`
-- Produces:
-  - due / overdue / upcoming states
-- Used across:
-  - Today page
-  - Dashboard
-  - Apply mode
-
----
-
-### 4. Action Item System
-
-- Centralized via shared builders (e.g. `buildActionItems`)
-- Powers:
-  - Dashboard punch list
-  - Today view
-- Prevents duplication of queue logic across pages
-
----
-
-### 5. Archive Model (Soft Delete)
-
-Jobs are never hard-deleted during normal use.
-
-Instead:
-
-- `jobs.archived_at`
-- `jobs.archived_reason`
-
-Rules:
-
-- Archived jobs are **excluded from all active workflow surfaces**
-  - Today
-  - Apply
-  - Follow-ups
-  - Dashboard
-- Archive is reversible (restore supported)
-
----
-
-## Authentication
-
-- Lightweight shared-password protection
-- Edge proxy enforcement
-- Signed cookie session (Web Crypto / HMAC)
-
-No user accounts required.
-
----
+* Dedicated view for managing outreach and follow-through
+* Surfaces follow-up timing based on application state
 
 ## Tech Stack
 
-- Next.js (App Router)
-- TypeScript
-- Supabase (Postgres + server client)
-- Tailwind CSS
-- React PDF Renderer
+* **Frontend:** Next.js (App Router), React, TypeScript, Tailwind
+* **Backend / Data:** Supabase (PostgreSQL, Auth, RLS)
+* **Auth:** Supabase email/password with server-side session handling
+* **Hosting:** Vercel
 
----
+## Architecture Notes
 
-## Project Structure (High-Level)
-src/
-app/
-(routes)
-api/
-lib/
-applications/
-apply-mode/
-resume/
-cover-letter/
-supabase/
+* Server Components + Supabase SSR for auth-aware rendering
+* Middleware enforces route protection for authenticated areas
+* Row Level Security (RLS) ensures user-scoped data access
+* Dashboard and Today derive state from application workflow data
 
+## Local Development
 
----
+```bash
+npm install
+npm run dev
+```
 
-## Roadmap
+Set environment variables:
 
-### Near-Term
+```env
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
 
-- User onboarding flow (first-run experience)
-- Resume import + parsing → seed candidate profile (Phase 2)
-- Guided “Add Job” experience
-- Empty-state → active-state transitions
+## Production
 
----
+Ensure:
 
-### Mid-Term
+* Supabase Site URL is set to your domain
+* Redirect URLs include:
 
-- Multi-candidate configuration
-- Improved job ingestion (URL parsing, email parsing)
-- Smarter scoring + asset generation
+  * `/auth/confirm`
+  * `/login`
+* Environment variables are configured in Vercel
 
----
+## Status
 
-### UX Improvements
+Active development.
 
-- Mobile responsiveness improvements
-- Navigation optimization for small screens
-- Reduce keyboard-heavy UX on mobile
-
----
-
-## Development Notes
-
-System direction:
-
-- Prefer **shared helpers over page-specific logic**
-- Keep workflow logic **centralized and deterministic**
-- Treat UI as a **projection of system state**, not a source of truth
-
-Avoid:
-
-- Duplicated queue logic
-- Status-driven follow-ups
-- Hidden or implicit workflow transitions
-
----
-
-## Current Focus
-
-> Making the system fast, consistent, and reliable for daily application execution.
+Core auth, dashboard, and workflow views are functional. Follow-up logic and workflow refinement are in progress.

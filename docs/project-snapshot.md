@@ -1,220 +1,112 @@
-# Project Snapshot
+# ApplyEngine – Project Snapshot
 
-## Current Focus
+## Current State
 
-Shifting from feature development → **workflow consistency and system clarity**
+Auth cutover completed:
 
-Primary goals:
+* Supabase auth fully integrated (email/password)
+* Server-side session handling in App Router
+* Middleware enforces protected routes
+* Legacy “site password” auth removed
 
-- eliminate duplicated logic
-- centralize workflow rules
-- ensure all pages reflect the same system state
+Routing model:
 
----
+* `/` → marketing / landing page
+* `/login` → auth entry
+* `/dashboard` → pipeline overview
+* `/today` → execution view
+* `/jobs` → record management
+* `/follow-ups` → follow-up management
 
-## System Overview
+## What Works
 
-### Core Tables
+* Signup / login flow (email confirmation fixed)
+* Auth-aware header (logged-in vs logged-out)
+* Protected routes via middleware
+* Dashboard metrics (user-scoped)
+* Today view (user-scoped workflow)
+* Jobs CRUD + application linkage
 
-- `jobs`
-- `applications`
-- `application_assets`
-- `candidate_profile`
-- `candidate_experience`
-- `job_scores`
-- `interview_rounds`
+## Known Issues
 
----
+### 1. Follow-up generation inconsistency
 
-## Pipeline Model
+* Follow-up items do not always reflect:
 
-Applications use a **minimal status model**:
+  * generated assets
+  * current application state
+* Likely mismatch between:
 
-- `ready`
-- `applied`
-- `interviewing`
-- `closed`
+  * asset generation step
+  * follow-up scheduling logic
+* Needs alignment between workflow + UI expectations
 
-Notes:
+### 2. Dashboard vs Today data model drift
 
-- `follow_up_due` is legacy and being phased out
-- follow-ups are derived from timestamps, not stored as status
+* Dashboard uses derived counts
+* Today uses actionable queue
+* Minor inconsistencies in how:
 
----
+  * follow-ups are interpreted
+  * readiness is determined
 
-## Follow-Up System
+### 3. Workflow model fragmentation
 
-Single source of truth:
+* Legacy workflow helper removed (admin-based)
+* New helper is user-scoped but simpler
+* Missing:
 
-- `getFollowUpState`
+  * snoozing
+  * unified “next action” abstraction
 
-Inputs:
+## Technical Debt
 
-- `applied_at`
-- `last_follow_up_at`
+* Duplicate workflow logic across:
 
-Outputs:
+  * dashboard
+  * today
+  * follow-ups
+* Follow-up dates stored as multiple fields (`follow_up_1_due`, etc.)
+* No single “next_action_at” or “next_action_type”
 
-- due
-- overdue
-- upcoming
+## Immediate To-Dos
 
-This logic is shared across:
+### High Priority
 
-- Today page
-- Dashboard
-- Apply mode
+* [ ] Fix follow-up generation not reflecting assets on `/follow-ups`
+* [ ] Ensure follow-ups update after:
 
----
+  * asset generation
+  * status changes
+* [ ] Align Dashboard + Today logic for:
 
-## Action Item System
+  * overdue
+  * due today
+  * ready
 
-- Built via shared helpers (e.g. `buildActionItems`)
-- Produces normalized "what should I do next"
+### Medium Priority
 
-Used by:
+* [ ] Introduce unified workflow model:
 
-- Dashboard (punch list)
-- Today page
+  * next_action_at
+  * next_action_type
+* [ ] Refactor follow-up fields into structured model
+* [ ] Remove remaining legacy workflow assumptions
 
-Goal:
+### Low Priority
 
-- eliminate page-specific queue logic
+* [ ] Improve landing page → product fidelity
+* [ ] Add onboarding / empty states
+* [ ] Improve visual consistency across views
 
----
+## Next Focus
 
-## Archive System
+Stabilize workflow correctness before adding features.
 
-Soft delete model:
+The system should answer clearly:
 
-- `jobs.archived_at`
-- `jobs.archived_reason`
+* What should the user do next?
+* Why is it surfaced?
+* Is the data consistent across views?
 
-Behavior:
-
-- archived jobs are excluded from:
-  - Today
-  - Apply
-  - Follow-ups
-  - Dashboard
-- restore is supported
-- hard delete is secondary
-
----
-
-## Current Capabilities
-
-- Job capture and tracking
-- Resume + cover letter generation (HTML + PDF)
-- Interview round logging (event-based)
-- Follow-up scheduling (derived logic)
-- Action-item driven workflow
-- Private site authentication
-
----
-
-## Known Inconsistencies (In Progress)
-
-- Apply mode still has partially duplicated follow-up logic
-- Some pages independently filter archived jobs instead of using shared helpers
-- Legacy `follow_up_due` status still present in type system
-
----
-
-## Next Cleanup Targets
-
-### 1. Shared Application Loader
-
-- [ ] Create `getActiveWorkflowApplications`
-  - [ ] filter active statuses
-  - [ ] exclude archived jobs
-  - [ ] normalize job joins
-
----
-
-### 2. Apply Mode Alignment
-
-- [ ] Refactor `getApplyItems`
-  - [ ] use shared follow-up logic
-  - [ ] remove custom overdue calculations
-  - [ ] align priority with action-item system
-
----
-
-### 3. Archive Consistency
-
-- [ ] Ensure ALL workflow surfaces exclude archived jobs via shared helper
-- [ ] Remove page-level filtering
-
----
-
-### 4. Status Cleanup
-
-- [ ] Remove `follow_up_due` from:
-  - [ ] type definitions
-  - [ ] constants
-  - [ ] any remaining usage
-
----
-
-## TODO / Next Work
-
-### Onboarding
-
-- [ ] First-time user onboarding flow
-  - [ ] Intro / how-it-works screen
-  - [ ] Resume upload (PDF / DOCX)
-  - [ ] Candidate profile seeding
-  - [ ] Guided first job entry
-  - [ ] Transition to dashboard with CTA
-
----
-
-### Candidate System
-
-- [ ] Multi-candidate configuration
-  - [ ] Profile switcher (UI)
-  - [ ] Scoped applications per candidate
-  - [ ] Asset generation per candidate
-
----
-
-### Mobile Improvements
-
-- [ ] Improve navigation for mobile
-- [ ] Reduce dashboard density
-- [ ] Improve input + focus behavior
-- [ ] Ensure pipeline readability on small screens
-
----
-
-### UX / Product
-
-- [ ] Improve empty states
-- [ ] Add guided actions (CTAs, prompts)
-- [ ] Refine pipeline visualization
-
----
-
-### Tech / System
-
-- [ ] Resume import + parsing (Phase 2)
-- [ ] Normalize asset generation pipeline
-- [ ] Improve error handling + logging
-
----
-
-## Principles
-
-Keep the system:
-
-- minimal
-- explicit
-- user-driven
-- easy to reason about
-
-Avoid:
-
-- implicit workflow logic
-- duplicated business rules
-- status bloat
+Until that is solid, avoid expanding feature surface area.
