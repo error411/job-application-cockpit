@@ -112,13 +112,14 @@ function normalizeCandidateProfile(
   }
 }
 
-export async function generateAssetsForJob(jobId: string) {
+export async function generateAssetsForJob(jobId: string, userId: string) {
   const supabase = createAdminClient()
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')
-    .select('id, company, title, location, description_raw')
+    .select('id, company, title, location, description_raw, user_id')
     .eq('id', jobId)
+    .eq('user_id', userId)
     .single()
 
   if (jobError || !job) {
@@ -128,15 +129,21 @@ export async function generateAssetsForJob(jobId: string) {
   const { data: profile, error: profileError } = await supabase
     .from('candidate_profile')
     .select('*')
-    .order('created_at', { ascending: true })
-    .limit(1)
+    .eq('user_id', userId)
     .single()
 
   if (profileError || !profile) {
     throw new Error(profileError?.message || 'Candidate profile not found')
   }
 
-  const typedJob: JobForAssets = job
+  const typedJob: JobForAssets = {
+    id: job.id,
+    company: job.company,
+    title: job.title,
+    location: job.location,
+    description_raw: job.description_raw,
+  }
+
   const typedProfile = normalizeCandidateProfile(
     profile as CandidateProfileBase & Record<string, unknown>
   )
@@ -150,7 +157,7 @@ export async function generateAssetsForJob(jobId: string) {
     .select(
       'company, title, location, start_date, end_date, is_current, summary, bullets, technologies, sort_order'
     )
-    .eq('candidate_profile_id', typedProfile.id)
+    .eq('user_id', userId)
     .order('sort_order', { ascending: true })
 
   if (experienceError) {
@@ -174,6 +181,8 @@ ${technologies.length ? `Technologies: ${technologies.join(', ')}` : ''}
       `.trim()
     })
     .join('\n\n')
+
+  const hasStructuredExperience = experienceRows.length > 0
 
   const response = await openai.responses.create({
     model: 'gpt-5.4',
@@ -199,9 +208,13 @@ Resume formatting requirements:
 - The first line must be the candidate full name as a markdown H1
 - The second line must be a single plain text line with available contact details separated by " • "
 - The contact line should include only fields that are actually provided
-- Preferred order for the contact line: city/state, email, phone, LinkedIn- Then use clear sections such as Summary, Skills, Experience, and Education only when supported by the provided data
+- Preferred order for the contact line: city/state, email, phone, LinkedIn
+- Then use clear sections such as Summary, Skills, Experience, and Education only when supported by the provided data
 - Do not include placeholders like "Not specified" in the final resume
 - Keep bullets tight and outcome-focused
+- If structured past experience is provided, the resume MUST include an Experience section
+- When structured past experience is provided, do NOT collapse it into one generic experience block
+- For each relevant past role, include title, company, dates, and 2-5 bullets when supported by the provided data
         `.trim(),
       },
       {
@@ -230,6 +243,8 @@ ${
 
 Structured past experience:
 ${formattedExperience || 'No structured past experience provided.'}
+
+Structured experience present: ${hasStructuredExperience ? 'yes' : 'no'}
 
 Target job:
 Company: ${typedJob.company}
@@ -303,6 +318,7 @@ Deliver:
     .from('jobs')
     .update({ status: 'ready_to_apply' })
     .eq('id', typedJob.id)
+    .eq('user_id', userId)
 
   if (jobStatusError) {
     throw new Error(jobStatusError.message)
