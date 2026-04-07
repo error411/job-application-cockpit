@@ -132,8 +132,20 @@ async function processAutomationJob(job: QueuedAutomationJob) {
     return
   }
 
-  if (job.job_type === 'generate_assets') {
-    await generateAssetsForJob(job.entity_id)
+    if (job.job_type === 'generate_assets') {
+    const supabase = createAdminClient()
+
+    const { data: jobRecord, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, user_id')
+      .eq('id', job.entity_id)
+      .single()
+
+    if (jobError || !jobRecord?.user_id) {
+      throw new Error(jobError?.message || 'Job user not found for asset generation')
+    }
+
+    await generateAssetsForJob(job.entity_id, jobRecord.user_id)
     return
   }
 
