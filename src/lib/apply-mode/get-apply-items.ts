@@ -1,3 +1,5 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/lib/supabase/types'
 import {
   getActiveWorkflowApplications,
   type ActiveWorkflowApplicationRow,
@@ -18,27 +20,6 @@ type JobScoreRow = {
   job_id: string
   score: number
   created_at: string
-}
-
-type ApplyItemsQueryBuilder = {
-  select: (query: string) => {
-    in: (
-      column: string,
-      values: readonly string[]
-    ) => {
-      order: (
-        column: string,
-        options: { ascending: boolean }
-      ) => Promise<{
-        data: unknown[] | null
-        error: { message: string } | null
-      }>
-    }
-  }
-}
-
-type ApplyItemsSupabase = {
-  from: (table: 'job_scores' | 'application_assets' | 'applications') => unknown
 }
 
 function isTerminalDisposition(
@@ -124,7 +105,7 @@ function getReason(
 }
 
 export async function getApplyItems(
-  supabase: ApplyItemsSupabase
+  supabase: SupabaseClient<Database>
 ): Promise<ApplyItem[]> {
   const applicationRows = await getActiveWorkflowApplications(supabase)
 
@@ -142,29 +123,28 @@ export async function getApplyItems(
   const followUp2ByJobId = new Map<string, string | null>()
 
   if (jobIds.length > 0) {
-    const jobScoresQuery = supabase.from('job_scores') as ApplyItemsQueryBuilder
-    const applicationAssetsQuery = supabase.from(
-      'application_assets'
-    ) as ApplyItemsQueryBuilder
-
     const [
       { data: scoreData, error: scoreError },
       { data: assetData, error: assetError },
     ] = await Promise.all([
-      jobScoresQuery
+      supabase
+        .from('job_scores')
         .select('job_id, score, created_at')
         .in('job_id', jobIds)
         .order('created_at', { ascending: false }),
 
-      applicationAssetsQuery
-        .select(`
+      supabase
+        .from('application_assets')
+        .select(
+          `
           job_id,
           resume_markdown,
           cover_letter_markdown,
           follow_up_1_email_markdown,
           follow_up_2_email_markdown,
           created_at
-        `)
+        `
+        )
         .in('job_id', jobIds)
         .order('created_at', { ascending: false }),
     ])
