@@ -136,6 +136,16 @@ function formatLabel(value: string | null | undefined) {
     .replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
+function getDescriptionPreview(value: string | null | undefined, maxLength = 280) {
+  if (!value) return null
+
+  const normalized = value.replace(/\s+/g, ' ').trim()
+  if (!normalized) return null
+  if (normalized.length <= maxLength) return normalized
+
+  return `${normalized.slice(0, maxLength).trimEnd()}...`
+}
+
 function getPipelineStageId(
   job: JobDetailRow,
   application: JobDetailApplicationRow | null,
@@ -387,6 +397,7 @@ export default async function JobDetailPage({
   const matchedSkills = toStringArray(latestScore?.matched_skills)
   const missingSkills = toStringArray(latestScore?.missing_skills)
   const reasons = toStringArray(latestScore?.reasons)
+  const descriptionPreview = getDescriptionPreview(typedJob.description_raw)
   const currentPipelineStage = getPipelineStageId(
     typedJob,
     typedApplication,
@@ -500,6 +511,11 @@ export default async function JobDetailPage({
               <p className="mt-1 text-sm text-zinc-500">
                 {typedJob.location || 'No location'}
               </p>
+              {descriptionPreview ? (
+                <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-600">
+                  {descriptionPreview}
+                </p>
+              ) : null}
 
               {typedJob.archived_at ? (
                 <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
