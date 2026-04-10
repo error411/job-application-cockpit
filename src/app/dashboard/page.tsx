@@ -408,11 +408,25 @@ function QuickLinks() {
 
 function BillingCard({
   billingState,
+  plans,
   isPro,
   billingInterval,
   currentPeriodEnd,
 }: {
   billingState?: string
+  plans: Partial<
+    Record<
+      'trial' | 'month' | 'year',
+      {
+        label: string
+        priceLabel: string
+        detail: string
+        cta: string
+        billingInterval: 'month' | 'year'
+        trialDays?: number
+      }
+    >
+  >
   isPro: boolean
   billingInterval: 'month' | 'year' | null
   currentPeriodEnd: string | null
@@ -424,6 +438,12 @@ function BillingCard({
         ? 'Checkout was cancelled. You can start again any time.'
         : billingState === 'portal'
           ? 'Returned from the Stripe billing portal.'
+          : billingState === 'trial'
+            ? 'Account ready. Starting your 7-day trial checkout now.'
+            : billingState === 'month'
+              ? 'Account ready. Starting monthly checkout now.'
+              : billingState === 'year'
+                ? 'Account ready. Starting yearly checkout now.'
           : null
 
   return (
@@ -469,7 +489,16 @@ function BillingCard({
             <BillingPortalButton />
           </div>
         ) : (
-          <UpgradeButton />
+          <UpgradeButton
+            plans={plans}
+            autoStartIntent={
+              billingState === 'trial' ||
+              billingState === 'month' ||
+              billingState === 'year'
+                ? billingState
+                : null
+            }
+          />
         )}
       </div>
     </SectionCard>
@@ -534,6 +563,50 @@ export default async function DashboardPage({
 }: DashboardPageProps) {
   const params = searchParams ? await searchParams : undefined
   const { supabase, user } = await requireUser()
+  const plans: Partial<
+    Record<
+      'trial' | 'month' | 'year',
+      {
+        label: string
+        priceLabel: string
+        detail: string
+        cta: string
+        billingInterval: 'month' | 'year'
+        trialDays?: number
+      }
+    >
+  > = {}
+
+  if (process.env.STRIPE_PRICE_PRO_MONTHLY_ID) {
+    plans.trial = {
+      label: 'Free Trial',
+      priceLabel: '7 days free',
+      detail:
+        'Start with a 7-day trial on Pro, then continue on the monthly plan unless cancelled.',
+      cta: 'Start Free Trial',
+      billingInterval: 'month',
+      trialDays: 7,
+    }
+    plans.month = {
+      label: 'Monthly',
+      priceLabel:
+        process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_DISPLAY ?? '$19.99/month',
+      detail: 'Flexible access to ApplyEngine Pro billed monthly.',
+      cta: 'Choose Monthly',
+      billingInterval: 'month',
+    }
+  }
+
+  if (process.env.STRIPE_PRICE_PRO_YEARLY_ID) {
+    plans.year = {
+      label: 'Yearly',
+      priceLabel:
+        process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_DISPLAY ?? '$99/year',
+      detail: 'Best value for long-term use with yearly billing.',
+      cta: 'Choose Yearly',
+      billingInterval: 'year',
+    }
+  }
 
   const [
     activeJobsResult,
@@ -685,6 +758,28 @@ export default async function DashboardPage({
 
       <BillingCard
         billingState={params?.billing}
+        plans={
+          Object.keys(plans).length > 0
+            ? plans
+            : {
+                trial: {
+                  label: 'Free Trial',
+                  priceLabel: '7 days free',
+                  detail:
+                    'Start with a 7-day trial on Pro, then continue on the monthly plan unless cancelled.',
+                  cta: 'Start Free Trial',
+                  billingInterval: 'month',
+                  trialDays: 7,
+                },
+                month: {
+                  label: 'Monthly',
+                  priceLabel: '$19.99/month',
+                  detail: 'Flexible access to ApplyEngine Pro billed monthly.',
+                  cta: 'Choose Monthly',
+                  billingInterval: 'month',
+                },
+              }
+        }
         isPro={billingStatus.isPro}
         billingInterval={billingStatus.subscription?.billingInterval ?? null}
         currentPeriodEnd={billingStatus.subscription?.currentPeriodEnd ?? null}

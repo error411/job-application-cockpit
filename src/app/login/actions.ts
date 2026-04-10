@@ -6,9 +6,16 @@ import { createClient } from '@/lib/supabase/server'
 const getSiteUrl = () =>
   process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
+function normalizePlan(value: FormDataEntryValue | null) {
+  return value === 'trial' || value === 'month' || value === 'year'
+    ? value
+    : null
+}
+
 export async function login(formData: FormData) {
   const email = String(formData.get('email') ?? '')
   const password = String(formData.get('password') ?? '')
+  const plan = normalizePlan(formData.get('plan'))
 
   const supabase = await createClient()
 
@@ -21,12 +28,13 @@ export async function login(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`)
   }
 
-  redirect('/dashboard')
+  redirect(plan ? `/dashboard?billing=${plan}` : '/dashboard')
 }
 
 export async function signup(formData: FormData) {
   const email = String(formData.get('email') ?? '')
   const password = String(formData.get('password') ?? '')
+  const plan = normalizePlan(formData.get('plan'))
 
   const supabase = await createClient()
 
@@ -34,7 +42,9 @@ export async function signup(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${getSiteUrl()}/auth/confirm`,
+      emailRedirectTo: plan
+        ? `${getSiteUrl()}/auth/confirm?plan=${plan}`
+        : `${getSiteUrl()}/auth/confirm`,
     },
   })
 

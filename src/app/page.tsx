@@ -52,14 +52,6 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   )
 }
 
-function HeroPill({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-700 shadow-sm">
-      {children}
-    </span>
-  )
-}
-
 function SectionIntro({
   eyebrow,
   title,
@@ -97,14 +89,69 @@ function FeatureCard({
   )
 }
 
+function PricingCard({
+  title,
+  price,
+  description,
+  note,
+  href,
+  cta,
+  accent = 'default',
+}: {
+  title: string
+  price: string
+  description: string
+  note?: string
+  href: string
+  cta: string
+  accent?: 'default' | 'dark' | 'blue'
+}) {
+  const classes =
+    accent === 'dark'
+      ? 'border-zinc-950 bg-zinc-950 text-white shadow-xl'
+      : accent === 'blue'
+        ? 'border-blue-200 bg-blue-50 shadow-sm'
+        : 'border-zinc-200 bg-white shadow-sm'
+
+  const textClass =
+    accent === 'dark' ? 'text-zinc-300' : 'text-zinc-600'
+
+  const buttonClass =
+    accent === 'dark'
+      ? 'inline-flex h-11 items-center justify-center rounded-2xl bg-white px-5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-100'
+      : accent === 'blue'
+        ? 'inline-flex h-11 items-center justify-center rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700'
+        : 'inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-50'
+
+  return (
+    <div className={`rounded-[1.75rem] border p-6 ${classes}`}>
+      <p className="text-sm font-semibold tracking-tight">{title}</p>
+      <p className="mt-4 text-3xl font-semibold tracking-tight">{price}</p>
+      <div className="mt-3 min-h-[7.5rem]">
+        <p className={`text-sm leading-6 ${textClass}`}>{description}</p>
+        {note ? (
+          <p className={`mt-2 text-xs font-medium ${textClass}`}>{note}</p>
+        ) : null}
+      </div>
+      <Link href={href} className={`mt-4 ${buttonClass}`}>
+        {cta}
+      </Link>
+    </div>
+  )
+}
+
 function MetricTile({
   label,
   value,
   tone = 'default',
+  compact = false,
+  previewCompact = false,
 }: {
   label: string
   value: string
   tone?: 'default' | 'blue' | 'emerald' | 'amber' | 'rose'
+  compact?: boolean
+  previewCompact?: boolean
 }) {
   const toneClass =
     tone === 'blue'
@@ -122,7 +169,15 @@ function MetricTile({
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+      <p
+        className={`mt-2 font-semibold tracking-tight text-zinc-950 ${
+          compact
+            ? 'text-[1.05rem] leading-[1.2] sm:text-[1.15rem]'
+            : previewCompact
+              ? 'text-xl leading-[1.05] sm:text-[1.35rem]'
+            : 'text-2xl'
+        }`}
+      >
         {value}
       </p>
     </div>
@@ -161,7 +216,7 @@ function WindowCard({
 function ProductPreview() {
   return (
     <div className="rounded-[2rem] border border-zinc-200 bg-gradient-to-br from-zinc-100 via-white to-zinc-50 p-4 shadow-xl sm:p-6">
-      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid gap-4 xl:grid-cols-2">
         <WindowCard
           title="Today"
           subtitle="The next best actions across your search"
@@ -190,7 +245,7 @@ function ProductPreview() {
                   </p>
                 </div>
                 <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-medium text-blue-700">
-                  Apply Now
+                  Ready
                 </span>
               </div>
             </div>
@@ -211,50 +266,136 @@ function ProductPreview() {
           </div>
         </WindowCard>
 
-        <div className="grid gap-4">
-          <WindowCard
-            title="Dashboard"
-            subtitle="A fast read on pipeline health"
-          >
-            <div className="space-y-4">
-              <div className="overflow-hidden rounded-lg bg-zinc-200">
-                <div className="flex h-4 w-full">
-                  <div className="w-[28%] bg-blue-500" />
-                  <div className="w-[42%] bg-sky-500" />
-                  <div className="w-[18%] bg-emerald-500" />
-                  <div className="w-[12%] bg-amber-400" />
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <MetricTile label="Ready" value="12" tone="blue" />
-                <MetricTile label="Applied" value="24" tone="default" />
-                <MetricTile label="Interviewing" value="7" tone="emerald" />
-                <MetricTile label="Overdue" value="4" tone="rose" />
+        <WindowCard
+          title="Dashboard"
+          subtitle="A fast read on pipeline health"
+        >
+          <div className="space-y-4">
+            <div className="overflow-hidden rounded-lg bg-zinc-200">
+              <div className="flex h-4 w-full">
+                <div className="w-[28%] bg-blue-500" />
+                <div className="w-[42%] bg-sky-500" />
+                <div className="w-[18%] bg-emerald-500" />
+                <div className="w-[12%] bg-amber-400" />
               </div>
             </div>
-          </WindowCard>
 
+            <div className="space-y-3">
+              <MetricTile label="Ready" value="12" tone="blue" previewCompact />
+              <MetricTile
+                label="Applied"
+                value="24"
+                tone="default"
+                previewCompact
+              />
+              <MetricTile
+                label="Interviewing"
+                value="7"
+                tone="emerald"
+                previewCompact
+              />
+              <MetricTile label="Overdue" value="4" tone="rose" previewCompact />
+            </div>
+          </div>
+        </WindowCard>
+
+        <div className="xl:col-span-2">
           <WindowCard
             title="Reports"
             subtitle="Track conversion and pipeline quality over time"
           >
-            <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <MetricTile label="Application Rate" value="62%" tone="blue" />
-                <MetricTile label="Interview Rate" value="21%" tone="emerald" />
-                <MetricTile label="Offer Rate" value="8%" tone="amber" />
+            <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+              <div className="space-y-3">
+                <MetricTile
+                  label="Application Rate"
+                  value="62%"
+                  tone="blue"
+                  previewCompact
+                />
+                <MetricTile
+                  label="Interview Rate"
+                  value="21%"
+                  tone="emerald"
+                  previewCompact
+                />
+                <MetricTile
+                  label="Offer Rate"
+                  value="8%"
+                  tone="amber"
+                  previewCompact
+                />
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                <div className="flex items-end gap-2">
-                  <div className="h-12 w-6 rounded-t bg-zinc-300" />
-                  <div className="h-20 w-6 rounded-t bg-blue-500" />
-                  <div className="h-16 w-6 rounded-t bg-sky-500" />
-                  <div className="h-10 w-6 rounded-t bg-emerald-500" />
-                  <div className="h-8 w-6 rounded-t bg-amber-400" />
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                      Weekly Snapshot
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-zinc-950">
+                      Conversion is trending in the right direction.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                    +12%
+                  </span>
                 </div>
-                <p className="mt-3 text-sm text-zinc-600">
+
+                <div className="mt-4 grid grid-cols-5 items-end gap-2">
+                  <div className="space-y-2 text-center">
+                    <div className="mx-auto h-14 w-8 rounded-t-xl bg-zinc-300" />
+                    <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                      Mon
+                    </p>
+                  </div>
+                  <div className="space-y-2 text-center">
+                    <div className="mx-auto h-24 w-8 rounded-t-xl bg-blue-500 shadow-[0_0_0_1px_rgba(59,130,246,0.08)]" />
+                    <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                      Tue
+                    </p>
+                  </div>
+                  <div className="space-y-2 text-center">
+                    <div className="mx-auto h-20 w-8 rounded-t-xl bg-sky-500" />
+                    <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                      Wed
+                    </p>
+                  </div>
+                  <div className="space-y-2 text-center">
+                    <div className="mx-auto h-[3.25rem] w-8 rounded-t-xl bg-emerald-500" />
+                    <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                      Thu
+                    </p>
+                  </div>
+                  <div className="space-y-2 text-center">
+                    <div className="mx-auto h-10 w-8 rounded-t-xl bg-amber-400" />
+                    <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                      Fri
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-700">
+                      Volume
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-zinc-950">34 apps</p>
+                  </div>
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
+                      Interviews
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-zinc-950">7 moving</p>
+                  </div>
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700">
+                      Offers
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-zinc-950">2 active</p>
+                  </div>
+                </div>
+
+                <p className="mt-4 text-sm text-zinc-600">
                   Weekly activity, funnel shape, and score distribution in one place.
                 </p>
               </div>
@@ -302,7 +443,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       'A job application tracker and workflow system for jobs, follow-ups, daily execution, dashboard visibility, and reporting.',
     offers: {
       '@type': 'Offer',
-      price: '0',
+      price: '19.99',
       priceCurrency: 'USD',
     },
     featureList: [
@@ -331,35 +472,43 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
       <section className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
         <div className="space-y-6">
-          <HeroPill>Jobs, Today, Follow-Ups, Dashboard, and Reports</HeroPill>
-
           <div className="space-y-4">
             <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-zinc-950 sm:text-5xl lg:text-6xl">
-              A cleaner operating system for a serious job search.
+              Run your job search on a real system, then choose the plan that fits.
             </h1>
 
             <p className="max-w-2xl text-lg leading-8 text-zinc-600">
               ApplyEngine keeps your opportunities organized, tells you what to work
               next, and shows whether the pipeline is actually moving. It is built
               for execution, follow-through, and better visibility across the whole
-              search.
+              search, with a 7-day free trial and simple Pro plans when you are ready.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link href="/login" className="app-button-primary">
-              Log in
+            <Link href="/login?plan=trial" className="app-button-primary">
+              Start 7-Day Free Trial
             </Link>
 
-            <a href="#product" className="app-button">
-              Explore the workflow
+            <a href="#pricing" className="app-button">
+              View Plans
             </a>
           </div>
 
           <div className="grid max-w-xl gap-3 sm:grid-cols-3">
-            <MetricTile label="Today" value="Action queue" tone="blue" />
-            <MetricTile label="Dashboard" value="Pipeline view" />
-            <MetricTile label="Reports" value="Performance trends" tone="emerald" />
+            <MetricTile
+              label="Today"
+              value="Action queue"
+              tone="blue"
+              compact
+            />
+            <MetricTile label="Dashboard" value="Pipeline view" compact />
+            <MetricTile
+              label="Reports"
+              value="Performance trends"
+              tone="emerald"
+              compact
+            />
           </div>
 
           {(params.error || params.message) && (
@@ -370,6 +519,41 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </div>
 
         <ProductPreview />
+      </section>
+
+      <section id="pricing" className="space-y-8">
+        <SectionIntro
+          eyebrow="Pricing"
+          title="Start with a free trial, then choose monthly or yearly Pro"
+          description="Every plan gives you the same core ApplyEngine workflow. Start with a 7-day free trial, then continue monthly or save with yearly billing."
+        />
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          <PricingCard
+            title="Free Trial"
+            price="7 days free"
+            description="Create your account and start a 7-day Pro trial on the monthly plan. Cancel before renewal if it is not a fit."
+            note="No charge until the 7-day trial ends."
+            href="/login?plan=trial"
+            cta="Sign Up For Trial"
+            accent="blue"
+          />
+          <PricingCard
+            title="Pro Monthly"
+            price="$19.99/month"
+            description="Flexible monthly access to your job search dashboard, follow-ups, workflow, and reporting."
+            href="/login?plan=month"
+            cta="Choose Monthly"
+          />
+          <PricingCard
+            title="Pro Yearly"
+            price="$99/year"
+            description="Best value for long-term use. Keep the whole search system running for one lower yearly price."
+            href="/login?plan=year"
+            cta="Choose Yearly"
+            accent="dark"
+          />
+        </div>
       </section>
 
       <section id="product" className="space-y-8">
@@ -474,27 +658,27 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <div className="mx-auto max-w-3xl text-center">
           <Eyebrow>Get started</Eyebrow>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Run the search like a system, not a scramble.
+            Start with a free trial, then keep the search moving.
           </h2>
           <p className="mt-4 text-base leading-7 text-zinc-300">
-            Log in to manage Jobs, work Today, keep up with Follow-Ups, and use
-            Reports to see what is actually converting.
+            Create your account to start a 7-day trial, or choose monthly or yearly
+            Pro and run your search like a system instead of a scramble.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/login"
+              href="/login?plan=trial"
               className="inline-flex h-11 items-center justify-center rounded-2xl bg-white px-5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-100"
             >
-              Log in
+              Start Free Trial
             </Link>
 
-            <a
-              href="#product"
+            <Link
+              href="/login?plan=year"
               className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/15 bg-white/10 px-5 text-sm font-semibold text-white transition hover:bg-white/15"
             >
-              Review features
-            </a>
+              Choose Yearly
+            </Link>
           </div>
         </div>
       </section>

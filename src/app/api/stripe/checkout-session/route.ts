@@ -5,6 +5,7 @@ import { getStripeServerClient } from '@/lib/stripe/server'
 type CheckoutSessionRequest = {
   priceId?: string
   billingInterval?: 'month' | 'year'
+  trialDays?: number
   successPath?: string
   cancelPath?: string
 }
@@ -62,6 +63,10 @@ export async function POST(req: Request) {
     const siteUrl = getSiteUrl(req)
     const successPath = normalizePath(body.successPath, '/dashboard?billing=success')
     const cancelPath = normalizePath(body.cancelPath, '/dashboard?billing=cancelled')
+    const trialDays =
+      typeof body.trialDays === 'number' && body.trialDays > 0
+        ? Math.floor(body.trialDays)
+        : null
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -79,11 +84,14 @@ export async function POST(req: Request) {
       metadata: {
         app_user_id: user.id,
         plan_key: 'pro',
+        trial_days: trialDays ? String(trialDays) : '0',
       },
       subscription_data: {
+        trial_period_days: trialDays ?? undefined,
         metadata: {
           app_user_id: user.id,
           plan_key: 'pro',
+          trial_days: trialDays ? String(trialDays) : '0',
         },
       },
     })

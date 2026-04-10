@@ -5,6 +5,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type')
+  const plan = searchParams.get('plan')
 
   if (!token_hash || !type) {
     return NextResponse.redirect(
@@ -25,9 +26,13 @@ export async function GET(request: Request) {
     )
   }
 
-const {
+  const {
     data: { user },
   } = await supabase.auth.getUser()
+
+  if (plan === 'trial' || plan === 'month' || plan === 'year') {
+    return NextResponse.redirect(`${origin}/dashboard?billing=${plan}`)
+  }
 
   if (user) {
     const { count } = await supabase
@@ -38,7 +43,6 @@ const {
       return NextResponse.redirect(`${origin}/onboarding`)
     }
   }
-
 
   return NextResponse.redirect(`${origin}/dashboard`)
 }
