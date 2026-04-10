@@ -3,6 +3,7 @@ export const revalidate = 0
 
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth/require-user'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   getFollowUpState,
   type FollowUpState,
@@ -26,7 +27,10 @@ type FollowUpListRow = ActiveWorkflowApplicationRow
 
 type FollowUpListAsset = Pick<
   AssetRow,
-  'job_id' | 'follow_up_1_email_markdown' | 'follow_up_2_email_markdown'
+  | 'job_id'
+  | 'follow_up_1_email_markdown'
+  | 'follow_up_2_email_markdown'
+  | 'created_at'
 >
 
 type FollowUpListItem = Pick<
@@ -50,6 +54,32 @@ type FollowUpListItemWithState = FollowUpListItem & {
 
 function hasText(value: string | null | undefined) {
   return Boolean(value?.trim())
+}
+
+function mergeFollowUpAssets(
+  current: FollowUpListAsset | undefined,
+  next: FollowUpListAsset
+): FollowUpListAsset {
+  if (!current) {
+    return next
+  }
+
+  return {
+    job_id: current.job_id,
+    created_at:
+      new Date(next.created_at ?? 0).getTime() >
+      new Date(current.created_at ?? 0).getTime()
+        ? next.created_at
+        : current.created_at,
+    follow_up_1_email_markdown:
+      hasText(current.follow_up_1_email_markdown)
+        ? current.follow_up_1_email_markdown
+        : next.follow_up_1_email_markdown,
+    follow_up_2_email_markdown:
+      hasText(current.follow_up_2_email_markdown)
+        ? current.follow_up_2_email_markdown
+        : next.follow_up_2_email_markdown,
+  }
 }
 
 function needsFollowUpContent(app: FollowUpListItemWithState) {
@@ -302,6 +332,7 @@ export default async function FollowUpsPage({
   const errorMessage = params.error ?? null
 
   const { supabase } = await requireUser()
+  const adminSupabase = createAdminClient()
   let applicationRows: FollowUpListRow[] = []
 
   try {
@@ -331,11 +362,12 @@ export default async function FollowUpsPage({
   const assetByJobId = new Map<string, FollowUpListAsset>()
 
   if (jobIds.length > 0) {
-    const { data: assetData, error: assetError } = await supabase
+    const { data: assetData, error: assetError } = await adminSupabase
       .from('application_assets')
       .select(
         `
         job_id,
+        created_at,
         follow_up_1_email_markdown,
         follow_up_2_email_markdown
       `
@@ -358,9 +390,10 @@ export default async function FollowUpsPage({
     }
 
     for (const row of (assetData ?? []) as FollowUpListAsset[]) {
-      if (!assetByJobId.has(row.job_id)) {
-        assetByJobId.set(row.job_id, row)
-      }
+      assetByJobId.set(
+        row.job_id,
+        mergeFollowUpAssets(assetByJobId.get(row.job_id), row)
+      )
     }
   }
 
