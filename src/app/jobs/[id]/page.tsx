@@ -70,6 +70,16 @@ type JobDetailAssetRow = Pick<
   | 'created_at'
 >
 
+const PIPELINE_STAGES = [
+  { id: 'captured', label: 'Captured' },
+  { id: 'scored', label: 'Scored' },
+  { id: 'assets_generated', label: 'Assets' },
+  { id: 'ready', label: 'Ready' },
+  { id: 'applied', label: 'Applied' },
+  { id: 'interviewing', label: 'Interviewing' },
+  { id: 'closed', label: 'Closed' },
+] as const
+
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return value.filter((item): item is string => typeof item === 'string')
@@ -124,6 +134,147 @@ function formatLabel(value: string | null | undefined) {
   return value
     .replaceAll('_', ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function getPipelineStageId(
+  job: JobDetailRow,
+  application: JobDetailApplicationRow | null,
+  hasScore: boolean,
+  hasAssets: boolean
+): (typeof PIPELINE_STAGES)[number]['id'] {
+  if (job.archived_at || application?.status === 'closed' || application?.disposition) {
+    return 'closed'
+  }
+
+  if (application?.status === 'interviewing') return 'interviewing'
+  if (application?.status === 'applied') return 'applied'
+  if (application?.status === 'ready') return 'ready'
+  if (job.status === 'ready_to_apply') return 'ready'
+  if (hasAssets || job.status === 'assets_generated') return 'assets_generated'
+  if (hasScore) return 'scored'
+  return 'captured'
+}
+
+function getPipelineStageClasses(
+  stageId: (typeof PIPELINE_STAGES)[number]['id'],
+  isCurrent: boolean,
+  isComplete: boolean
+) {
+  if (!isComplete) {
+    return 'border-zinc-200 bg-zinc-50 text-zinc-400'
+  }
+
+  switch (stageId) {
+    case 'ready':
+      return isCurrent
+        ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+        : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+    case 'applied':
+      return isCurrent
+        ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+        : 'border-blue-200 bg-blue-50 text-blue-700'
+    case 'interviewing':
+      return isCurrent
+        ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
+        : 'border-violet-200 bg-violet-50 text-violet-700'
+    case 'closed':
+      return isCurrent
+        ? 'border-zinc-700 bg-zinc-700 text-white shadow-sm'
+        : 'border-zinc-300 bg-zinc-100 text-zinc-700'
+    case 'captured':
+    case 'scored':
+    case 'assets_generated':
+    default:
+      return isCurrent
+        ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
+        : 'border-amber-200 bg-amber-50 text-amber-700'
+  }
+}
+
+function getPipelineConnectorClasses(
+  stageId: (typeof PIPELINE_STAGES)[number]['id'],
+  isComplete: boolean
+) {
+  if (!isComplete) return 'bg-zinc-200'
+
+  switch (stageId) {
+    case 'ready':
+      return 'bg-emerald-500'
+    case 'applied':
+      return 'bg-blue-500'
+    case 'interviewing':
+      return 'bg-violet-500'
+    case 'closed':
+      return 'bg-zinc-500'
+    case 'captured':
+    case 'scored':
+    case 'assets_generated':
+    default:
+      return 'bg-amber-500'
+  }
+}
+
+function PipelineVisualization({
+  currentStageId,
+}: {
+  currentStageId: (typeof PIPELINE_STAGES)[number]['id']
+}) {
+  const activeIndex = PIPELINE_STAGES.findIndex((stage) => stage.id === currentStageId)
+
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+        Pipeline
+      </p>
+      <p className="mt-1 text-sm text-zinc-600">
+        Current stage: {PIPELINE_STAGES[activeIndex]?.label ?? 'Captured'}
+      </p>
+
+      <div className="mt-4 overflow-x-auto pb-1">
+        <div className="flex min-w-max items-start gap-0">
+          {PIPELINE_STAGES.map((stage, index) => {
+            const isComplete = index <= activeIndex
+            const isCurrent = index === activeIndex
+            const showConnector = index < PIPELINE_STAGES.length - 1
+
+            return (
+              <div key={stage.id} className="flex items-start">
+                <div className="flex w-28 flex-col items-center text-center">
+                  <div
+                    className={[
+                      'flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold',
+                      getPipelineStageClasses(stage.id, isCurrent, isComplete),
+                    ].join(' ')}
+                  >
+                    {index + 1}
+                  </div>
+                  <p
+                    className={[
+                      'mt-3 text-xs font-semibold uppercase tracking-[0.12em]',
+                      isCurrent || isComplete ? 'text-zinc-900' : 'text-zinc-400',
+                    ].join(' ')}
+                  >
+                    {stage.label}
+                  </p>
+                </div>
+
+                {showConnector ? (
+                  <div className="mt-5 h-[2px] w-10 rounded-full bg-zinc-200">
+                    <div
+                      className={[
+                        'h-full rounded-full',
+                        getPipelineConnectorClasses(stage.id, index < activeIndex),
+                      ].join(' ')}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function SectionCard({
@@ -236,6 +387,12 @@ export default async function JobDetailPage({
   const matchedSkills = toStringArray(latestScore?.matched_skills)
   const missingSkills = toStringArray(latestScore?.missing_skills)
   const reasons = toStringArray(latestScore?.reasons)
+  const currentPipelineStage = getPipelineStageId(
+    typedJob,
+    typedApplication,
+    Boolean(latestScore),
+    Boolean(latestAsset)
+  )
 
   return (
     <main className="max-w-6xl p-6">
@@ -387,6 +544,10 @@ export default async function JobDetailPage({
                 </p>
               </div>
             </div>
+          </div>
+
+          <div className="mt-6">
+            <PipelineVisualization currentStageId={currentPipelineStage} />
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
