@@ -1,9 +1,47 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
 type HomePageProps = {
   searchParams: Promise<{ error?: string; message?: string }>
+}
+
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://apply-engine.com'
+
+export const metadata: Metadata = {
+  title: 'Job Application Tracker, Follow-Ups, and Search Reporting',
+  description:
+    'ApplyEngine is a job application tracker and workflow system for managing jobs, follow-ups, daily actions, and pipeline reporting.',
+  alternates: {
+    canonical: '/',
+  },
+  keywords: [
+    'job application tracker',
+    'job search tracker',
+    'job application dashboard',
+    'follow up tracker',
+    'job search crm',
+    'job application reporting',
+  ],
+  openGraph: {
+    type: 'website',
+    url: siteUrl,
+    title: 'ApplyEngine | Job Application Tracker, Follow-Ups, and Reporting',
+    description:
+      'Track jobs, manage follow-ups, work your next actions, and understand job search performance with clearer reporting.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ApplyEngine | Job Application Tracker, Follow-Ups, and Reporting',
+    description:
+      'Track jobs, manage follow-ups, work your next actions, and understand job search performance with clearer reporting.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
@@ -253,6 +291,28 @@ function WorkflowStep({
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams
   const supabase = await createClient()
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'ApplyEngine',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    url: siteUrl,
+    description:
+      'A job application tracker and workflow system for jobs, follow-ups, daily execution, dashboard visibility, and reporting.',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+    featureList: [
+      'Job application tracking',
+      'Daily action queue',
+      'Follow-up management',
+      'Pipeline dashboard',
+      'Job search reporting',
+    ],
+  }
 
   const {
     data: { user },
@@ -264,6 +324,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <div className="space-y-20 py-6 sm:py-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+
       <section className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
         <div className="space-y-6">
           <HeroPill>Jobs, Today, Follow-Ups, Dashboard, and Reports</HeroPill>
