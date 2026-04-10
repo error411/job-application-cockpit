@@ -385,14 +385,16 @@ export default async function FollowUpsPage({
   return (
     <div className="space-y-8">
       <section className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
           Workflow
         </p>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1>Follow-Ups</h1>
-            <p className="mt-2 max-w-3xl text-sm text-zinc-600">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">
+              Follow-Ups
+            </h1>
+            <p className="max-w-3xl text-sm leading-6 text-zinc-600">
               Derived from due and sent timestamps. No follow-up statuses. The
               UI reflects urgency from schedule data, not manual workflow
               states.

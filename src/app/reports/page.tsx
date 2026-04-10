@@ -35,8 +35,19 @@ export default async function ReportsPage({
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.95),_rgba(244,244,245,1)_55%,_rgba(228,228,231,1))] px-6 py-8 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-zinc-900">Reports</h1>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-2">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
+              Reporting
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">
+              Reports
+            </h1>
+            <p className="max-w-3xl text-sm leading-6 text-zinc-600">
+              Review pipeline performance, application outcomes, and activity trends across{' '}
+              {rangeLabel.toLowerCase()}.
+            </p>
+          </div>
           <ReportRangeFilter currentRange={range} />
         </div>
 

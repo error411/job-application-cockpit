@@ -29,8 +29,10 @@ function isActive(pathname: string, href: string): boolean {
 
 export function AppNav({
   showOnboarding = false,
+  hasActiveFollowUps = false,
 }: {
   showOnboarding?: boolean
+  hasActiveFollowUps?: boolean
 }) {
   const pathname = usePathname()
 
@@ -48,13 +50,22 @@ export function AppNav({
             key={item.href}
             href={item.href}
             className={cn(
-              'rounded-xl px-3 py-2 text-sm font-medium transition',
+              'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition',
               active
                 ? 'bg-blue-50 text-blue-700'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             )}
           >
             {item.label}
+            {item.href === '/follow-ups' && hasActiveFollowUps ? (
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'h-2.5 w-2.5 rounded-full',
+                  active ? 'bg-blue-600' : 'bg-amber-500'
+                )}
+              />
+            ) : null}
           </Link>
         )
       })}

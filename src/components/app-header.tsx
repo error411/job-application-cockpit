@@ -2,6 +2,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { AppNav } from '@/app/app-nav'
 import { LogoutButton } from '@/components/auth/logout-button'
+import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
+import { getActiveWorkflowApplications } from '@/lib/applications/get-active-workflow-applications'
 import { createClient } from '@/lib/supabase/server'
 
 type AppHeaderProps = {
@@ -20,6 +22,7 @@ export async function AppHeader({
   const isLoggedIn = Boolean(user)
 
 let isNewUser = false
+  let hasActiveFollowUps = false
 
   if (user) {
     const { count } = await supabase
@@ -27,6 +30,22 @@ let isNewUser = false
       .select('id', { count: 'exact', head: true })
 
     isNewUser = (count ?? 0) === 0
+
+    try {
+      const applications = await getActiveWorkflowApplications(supabase)
+      hasActiveFollowUps = applications.some((application) => {
+        const followUpState = getFollowUpState({
+          follow_up_1_due: application.follow_up_1_due,
+          follow_up_2_due: application.follow_up_2_due,
+          follow_up_1_sent_at: application.follow_up_1_sent_at,
+          follow_up_2_sent_at: application.follow_up_2_sent_at,
+        })
+
+        return followUpState.hasDueNow || followUpState.hasUpcoming
+      })
+    } catch {
+      hasActiveFollowUps = false
+    }
   }
 
 
@@ -59,7 +78,10 @@ let isNewUser = false
 
           {isLoggedIn ? (
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
-              <AppNav showOnboarding={isNewUser} />
+              <AppNav
+                showOnboarding={isNewUser}
+                hasActiveFollowUps={hasActiveFollowUps}
+              />
 
               <div className="flex items-center gap-3">
                 <span className="hidden text-sm text-slate-500 xl:inline">

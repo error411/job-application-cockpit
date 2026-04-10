@@ -360,15 +360,16 @@ export default function ProfilePage() {
 
   return (
   <div className="space-y-10">
-    {/* Header */}
     <section className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
         Candidate
       </p>
 
-      <h1>Profile</h1>
+      <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">
+        Profile
+      </h1>
 
-      <p className="max-w-3xl text-sm text-zinc-600">
+      <p className="max-w-3xl text-sm leading-6 text-zinc-600">
         This is your source of truth for scoring, resume generation, and cover letters.
       </p>
     </section>
