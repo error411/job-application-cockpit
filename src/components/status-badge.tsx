@@ -9,12 +9,12 @@ export type ApplicationStatus =
   | 'follow_up_due'
 
 const statusClassMap: Record<ApplicationStatus, string> = {
-  ready: 'bg-blue-50 text-blue-700 ring-blue-200',
-  applied: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
-  interviewing: 'bg-violet-50 text-violet-700 ring-violet-200',
-  closed: 'bg-slate-100 text-slate-700 ring-slate-200',
-  archived: 'bg-slate-100 text-slate-600 ring-slate-200',
-  follow_up_due: 'bg-amber-50 text-amber-700 ring-amber-200',
+  ready: 'bg-blue-50/80 text-blue-700 ring-blue-200/70',
+  applied: 'bg-sky-50/80 text-sky-700 ring-sky-200/70',
+  interviewing: 'bg-emerald-50/80 text-emerald-700 ring-emerald-200/70',
+  closed: 'bg-zinc-100/80 text-zinc-700 ring-zinc-200/80',
+  archived: 'bg-zinc-100/80 text-zinc-600 ring-zinc-200/80',
+  follow_up_due: 'bg-amber-50/80 text-amber-700 ring-amber-200/70',
 }
 
 function formatStatusLabel(status: string) {

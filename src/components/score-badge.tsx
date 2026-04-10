@@ -1,10 +1,10 @@
 import { cn } from '@/lib/utils'
 
 function getScoreClasses(score: number | null | undefined) {
-  if (score == null) return 'bg-slate-100 text-slate-600 ring-slate-200'
-  if (score >= 80) return 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-  if (score >= 60) return 'bg-amber-50 text-amber-700 ring-amber-200'
-  return 'bg-rose-50 text-rose-700 ring-rose-200'
+  if (score == null) return 'bg-zinc-100/80 text-zinc-600 ring-zinc-200/80'
+  if (score >= 80) return 'bg-emerald-50/80 text-emerald-700 ring-emerald-200/70'
+  if (score >= 60) return 'bg-amber-50/80 text-amber-700 ring-amber-200/70'
+  return 'bg-red-50/80 text-red-700 ring-red-200/70'
 }
 
 export function ScoreBadge({

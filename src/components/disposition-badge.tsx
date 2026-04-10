@@ -9,12 +9,12 @@ export type ApplicationDisposition =
   | 'accepted'
 
 const dispositionClassMap: Record<ApplicationDisposition, string> = {
-  landed_interview: 'bg-violet-50 text-violet-700 ring-violet-200',
-  rejected: 'bg-rose-50 text-rose-700 ring-rose-200',
-  offer: 'bg-amber-50 text-amber-700 ring-amber-200',
-  withdrawn: 'bg-zinc-100 text-zinc-700 ring-zinc-200',
-  ghosted: 'bg-slate-100 text-slate-600 ring-slate-200',
-  accepted: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  landed_interview: 'bg-blue-50/80 text-blue-700 ring-blue-200/70',
+  rejected: 'bg-red-50/80 text-red-700 ring-red-200/70',
+  offer: 'bg-amber-50/80 text-amber-700 ring-amber-200/70',
+  withdrawn: 'bg-zinc-100/80 text-zinc-700 ring-zinc-200/80',
+  ghosted: 'bg-zinc-100/80 text-zinc-600 ring-zinc-200/80',
+  accepted: 'bg-emerald-50/80 text-emerald-700 ring-emerald-200/70',
 }
 
 function formatDispositionLabel(disposition: string) {
@@ -32,7 +32,8 @@ export function DispositionBadge({
 
   const normalized = disposition as ApplicationDisposition
   const classes =
-    dispositionClassMap[normalized] ?? 'bg-zinc-100 text-zinc-700 ring-zinc-200'
+    dispositionClassMap[normalized] ??
+    'bg-zinc-100/80 text-zinc-700 ring-zinc-200/80'
 
   return (
     <span

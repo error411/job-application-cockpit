@@ -153,11 +153,74 @@ function normalizeApplications(rows: unknown[]): NormalizedTodayApplication[] {
   })
 }
 
+function getMetricTone(label: string, value: number) {
+  if (value === 0) {
+    return {
+      card: 'border-white/60 bg-white/80',
+      label: 'text-zinc-500',
+      value: 'text-zinc-950',
+    }
+  }
+
+  switch (label) {
+    case 'Overdue':
+      return {
+        card: 'border-red-200/70 bg-red-50/70',
+        label: 'text-red-700',
+        value: 'text-red-950',
+      }
+    case 'Due Now':
+      return {
+        card: 'border-amber-200/70 bg-amber-50/70',
+        label: 'text-amber-700',
+        value: 'text-amber-950',
+      }
+    case 'Apply Now':
+      return {
+        card: 'border-blue-200/70 bg-blue-50/70',
+        label: 'text-blue-700',
+        value: 'text-blue-950',
+      }
+    case 'Needs Attention':
+      return {
+        card: 'border-orange-200/70 bg-orange-50/70',
+        label: 'text-orange-700',
+        value: 'text-orange-950',
+      }
+    case 'Waiting':
+      return {
+        card: 'border-zinc-200/80 bg-zinc-50/80',
+        label: 'text-zinc-500',
+        value: 'text-zinc-950',
+      }
+    case 'Snoozed':
+      return {
+        card: 'border-violet-200/70 bg-violet-50/70',
+        label: 'text-violet-700',
+        value: 'text-violet-950',
+      }
+    default:
+      return {
+        card: 'border-white/60 bg-white/80',
+        label: 'text-zinc-500',
+        value: 'text-zinc-950',
+      }
+  }
+}
+
 function Metric({ label, value }: { label: string; value: number }) {
+  const tone = getMetricTone(label, value)
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className="mt-2 text-4xl font-semibold tracking-tight text-slate-950">
+    <div
+      className={`rounded-3xl border px-5 py-4 shadow-sm backdrop-blur ${tone.card}`}
+    >
+      <p
+        className={`text-xs font-semibold uppercase tracking-[0.18em] ${tone.label}`}
+      >
+        {label}
+      </p>
+      <p className={`mt-3 text-3xl font-semibold tracking-tight ${tone.value}`}>
         {value}
       </p>
     </div>
@@ -166,22 +229,43 @@ function Metric({ label, value }: { label: string; value: number }) {
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+    <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/80 px-4 py-3">
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-500">
         {label}
       </p>
-      <p className="mt-2 text-sm font-medium text-slate-900">{value}</p>
+      <p className="mt-2 text-sm font-medium text-zinc-900">{value}</p>
+    </div>
+  )
+}
+
+function MetaPill({
+  children,
+  tone = 'neutral',
+}: {
+  children: React.ReactNode
+  tone?: 'neutral' | 'danger'
+}) {
+  const toneClassName =
+    tone === 'danger'
+      ? 'border-red-200/70 bg-red-50/70 text-red-700'
+      : 'border-zinc-200 bg-zinc-50 text-zinc-700'
+
+  return (
+    <div
+      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${toneClassName}`}
+    >
+      {children}
     </div>
   )
 }
 
 function EmptyStateModern() {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-      <h3 className="text-lg font-semibold text-slate-900">
+    <div className="rounded-3xl border border-dashed border-zinc-300 bg-white/80 p-10 text-center shadow-sm backdrop-blur">
+      <h3 className="text-lg font-semibold text-zinc-900">
         Nothing urgent right now
       </h3>
-      <p className="mt-2 text-sm text-slate-500">
+      <p className="mt-2 text-sm text-zinc-500">
         Your queue is clear. Add a new job or review your pipeline.
       </p>
       <div className="mt-5">
@@ -263,12 +347,12 @@ export default async function TodayPage() {
                   {group.items.map((item) => (
                     <div
                       key={item.id}
-                      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                      className="rounded-3xl border border-white/60 bg-white/80 p-5 shadow-sm backdrop-blur"
                     >
                       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium capitalize text-slate-600">
+                            <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-medium capitalize text-zinc-700">
                               {item.kind.replaceAll('_', ' ')}
                             </span>
 
@@ -282,13 +366,13 @@ export default async function TodayPage() {
                           </div>
 
                           <div className="mt-4">
-                            <p className="text-sm font-medium text-slate-500">
+                            <p className="text-sm font-medium text-zinc-500">
                               {item.company}
                             </p>
-                            <h3 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+                            <h3 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-950">
                               {item.title}
                             </h3>
-                            <p className="mt-1 text-sm text-slate-600">
+                            <p className="mt-1 text-sm text-zinc-600">
                               {item.location || 'No location'}
                             </p>
                           </div>
@@ -309,25 +393,23 @@ export default async function TodayPage() {
                             />
                           </div>
 
-                          {item.overdueDays ? (
-                            <div className="mt-4 inline-flex items-center rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-200">
-                              {item.overdueDays} day
-                              {item.overdueDays === 1 ? '' : 's'} overdue
-                            </div>
-                          ) : null}
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {item.overdueDays ? (
+                              <MetaPill tone="danger">
+                                {item.overdueDays} day
+                                {item.overdueDays === 1 ? '' : 's'} overdue
+                              </MetaPill>
+                            ) : null}
 
-                          {item.snoozedUntil ? (
-                            <div className="mt-4 inline-flex items-center rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-200">
-                              Snoozed until {formatMaybeDate(item.snoozedUntil)}
-                            </div>
-                          ) : null}
+                            {item.snoozedUntil ? (
+                              <MetaPill>
+                                Snoozed until {formatMaybeDate(item.snoozedUntil)}
+                              </MetaPill>
+                            ) : null}
+                          </div>
                         </div>
 
                         <div className="flex shrink-0 flex-row flex-wrap gap-2 lg:flex-col">
-                          {/* <Button asChild variant="brand">
-                            <Link href={item.href}>Open</Link>
-                          </Button> */}
-
                           <Button asChild variant="secondary">
                             <Link href={`/jobs/${item.jobId}`}>Job Detail</Link>
                           </Button>
