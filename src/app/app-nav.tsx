@@ -15,6 +15,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/jobs', label: 'Jobs' },
   { href: '/follow-ups', label: 'Follow Ups' },
   { href: '/reports', label: 'Reports' },
+  { href: '/onboarding', label: 'Onboarding' },
   { href: '/profile', label: 'Profile' },
 ]
 
@@ -26,12 +27,20 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
-export function AppNav() {
+export function AppNav({
+  showOnboarding = false,
+}: {
+  showOnboarding?: boolean
+}) {
   const pathname = usePathname()
+
+  const navItems = showOnboarding
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter((item) => item.href !== '/onboarding')
 
   return (
     <nav aria-label="Primary" className="flex flex-wrap items-center gap-1">
-      {NAV_ITEMS.map((item) => {
+      {navItems.map((item) => {
         const active = isActive(pathname, item.href)
 
         return (

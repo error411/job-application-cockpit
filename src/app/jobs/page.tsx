@@ -105,7 +105,7 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
   )
 }
 
-function EmptyState() {
+function EmptyState({ showOnboarding }: { showOnboarding: boolean }) {
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white p-10 shadow-sm">
       <div className="mx-auto max-w-2xl text-center">
@@ -124,6 +124,12 @@ function EmptyState() {
           <Button asChild variant="brand">
             <Link href="/jobs/new">Add Job</Link>
           </Button>
+
+          {showOnboarding ? (
+            <Button asChild variant="secondary">
+              <Link href="/onboarding">Start Onboarding</Link>
+            </Button>
+          ) : null}
 
           <Button asChild variant="secondary">
             <Link href="/today">Open Today</Link>
@@ -245,7 +251,7 @@ export default async function JobsPage() {
       </div>
 
       {activeJobs.length === 0 ? (
-        <EmptyState />
+        <EmptyState showOnboarding={typedJobs.length === 0} />
       ) : (
         <section className="space-y-4">
           {activeJobs.map((job) => {

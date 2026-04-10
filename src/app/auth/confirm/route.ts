@@ -25,5 +25,19 @@ export async function GET(request: Request) {
     )
   }
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (user) {
+    const { count } = await supabase
+      .from('jobs')
+      .select('id', { count: 'exact', head: true })
+
+    if ((count ?? 0) === 0) {
+      return NextResponse.redirect(`${origin}/onboarding`)
+    }
+  }
+
   return NextResponse.redirect(`${origin}/dashboard`)
 }
