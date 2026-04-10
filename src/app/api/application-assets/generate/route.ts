@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { openai } from '@/lib/openai/client'
-import type { Tables, TablesInsert } from '@/lib/supabase/types'
+import type { Tables, TablesInsert } from '@/lib/supabase/schema'
 
 type ApplicationAssetInsert = TablesInsert<'application_assets'>
 type CandidateProfileRow = Tables<'candidate_profile'>

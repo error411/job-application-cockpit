@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { TablesInsert, TablesUpdate } from '@/lib/supabase/types'
+import type { TablesInsert, TablesUpdate } from '@/lib/supabase/schema'
 import {
   isApplicationDisposition,
   isApplicationStatus,

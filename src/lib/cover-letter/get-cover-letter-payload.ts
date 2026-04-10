@@ -6,14 +6,6 @@ function toNullableString(value: unknown): string | null {
     : null
 }
 
-type CandidateProfileForCoverLetter = {
-  full_name: string | null
-  location: string | null
-  phone: string | null
-  email: string | null
-  linkedin_url: string | null
-}
-
 function normalizeProfile(
   profile: Record<string, unknown>
 ) {

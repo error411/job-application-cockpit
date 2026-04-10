@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, Tables } from '@/lib/supabase/types'
+import type { Database, Tables } from '@/lib/supabase/schema'
 import {
   isApplicationDisposition,
   isApplicationStatus,

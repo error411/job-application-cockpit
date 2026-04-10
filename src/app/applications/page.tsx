@@ -3,7 +3,6 @@ export const revalidate = 0
 
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth/require-user'
-import type { JobRow } from '@/lib/supabase/model-types'
 import {
   getFollowUpState,
   type FollowUpState,
@@ -13,8 +12,6 @@ import {
   getActiveWorkflowApplications,
   type ActiveWorkflowApplicationRow,
 } from '@/lib/applications/get-active-workflow-applications'
-
-type ApplicationListJob = Pick<JobRow, 'id' | 'company' | 'title' | 'location'>
 
 type ApplicationListItem = ActiveWorkflowApplicationRow
 

@@ -4,7 +4,7 @@ export const revalidate = 0
 import { requireUser } from '@/lib/auth/require-user'
 import { PageShell, PageHeader } from '@/components/ui/page-shell'
 import { JobsList, type JobRow } from '@/app/jobs/jobs-list'
-import type { Database } from '@/lib/supabase/types'
+import type { Database } from '@/lib/supabase/schema'
 
 type JobScoreRow = Pick<
   Database['public']['Tables']['job_scores']['Row'],

@@ -1,10 +1,13 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth/require-user'
+import { getBillingStatusForUser } from '@/lib/billing/get-billing-status'
 import { formatDate } from '@/lib/dates'
 import {
   getActiveWorkflowApplications,
   type ActiveWorkflowApplicationRow,
 } from '@/lib/applications/get-active-workflow-applications'
+import BillingPortalButton from './billing-portal-button'
+import UpgradeButton from './upgrade-button'
 
 type RecentJob = {
   id: string
@@ -403,6 +406,76 @@ function QuickLinks() {
   )
 }
 
+function BillingCard({
+  billingState,
+  isPro,
+  billingInterval,
+  currentPeriodEnd,
+}: {
+  billingState?: string
+  isPro: boolean
+  billingInterval: 'month' | 'year' | null
+  currentPeriodEnd: string | null
+}) {
+  const statusMessage =
+    billingState === 'success'
+      ? 'Checkout completed. If the subscription is still settling, refresh in a few seconds.'
+      : billingState === 'cancelled'
+        ? 'Checkout was cancelled. You can start again any time.'
+        : billingState === 'portal'
+          ? 'Returned from the Stripe billing portal.'
+          : null
+
+  return (
+    <SectionCard
+      title="Billing"
+      description={
+        isPro
+          ? 'Stripe-backed billing is active for this account.'
+          : 'Launch a Stripe test checkout to validate customer and subscription sync.'
+      }
+    >
+      <div className="space-y-4">
+        {statusMessage ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            {statusMessage}
+          </div>
+        ) : null}
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+            Plan
+          </p>
+          <p className="mt-2 text-xl font-semibold tracking-tight text-zinc-950">
+            {isPro ? 'Pro active' : 'Free'}
+          </p>
+          <p className="mt-1 text-sm text-zinc-600">
+            {isPro
+              ? `Interval: ${billingInterval ?? 'unknown'}`
+              : 'No active subscription synced yet.'}
+          </p>
+          {currentPeriodEnd ? (
+            <p className="mt-1 text-sm text-zinc-500">
+              Current period ends {formatDate(currentPeriodEnd)}
+            </p>
+          ) : null}
+        </div>
+
+        {isPro ? (
+          <div className="space-y-3">
+            <p className="text-sm text-zinc-600">
+              The webhook has already synced an active subscription for this user.
+            </p>
+            <BillingPortalButton />
+          </div>
+        ) : (
+          <UpgradeButton />
+        )}
+      </div>
+    </SectionCard>
+  )
+}
+
 function RecentActivity({ jobs }: { jobs: RecentJob[] }) {
   return (
     <SectionCard
@@ -452,10 +525,22 @@ function RecentActivity({ jobs }: { jobs: RecentJob[] }) {
   )
 }
 
-export default async function DashboardPage() {
-  const { supabase } = await requireUser()
+type DashboardPageProps = {
+  searchParams?: Promise<{ billing?: string }>
+}
 
-  const [activeJobsResult, recentJobsResult, workflowApplications] =
+export default async function DashboardPage({
+  searchParams,
+}: DashboardPageProps) {
+  const params = searchParams ? await searchParams : undefined
+  const { supabase, user } = await requireUser()
+
+  const [
+    activeJobsResult,
+    recentJobsResult,
+    workflowApplications,
+    billingStatus,
+  ] =
     await Promise.all([
       supabase
         .from('jobs')
@@ -482,6 +567,7 @@ export default async function DashboardPage() {
         .order('updated_at', { ascending: false })
         .limit(6),
       getActiveWorkflowApplications(supabase),
+      getBillingStatusForUser(supabase, user.id),
     ])
 
   if (activeJobsResult.error) {
@@ -596,6 +682,13 @@ export default async function DashboardPage() {
 
         <QuickLinks />
       </section>
+
+      <BillingCard
+        billingState={params?.billing}
+        isPro={billingStatus.isPro}
+        billingInterval={billingStatus.subscription?.billingInterval ?? null}
+        currentPeriodEnd={billingStatus.subscription?.currentPeriodEnd ?? null}
+      />
 
       <RecentActivity jobs={recentJobs} />
     </div>

@@ -131,21 +131,6 @@ function emptyExperienceForm(): ExperienceFormState {
   }
 }
 
-function formFromRow(row: ExperienceRow): ExperienceFormState {
-  return {
-    company: row.company ?? '',
-    title: row.title ?? '',
-    location: row.location ?? '',
-    start_date: row.start_date ?? '',
-    end_date: row.end_date ?? '',
-    is_current: Boolean(row.is_current),
-    summary: row.summary ?? '',
-    bulletsText: (row.bullets ?? []).join('\n'),
-    technologiesText: (row.technologies ?? []).join(', '),
-    sort_order: String(row.sort_order ?? 0),
-  }
-}
-
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [experienceRows, setExperienceRows] = useState<ExperienceRow[]>([])
@@ -155,10 +140,6 @@ export default function ProfilePage() {
   const [experienceMessage, setExperienceMessage] = useState('')
   const [isSavingExperience, setIsSavingExperience] = useState(false)
   const [newExperience, setNewExperience] = useState<ExperienceFormState>(
-    emptyExperienceForm()
-  )
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingForm, setEditingForm] = useState<ExperienceFormState>(
     emptyExperienceForm()
   )
 
@@ -271,57 +252,6 @@ export default function ProfilePage() {
     setIsSavingExperience(false)
   }
 
-  function startEditExperience(row: ExperienceRow) {
-    setEditingId(row.id)
-    setEditingForm(formFromRow(row))
-    setExperienceMessage('')
-  }
-
-  function cancelEditExperience() {
-    setEditingId(null)
-    setEditingForm(emptyExperienceForm())
-  }
-
-  async function handleSaveExperience(id: string) {
-    setIsSavingExperience(true)
-    setExperienceMessage('Saving experience...')
-
-    const res = await fetch(`/api/profile/experience/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        company: editingForm.company,
-        title: editingForm.title,
-        location: editingForm.location || null,
-        start_date: editingForm.start_date || null,
-        end_date: editingForm.is_current ? null : editingForm.end_date || null,
-        is_current: editingForm.is_current,
-        summary: editingForm.summary || null,
-        bullets: toLines(editingForm.bulletsText),
-        technologies: toCommaList(editingForm.technologiesText),
-        sort_order: Number(editingForm.sort_order || '0'),
-      }),
-    })
-
-    const result = await res.json().catch(() => null)
-
-    if (!res.ok) {
-      setExperienceMessage(
-        `Error: ${result?.error || 'Failed to update experience row'}`
-      )
-      setIsSavingExperience(false)
-      return
-    }
-
-    setExperienceRows((current) =>
-      current.map((row) => (row.id === id ? result.experience : row))
-    )
-    setEditingId(null)
-    setEditingForm(emptyExperienceForm())
-    setExperienceMessage('Experience updated.')
-    setIsSavingExperience(false)
-  }
-
   async function handleDeleteExperience(id: string) {
     const confirmed = window.confirm('Delete this experience entry?')
     if (!confirmed) return
@@ -344,11 +274,6 @@ export default function ProfilePage() {
     }
 
     setExperienceRows((current) => current.filter((row) => row.id !== id))
-
-    if (editingId === id) {
-      setEditingId(null)
-      setEditingForm(emptyExperienceForm())
-    }
 
     setExperienceMessage('Experience deleted.')
     setIsSavingExperience(false)
@@ -634,12 +559,6 @@ export default function ProfilePage() {
               </div>
 
               <div className="flex gap-2">
-                <button
-                  onClick={() => startEditExperience(row)}
-                  className="app-button"
-                >
-                  Edit
-                </button>
                 <button
                   onClick={() => void handleDeleteExperience(row.id)}
                   className="app-button border-red-300 text-red-700"

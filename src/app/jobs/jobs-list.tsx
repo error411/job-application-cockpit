@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useDeferredValue, useState } from 'react'
-import type { Database } from '@/lib/supabase/types'
+import type { Database } from '@/lib/supabase/schema'
 import { formatDate } from '@/lib/dates'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/status-badge'

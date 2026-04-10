@@ -1,6 +1,6 @@
 import 'server-only'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/lib/supabase/types'
+import type { Database } from '@/lib/supabase/schema'
 
 let adminClient: ReturnType<typeof createSupabaseClient<Database>> | null = null
 

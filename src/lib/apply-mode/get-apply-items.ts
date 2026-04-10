@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/lib/supabase/types'
+import type { Database } from '@/lib/supabase/schema'
 import {
   getActiveWorkflowApplications,
   type ActiveWorkflowApplicationRow,

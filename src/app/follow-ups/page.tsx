@@ -8,7 +8,7 @@ import {
   getFollowUpState,
   type FollowUpState,
 } from '@/lib/applications/get-follow-up-state'
-import type { Tables } from '@/lib/supabase/types'
+import type { Tables } from '@/lib/supabase/schema'
 import FollowUpActions from './follow-up-actions'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import {

@@ -1,4 +1,4 @@
-import type { Tables, TablesInsert, TablesUpdate } from '@/lib/supabase/types'
+import type { Tables, TablesInsert, TablesUpdate } from '@/lib/supabase/schema'
 
 export type JobRow = Tables<'jobs'>
 export type JobInsert = TablesInsert<'jobs'>
@@ -27,3 +27,15 @@ export type JobScoreUpdate = TablesUpdate<'job_scores'>
 export type AutomationJobRow = Tables<'automation_jobs'>
 export type AutomationJobInsert = TablesInsert<'automation_jobs'>
 export type AutomationJobUpdate = TablesUpdate<'automation_jobs'>
+
+export type BillingCustomerRow = Tables<'billing_customers'>
+export type BillingCustomerInsert = TablesInsert<'billing_customers'>
+export type BillingCustomerUpdate = TablesUpdate<'billing_customers'>
+
+export type BillingSubscriptionRow = Tables<'billing_subscriptions'>
+export type BillingSubscriptionInsert = TablesInsert<'billing_subscriptions'>
+export type BillingSubscriptionUpdate = TablesUpdate<'billing_subscriptions'>
+
+export type BillingEventRow = Tables<'billing_events'>
+export type BillingEventInsert = TablesInsert<'billing_events'>
+export type BillingEventUpdate = TablesUpdate<'billing_events'>

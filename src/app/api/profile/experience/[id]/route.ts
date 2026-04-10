@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import type { TablesUpdate } from '@/lib/supabase/types'
+import type { TablesUpdate } from '@/lib/supabase/schema'
 
 type CandidateExperienceUpdate = TablesUpdate<'candidate_experience'>
 

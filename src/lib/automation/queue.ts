@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { Json } from '@/lib/supabase/types'
+import type { Json } from '@/lib/supabase/schema'
 import type {
   AutomationEntityType,
   AutomationJobType,
