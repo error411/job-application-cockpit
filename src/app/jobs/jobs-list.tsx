@@ -36,6 +36,44 @@ export type JobRow = Pick<
     | null
 }
 
+function isJobConsideredScored(
+  job: JobRow,
+  latestScoresByJobId: Record<string, number | null>
+) {
+  return (
+    job.id in latestScoresByJobId ||
+    job.status === 'scored' ||
+    job.status === 'assets_generated' ||
+    job.status === 'ready_to_apply'
+  )
+}
+
+function getJobScoreDisplay(
+  job: JobRow,
+  latestScoresByJobId: Record<string, number | null>
+) {
+  const latestScore = latestScoresByJobId[job.id] ?? null
+
+  if (latestScore !== null) {
+    return {
+      score: latestScore,
+      label: `${latestScore}/100`,
+    }
+  }
+
+  if (isJobConsideredScored(job, latestScoresByJobId)) {
+    return {
+      score: null,
+      label: 'Scored',
+    }
+  }
+
+  return {
+    score: null,
+    label: 'Unscored',
+  }
+}
+
 function getPrimaryApplication(job: JobRow) {
   const applications = job.applications ?? []
   if (!applications.length) return null
@@ -201,8 +239,8 @@ export function JobsList({
   const hasSearchResults =
     filteredActiveJobs.length > 0 || filteredArchivedJobs.length > 0
 
-  const scoredCount = filteredActiveJobs.filter(
-    (job) => job.id in latestScoresByJobId
+  const scoredCount = filteredActiveJobs.filter((job) =>
+    isJobConsideredScored(job, latestScoresByJobId)
   ).length
   const unscoredCount = filteredActiveJobs.length - scoredCount
   const strongFitCount = filteredActiveJobs.filter((job) => {
@@ -231,7 +269,7 @@ export function JobsList({
       ) : (
         <section className="space-y-4">
           {filteredActiveJobs.map((job) => {
-            const latestScore = latestScoresByJobId[job.id] ?? null
+            const scoreDisplay = getJobScoreDisplay(job, latestScoresByJobId)
             const displayStatus = getDisplayStatus(job)
             const displayStatusLabel = getDisplayStatusLabel(job)
             const hasApplicationStatus = Boolean(getPrimaryApplicationStatus(job))
@@ -245,7 +283,15 @@ export function JobsList({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge status={displayStatus} />
-                      <ScoreBadge score={latestScore} />
+                      {scoreDisplay.score !== null ? (
+                        <ScoreBadge score={scoreDisplay.score} />
+                      ) : scoreDisplay.label === 'Scored' ? (
+                        <span className="inline-flex items-center rounded-full bg-emerald-50/80 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200/70">
+                          Scored
+                        </span>
+                      ) : (
+                        <ScoreBadge score={null} />
+                      )}
                       <DispositionBadge
                         disposition={getPrimaryApplicationDisposition(job)}
                       />
@@ -266,9 +312,7 @@ export function JobsList({
                     <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                       <InfoBlock
                         label="Score"
-                        value={
-                          latestScore !== null ? `${latestScore}/100` : 'Unscored'
-                        }
+                        value={scoreDisplay.label}
                       />
                       <InfoBlock label="Status" value={displayStatusLabel} />
                       <InfoBlock

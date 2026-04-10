@@ -217,6 +217,18 @@ function isWithinRange(dateLike: string | null | undefined, range: ReportRange):
   return date >= cutoff
 }
 
+function isJobConsideredScored(
+  job: ReportJob,
+  scoreByJobId: Map<string, number>
+): boolean {
+  return (
+    scoreByJobId.has(job.id) ||
+    job.status === 'scored' ||
+    job.status === 'assets_generated' ||
+    job.status === 'ready_to_apply'
+  )
+}
+
 export async function getReportSummary(
   supabase: SupabaseClient<Database>,
   range: ReportRange = '90d'
@@ -364,7 +376,9 @@ const allApplications: NormalizedReportApplicationWithJob[] = (
     { label: 'Captured', value: activeJobs },
     {
       label: 'Scored',
-      value: jobs.filter((job) => scoreByJobId.has(job.id) && job.archived_at == null).length,
+      value: jobs.filter(
+        (job) => job.archived_at == null && isJobConsideredScored(job, scoreByJobId)
+      ).length,
     },
     {
       label: 'Ready',
