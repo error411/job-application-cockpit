@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { OnboardingTourPopup } from '@/components/onboarding-tour-popup'
@@ -146,7 +146,7 @@ function MessageBanner({
   )
 }
 
-export default function NewJobPage() {
+function NewJobPageClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -521,5 +521,13 @@ export default function NewJobPage() {
         </div>
       </form>
     </main>
+  )
+}
+
+export default function NewJobPage() {
+  return (
+    <Suspense fallback={<main className="p-6">Loading add job...</main>}>
+      <NewJobPageClient />
+    </Suspense>
   )
 }

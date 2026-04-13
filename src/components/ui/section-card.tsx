@@ -4,16 +4,18 @@ import { cn } from '@/lib/utils'
 export function SectionCard({
   className,
   children,
+  ...props
 }: {
   className?: string
   children: React.ReactNode
-}) {
+} & React.HTMLAttributes<HTMLElement>) {
   return (
     <section
       className={cn(
         'rounded-3xl border border-white/60 bg-white/80 shadow-sm backdrop-blur',
         className
       )}
+      {...props}
     >
       {children}
     </section>

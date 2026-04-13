@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { OnboardingTourPopup } from '@/components/onboarding-tour-popup'
 
 type Profile = {
@@ -133,7 +133,7 @@ function emptyExperienceForm(): ExperienceFormState {
   }
 }
 
-export default function ProfilePage() {
+function ProfilePageClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -625,4 +625,12 @@ export default function ProfilePage() {
     </section>
   </div>
 )
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<main className="p-6">Loading profile...</main>}>
+      <ProfilePageClient />
+    </Suspense>
+  )
 }
