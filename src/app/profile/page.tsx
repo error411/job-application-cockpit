@@ -1,6 +1,8 @@
 'use client'
 
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { OnboardingTourPopup } from '@/components/onboarding-tour-popup'
 
 type Profile = {
   id: string
@@ -132,6 +134,8 @@ function emptyExperienceForm(): ExperienceFormState {
 }
 
 export default function ProfilePage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [experienceRows, setExperienceRows] = useState<ExperienceRow[]>([])
   const [message, setMessage] = useState('')
@@ -142,6 +146,11 @@ export default function ProfilePage() {
   const [newExperience, setNewExperience] = useState<ExperienceFormState>(
     emptyExperienceForm()
   )
+
+  const isOnboardingFlow = searchParams.get('onboarding') === 'review-profile'
+  const nextPath =
+    searchParams.get('next') ||
+    '/jobs/new?onboarding=add-job&next=%2Ftoday%3Fonboarding%3Dwork-queue'
 
   useEffect(() => {
     async function loadProfile() {
@@ -208,8 +217,16 @@ export default function ProfilePage() {
     }
 
     setProfile(result.profile)
-    setMessage('Profile saved.')
+    setMessage(
+      isOnboardingFlow
+        ? 'Profile saved. Moving you to the next onboarding step...'
+        : 'Profile saved.'
+    )
     setIsSaving(false)
+
+    if (isOnboardingFlow) {
+      router.push(nextPath)
+    }
   }
 
   async function handleCreateExperience() {
@@ -285,6 +302,17 @@ export default function ProfilePage() {
 
   return (
   <div className="space-y-10">
+    {isOnboardingFlow ? (
+      <OnboardingTourPopup
+        stageKey="onboarding-review-profile"
+        stepLabel="Product Tour"
+        title="Review and save your profile"
+        description="Check the imported details, make any edits you want, then save. Saving advances you to the first job intake step."
+        targetSelector='[data-tour-target="onboarding-save-profile-button"]'
+        placement="top"
+      />
+    ) : null}
+
     <section className="space-y-2">
       <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
         Candidate
@@ -297,6 +325,13 @@ export default function ProfilePage() {
       <p className="max-w-3xl text-sm leading-6 text-zinc-600">
         This is your source of truth for scoring, resume generation, and cover letters.
       </p>
+
+      {isOnboardingFlow ? (
+        <div className="max-w-3xl rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          Review the imported details, make any edits you want, then save your
+          profile to continue to the next onboarding step.
+        </div>
+      ) : null}
     </section>
 
     {/* Profile Panel */}
@@ -399,6 +434,7 @@ export default function ProfilePage() {
           <button
             type="submit"
             disabled={isSaving}
+            data-tour-target="onboarding-save-profile-button"
             className="app-button-primary disabled:opacity-50"
           >
             {isSaving ? 'Saving...' : 'Save Profile'}

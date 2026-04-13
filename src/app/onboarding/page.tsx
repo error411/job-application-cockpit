@@ -8,6 +8,8 @@ import {
   SectionCardBody,
   SectionCardHeader,
 } from '@/components/ui/section-card'
+import { OnboardingTourPopup } from '@/components/onboarding-tour-popup'
+import { ResumeImportCard } from './resume-import-card'
 
 type OnboardingStep = {
   title: string
@@ -18,9 +20,16 @@ type OnboardingStep = {
 
 const ONBOARDING_STEPS: OnboardingStep[] = [
   {
-    title: 'Complete your profile',
+    title: 'Import your resume',
     description:
-      'Add your background and experience so generated resumes and cover letters can be personalized.',
+      'Start here. Import your resume so ApplyEngine can prefill your profile, title, location, and experience.',
+    href: '#resume-import',
+    cta: 'Import Resume',
+  },
+  {
+    title: 'Review your imported profile',
+    description:
+      'Check the parsed resume details, tighten your summary, and fill any gaps before generating assets.',
     href: '/profile',
     cta: 'Open Profile',
   },
@@ -70,10 +79,43 @@ export default async function OnboardingPage() {
         }
       />
 
+      <SectionCard className="border-blue-200 bg-gradient-to-r from-blue-50 via-white to-cyan-50">
+        <SectionCardBody className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">
+              Start Here
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+              Import your resume first
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              This is the fastest way to begin. We&apos;ll pull in your profile,
+              experience, title, and location, then walk you through reviewing
+              it and adding your first job.
+            </p>
+          </div>
+
+          <Button asChild variant="brand" className="sm:shrink-0">
+            <Link href="#resume-import">Start With Resume Import</Link>
+          </Button>
+        </SectionCardBody>
+      </SectionCard>
+
+      <OnboardingTourPopup
+        stageKey="onboarding-import-resume"
+        stepLabel="Product Tour"
+        title="Start by importing your resume"
+        description="This pulls your title, location, summary, and experience into ApplyEngine so the next steps can be personalized automatically."
+        targetSelector='[data-tour-target="onboarding-import-resume-button"]'
+        placement="bottom"
+      />
+
+      <ResumeImportCard />
+
       <SectionCard>
         <SectionCardHeader
           title="Quick-start checklist"
-          description="Most users can complete these steps in under 15 minutes."
+          description="After import, these are the next steps to get your workflow running."
         />
         <SectionCardBody className="space-y-4">
           {ONBOARDING_STEPS.map((step, index) => (
@@ -83,7 +125,7 @@ export default async function OnboardingPage() {
             >
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Step {index + 1}
+                  Step {index + 2}
                 </p>
                 <h2 className="mt-1 text-base font-semibold text-slate-950">
                   {step.title}

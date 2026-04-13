@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useEffectEvent, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 
 type GenerateAssetsResponse = {
@@ -11,10 +11,14 @@ type GenerateAssetsResponse = {
 
 type GenerateDraftAssetsButtonProps = {
   jobId: string
+  autoStart?: boolean
+  onSuccessHref?: string | null
 }
 
 export default function GenerateDraftAssetsButton({
   jobId,
+  autoStart = false,
+  onSuccessHref = null,
 }: GenerateDraftAssetsButtonProps) {
   const router = useRouter()
   const [isRunning, setIsRunning] = useState(false)
@@ -23,12 +27,13 @@ export default function GenerateDraftAssetsButton({
   const [messageTone, setMessageTone] = useState<'success' | 'error' | null>(
     null
   )
+  const hasAutoStartedRef = useRef(false)
 
-  async function handleClick() {
+  async function runGeneration() {
     if (isRunning || isPending) return
 
     setIsRunning(true)
-    setMessage('Generating resume, cover letter, and recruiter note…')
+    setMessage('Generating resume, cover letter, and recruiter note...')
     setMessageTone(null)
 
     try {
@@ -50,10 +55,19 @@ export default function GenerateDraftAssetsButton({
         )
       }
 
-      setMessage('Draft assets generated. Refreshing job status…')
+      setMessage(
+        onSuccessHref
+          ? 'Draft assets generated. Moving to the next onboarding step...'
+          : 'Draft assets generated. Refreshing job status...'
+      )
       setMessageTone('success')
 
       startTransition(() => {
+        if (onSuccessHref) {
+          router.push(onSuccessHref)
+          return
+        }
+
         router.refresh()
       })
     } catch (error) {
@@ -67,14 +81,26 @@ export default function GenerateDraftAssetsButton({
     }
   }
 
+  const handleAutoStart = useEffectEvent(() => {
+    void runGeneration()
+  })
+
+  useEffect(() => {
+    if (!autoStart || hasAutoStartedRef.current) return
+
+    hasAutoStartedRef.current = true
+    handleAutoStart()
+  }, [autoStart])
+
   const disabled = isRunning || isPending
 
   return (
     <div className="space-y-2">
       <button
         type="button"
-        onClick={handleClick}
+        onClick={() => void runGeneration()}
         disabled={disabled}
+        data-tour-target="onboarding-generate-assets-button"
         className={
           disabled
             ? 'app-button-primary cursor-not-allowed opacity-70'

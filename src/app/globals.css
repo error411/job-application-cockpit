@@ -200,6 +200,15 @@ select:focus-visible {
   border-color: rgb(161 161 170);
 }
 
+[data-tour-active='true'] {
+  position: relative;
+  z-index: 30;
+  box-shadow:
+    0 0 0 3px rgb(255 255 255),
+    0 0 0 6px rgb(59 130 246 / 0.35);
+  border-radius: 1rem;
+}
+
 /* -------------------------------- */
 /* Reduced motion */
 /* -------------------------------- */

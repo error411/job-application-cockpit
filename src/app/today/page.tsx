@@ -3,6 +3,7 @@ export const revalidate = 0
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { OnboardingTourPopup } from '@/components/onboarding-tour-popup'
 import { StatusBadge } from '@/components/status-badge'
 import { ScoreBadge } from '@/components/score-badge'
 import { DispositionBadge } from '@/components/disposition-badge'
@@ -277,7 +278,14 @@ function EmptyStateModern() {
   )
 }
 
-export default async function TodayPage() {
+export default async function TodayPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ onboarding?: string }>
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const isOnboardingFlow =
+    resolvedSearchParams?.onboarding === 'work-queue'
   const { supabase } = await requireUser()
 
   let applicationRows: unknown[] = []
@@ -315,10 +323,31 @@ export default async function TodayPage() {
 
   return (
     <PageShell className="space-y-8">
+      {isOnboardingFlow ? (
+        <OnboardingTourPopup
+          stageKey="onboarding-work-queue"
+          stepLabel="Product Tour"
+          title="This is your daily command center"
+          description="Today keeps your highest-value next actions in one place. Use it to decide what to apply to, what to follow up on, and what needs attention next."
+          targetSelector='[data-tour-target="onboarding-today-header"]'
+          placement="bottom"
+        />
+      ) : null}
+
       <PageHeader
         title="Today"
         description="Focus on the highest-value next actions across your pipeline."
       />
+
+      {isOnboardingFlow ? (
+        <div
+          data-tour-target="onboarding-today-header"
+          className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
+        >
+          Your onboarding setup is complete. This page is where you’ll return
+          each day to work the next best actions in your pipeline.
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <Metric label="Overdue" value={overdueItems.length} />

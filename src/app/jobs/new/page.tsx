@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { OnboardingTourPopup } from '@/components/onboarding-tour-popup'
 
 type NewJobForm = {
   company: string
@@ -33,6 +34,12 @@ type CreateJobApiResponse = {
   } | null
   scoringApplied?: boolean
   scoringError?: string | null
+}
+
+type ProfileHints = {
+  full_name: string
+  title: string | null
+  location: string | null
 }
 
 const initialForm: NewJobForm = {
@@ -141,14 +148,50 @@ function MessageBanner({
 
 export default function NewJobPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [form, setForm] = useState<NewJobForm>(initialForm)
+  const [profileHints, setProfileHints] = useState<ProfileHints | null>(null)
   const [message, setMessage] = useState('')
   const [messageTone, setMessageTone] = useState<'success' | 'error' | 'info'>(
     'info'
   )
   const [isSaving, setIsSaving] = useState(false)
   const [createdJobId, setCreatedJobId] = useState<string | null>(null)
+  const isOnboardingFlow = searchParams.get('onboarding') === 'add-job'
+  const nextPath = searchParams.get('next') || '/today?onboarding=work-queue'
+
+  useEffect(() => {
+    async function loadProfileHints() {
+      const res = await fetch('/api/profile/current')
+      const result = await res.json().catch(() => null)
+
+      if (!res.ok || !result?.profile) {
+        return
+      }
+
+      setProfileHints({
+        full_name: result.profile.full_name ?? '',
+        title: result.profile.title ?? null,
+        location: result.profile.location ?? null,
+      })
+    }
+
+    void loadProfileHints()
+  }, [])
+
+  const titlePlaceholder =
+    profileHints?.title?.trim() || 'Role title from the job post'
+  const locationPlaceholder =
+    profileHints?.location?.trim() || 'Remote, hybrid, or on-site location'
+  const roleGuidance =
+    profileHints?.title && profileHints?.location
+      ? `Add a role that fits your ${profileHints.title} profile and location preference of ${profileHints.location}.`
+      : profileHints?.title
+        ? `Add a role that fits your ${profileHints.title} profile.`
+        : profileHints?.location
+          ? `Add a role that matches your location preference of ${profileHints.location}.`
+          : 'Add a role directly into the jobs pipeline.'
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -199,26 +242,42 @@ export default function NewJobPage() {
 
         setMessageTone('success')
         setMessage(
-          `Job saved and scored successfully.${scoreText} Opening job page...`
+          isOnboardingFlow
+            ? `Job saved and scored successfully.${scoreText} Moving to draft generation...`
+            : `Job saved and scored successfully.${scoreText} Opening job page...`
         )
 
         setForm(initialForm)
 
-        router.push(`/jobs/${result.job.id}`)
+        router.push(
+          isOnboardingFlow
+            ? `/jobs/${result.job.id}?onboarding=generate-assets&next=${encodeURIComponent(nextPath)}`
+            : `/jobs/${result.job.id}`
+        )
         router.refresh()
         return
       }
 
       setMessageTone('info')
       setMessage(
-        `Job saved, but scoring did not complete. ${
-          result.scoringError || 'Opening job page so you can review it manually.'
-        }`
+        isOnboardingFlow
+          ? `Job saved. ${
+              result.scoringError ||
+              'Moving to draft generation so you can keep onboarding.'
+            }`
+          : `Job saved, but scoring did not complete. ${
+              result.scoringError ||
+              'Opening job page so you can review it manually.'
+            }`
       )
 
       setForm(initialForm)
 
-      router.push(`/jobs/${result.job.id}`)
+      router.push(
+        isOnboardingFlow
+          ? `/jobs/${result.job.id}?onboarding=generate-assets&next=${encodeURIComponent(nextPath)}`
+          : `/jobs/${result.job.id}`
+      )
       router.refresh()
     } catch {
       setMessageTone('error')
@@ -230,6 +289,17 @@ export default function NewJobPage() {
 
   return (
     <main className="space-y-8">
+      {isOnboardingFlow ? (
+        <OnboardingTourPopup
+          stageKey="onboarding-add-job"
+          stepLabel="Product Tour"
+          title="Add your first target job"
+          description="Paste the role you want to pursue here. We’ll create the record, score it, and move you straight into draft generation."
+          targetSelector='[data-tour-target="onboarding-save-job-button"]'
+          placement="top"
+        />
+      ) : null}
+
       <section className="space-y-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
@@ -243,6 +313,12 @@ export default function NewJobPage() {
               Create a new job record, create its linked application, and score
               it immediately on submission.
             </p>
+            {isOnboardingFlow ? (
+              <div className="max-w-3xl rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                Add your first job, then we&apos;ll automatically take you to
+                the draft generation step.
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -273,7 +349,7 @@ export default function NewJobPage() {
               Manual intake
             </p>
             <p className="mt-1 text-sm text-zinc-600">
-              Add a role directly into the jobs pipeline.
+              {roleGuidance}
             </p>
           </div>
 
@@ -335,7 +411,7 @@ export default function NewJobPage() {
                       company: e.target.value,
                     }))
                   }
-                  placeholder="Acme Inc."
+                  placeholder="Company from the job post"
                 />
               </div>
 
@@ -352,7 +428,7 @@ export default function NewJobPage() {
                       title: e.target.value,
                     }))
                   }
-                  placeholder="Senior WordPress Developer"
+                  placeholder={titlePlaceholder}
                 />
               </div>
 
@@ -367,7 +443,7 @@ export default function NewJobPage() {
                       location: e.target.value,
                     }))
                   }
-                  placeholder="Remote / San Diego, CA"
+                  placeholder={locationPlaceholder}
                 />
               </div>
 
@@ -427,6 +503,7 @@ export default function NewJobPage() {
           <button
             type="submit"
             disabled={isSaving}
+            data-tour-target="onboarding-save-job-button"
             className={[
               'app-button-primary inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-medium',
               isSaving ? 'cursor-not-allowed opacity-70' : '',

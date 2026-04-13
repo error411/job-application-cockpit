@@ -10,12 +10,18 @@ import type {
   JobScoreRow,
 } from '@/lib/supabase/model-types'
 import { formatDate } from '@/lib/dates'
+import { OnboardingTourPopup } from '@/components/onboarding-tour-popup'
 import JobFollowUpActions from './job-follow-up-actions'
 import GenerateDraftAssetsButton from './generate-draft-assets-button'
 
 type PageProps = {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ from?: string; error?: string }>
+  searchParams: Promise<{
+    from?: string
+    error?: string
+    onboarding?: string
+    next?: string
+  }>
 }
 
 type JobDetailRow = Pick<
@@ -325,7 +331,7 @@ export default async function JobDetailPage({
   searchParams,
 }: PageProps) {
   const { id } = await params
-  const { from, error } = await searchParams
+  const { from, error, onboarding, next } = await searchParams
   const supabase = createAdminClient()
 
   const backHref = from === 'apply' ? '/apply' : '/jobs'
@@ -404,6 +410,8 @@ export default async function JobDetailPage({
     Boolean(latestScore),
     Boolean(latestAsset)
   )
+  const isGenerateAssetsOnboarding = onboarding === 'generate-assets'
+  const nextOnboardingHref = next || '/today?onboarding=work-queue'
 
   return (
     <main className="max-w-6xl p-6">
@@ -471,6 +479,26 @@ export default async function JobDetailPage({
           <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
             <p className="text-sm text-rose-800">{error}</p>
           </div>
+        ) : null}
+
+        {isGenerateAssetsOnboarding ? (
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+            <p className="text-sm text-blue-900">
+              We&apos;re generating your first draft assets automatically for the
+              next onboarding step.
+            </p>
+          </div>
+        ) : null}
+
+        {isGenerateAssetsOnboarding ? (
+          <OnboardingTourPopup
+            stageKey="onboarding-generate-assets"
+            stepLabel="Product Tour"
+            title="Drafts are being generated for you"
+            description="We’re creating a tailored resume, cover letter, and recruiter note for this job. Once they’re ready, you’ll continue to Today."
+            targetSelector='[data-tour-target="onboarding-generate-assets-button"]'
+            placement="top"
+          />
         ) : null}
 
         <section className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm">
@@ -576,7 +604,11 @@ export default async function JobDetailPage({
     </p>
 
     <div className="mt-4 flex flex-wrap gap-3">
-      <GenerateDraftAssetsButton jobId={typedJob.id} />
+      <GenerateDraftAssetsButton
+        jobId={typedJob.id}
+        autoStart={isGenerateAssetsOnboarding && !latestAsset}
+        onSuccessHref={isGenerateAssetsOnboarding ? nextOnboardingHref : null}
+      />
 
       <form action="/api/score-form" method="post">
         <input type="hidden" name="jobId" value={typedJob.id} />
