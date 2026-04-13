@@ -79,28 +79,6 @@ export default async function OnboardingPage() {
         }
       />
 
-      <SectionCard className="border-blue-200 bg-gradient-to-r from-blue-50 via-white to-cyan-50">
-        <SectionCardBody className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">
-              Start Here
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-              Import your resume first
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              This is the fastest way to begin. We&apos;ll pull in your profile,
-              experience, title, and location, then walk you through reviewing
-              it and adding your first job.
-            </p>
-          </div>
-
-          <Button asChild variant="brand" className="sm:shrink-0">
-            <Link href="#resume-import">Start With Resume Import</Link>
-          </Button>
-        </SectionCardBody>
-      </SectionCard>
-
       <OnboardingTourPopup
         stageKey="onboarding-import-resume"
         stepLabel="Product Tour"
@@ -125,7 +103,7 @@ export default async function OnboardingPage() {
             >
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Step {index + 2}
+                  Step {index + 1}
                 </p>
                 <h2 className="mt-1 text-base font-semibold text-slate-950">
                   {step.title}

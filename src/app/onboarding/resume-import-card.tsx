@@ -98,10 +98,13 @@ export function ResumeImportCard() {
   }
 
   return (
-    <SectionCard className="scroll-mt-24" id="resume-import">
+    <SectionCard
+      className="scroll-mt-24 border-blue-200 bg-gradient-to-br from-blue-50 via-white to-cyan-50 shadow-md shadow-blue-100/50"
+      id="resume-import"
+    >
       <SectionCardHeader
         title="Step 1: Import your resume"
-        description="Paste resume text or load a resume file to prefill your profile and experience."
+        description="Start here. Paste resume text or load a resume file to prefill your profile, title, location, and experience."
         action={
           <Button asChild variant="secondary" size="sm">
             <Link href="/profile">Open Profile</Link>
@@ -109,8 +112,9 @@ export function ResumeImportCard() {
         }
       />
       <SectionCardBody className="space-y-4">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-          PDF uploads are supported, and text-based files like `.txt`, `.md`, `.html`, and `.rtf` still work too.
+        <div className="rounded-2xl border border-blue-200 bg-white/80 p-4 text-sm text-slate-600">
+          This is the fastest way to get started. PDF uploads are supported, and
+          text-based files like `.txt`, `.md`, `.html`, and `.rtf` still work too.
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
