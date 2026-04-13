@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChangeEvent, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { markOnboardingStepComplete } from '@/lib/onboarding/progress'
 import {
   SectionCard,
   SectionCardBody,
@@ -93,6 +94,7 @@ export function ResumeImportCard() {
         result.imported?.experienceCount === 1 ? 'y' : 'ies'
       }.`
     )
+    markOnboardingStepComplete('import_resume')
     setIsImporting(false)
     router.push('/profile?onboarding=review-profile&next=%2Fjobs%2Fnew')
   }

@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useMemo, useState } from 'react'
+import { markOnboardingStepComplete } from '@/lib/onboarding/progress'
 import { OnboardingTourPopup } from '@/components/onboarding-tour-popup'
 
 type Profile = {
@@ -225,6 +226,7 @@ function ProfilePageClient() {
     setIsSaving(false)
 
     if (isOnboardingFlow) {
+      markOnboardingStepComplete('review_profile')
       router.push(nextPath)
     }
   }

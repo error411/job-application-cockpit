@@ -2,6 +2,7 @@
 
 import { useEffect, useEffectEvent, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { markOnboardingStepComplete } from '@/lib/onboarding/progress'
 
 type GenerateAssetsResponse = {
   asset?: unknown
@@ -61,6 +62,10 @@ export default function GenerateDraftAssetsButton({
           : 'Draft assets generated. Refreshing job status...'
       )
       setMessageTone('success')
+
+      if (onSuccessHref) {
+        markOnboardingStepComplete('generate_assets')
+      }
 
       startTransition(() => {
         if (onSuccessHref) {

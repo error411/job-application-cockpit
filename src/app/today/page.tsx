@@ -4,6 +4,7 @@ export const revalidate = 0
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { OnboardingTourPopup } from '@/components/onboarding-tour-popup'
+import { OnboardingCompleteMarker } from './onboarding-complete-marker'
 import { StatusBadge } from '@/components/status-badge'
 import { ScoreBadge } from '@/components/score-badge'
 import { DispositionBadge } from '@/components/disposition-badge'
@@ -324,14 +325,17 @@ export default async function TodayPage({
   return (
     <PageShell className="space-y-8">
       {isOnboardingFlow ? (
-        <OnboardingTourPopup
-          stageKey="onboarding-work-queue"
-          stepLabel="Product Tour"
-          title="This is your daily command center"
-          description="Today keeps your highest-value next actions in one place. Use it to decide what to apply to, what to follow up on, and what needs attention next."
-          targetSelector='[data-tour-target="onboarding-today-header"]'
-          placement="bottom"
-        />
+        <>
+          <OnboardingCompleteMarker />
+          <OnboardingTourPopup
+            stageKey="onboarding-work-queue"
+            stepLabel="Product Tour"
+            title="This is your daily command center"
+            description="Today keeps your highest-value next actions in one place. Use it to decide what to apply to, what to follow up on, and what needs attention next."
+            targetSelector='[data-tour-target="onboarding-today-header"]'
+            placement="bottom"
+          />
+        </>
       ) : null}
 
       <PageHeader

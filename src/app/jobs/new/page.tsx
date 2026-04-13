@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { markOnboardingStepComplete } from '@/lib/onboarding/progress'
 import { OnboardingTourPopup } from '@/components/onboarding-tour-popup'
 
 type NewJobForm = {
@@ -249,6 +250,10 @@ function NewJobPageClient() {
 
         setForm(initialForm)
 
+        if (isOnboardingFlow) {
+          markOnboardingStepComplete('add_job')
+        }
+
         router.push(
           isOnboardingFlow
             ? `/jobs/${result.job.id}?onboarding=generate-assets&next=${encodeURIComponent(nextPath)}`
@@ -272,6 +277,10 @@ function NewJobPageClient() {
       )
 
       setForm(initialForm)
+
+      if (isOnboardingFlow) {
+        markOnboardingStepComplete('add_job')
+      }
 
       router.push(
         isOnboardingFlow
