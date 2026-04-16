@@ -4,6 +4,7 @@ import {
   getActiveWorkflowApplications,
   type ActiveWorkflowApplicationRow,
 } from '@/lib/applications/get-active-workflow-applications'
+import { getLatestJobScoresByJobId } from '@/lib/jobs/get-latest-job-scores'
 import type { ApplyItem } from './types'
 import type { ApplicationDisposition } from '@/lib/statuses'
 
@@ -13,12 +14,6 @@ type ApplicationAssetRow = {
   cover_letter_markdown: string | null
   follow_up_1_email_markdown: string | null
   follow_up_2_email_markdown: string | null
-  created_at: string
-}
-
-type JobScoreRow = {
-  job_id: string
-  score: number
   created_at: string
 }
 
@@ -124,14 +119,10 @@ export async function getApplyItems(
 
   if (jobIds.length > 0) {
     const [
-      { data: scoreData, error: scoreError },
+      latestScores,
       { data: assetData, error: assetError },
     ] = await Promise.all([
-      supabase
-        .from('job_scores')
-        .select('job_id, score, created_at')
-        .in('job_id', jobIds)
-        .order('created_at', { ascending: false }),
+      getLatestJobScoresByJobId(jobIds),
 
       supabase
         .from('application_assets')
@@ -149,22 +140,13 @@ export async function getApplyItems(
         .order('created_at', { ascending: false }),
     ])
 
-    if (scoreError) {
-      throw new Error(scoreError.message)
-    }
-
     if (assetError) {
       throw new Error(assetError.message)
     }
 
-    const scoreRows = (scoreData ?? []) as JobScoreRow[]
     const assetRows = (assetData ?? []) as ApplicationAssetRow[]
 
-    for (const row of scoreRows) {
-      if (!latestScoreByJobId.has(row.job_id)) {
-        latestScoreByJobId.set(row.job_id, row.score)
-      }
-    }
+    latestScores.forEach((score, jobId) => latestScoreByJobId.set(jobId, score))
 
     for (const row of assetRows) {
       if (!hasAssetsByJobId.has(row.job_id)) {

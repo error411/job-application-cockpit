@@ -7,11 +7,10 @@ import {
   type ApplicationDisposition,
   type ApplicationStatus,
 } from '@/lib/statuses'
+import { getLatestJobScoresByJobId } from '@/lib/jobs/get-latest-job-scores'
 
 type JobRow = Tables<'jobs'>
 type ApplicationRow = Tables<'applications'>
-type JobScoreRow = Tables<'job_scores'>
-
 type WorkflowJob = Pick<
   JobRow,
   'id' | 'company' | 'title' | 'location' | 'archived_at'
@@ -34,8 +33,6 @@ type RawWorkflowApplicationRow = Pick<
 > & {
   jobs: WorkflowJob | WorkflowJob[] | null
 }
-
-type JobScoreLookupRow = Pick<JobScoreRow, 'job_id' | 'score' | 'created_at'>
 
 export type ActiveWorkflowApplicationRow = Pick<
   ApplicationRow,
@@ -120,25 +117,7 @@ export async function getActiveWorkflowApplications(
 
   const jobIds = [...new Set(baseRows.map((row) => row.job_id))]
 
-  const latestScoresByJobId = new Map<string, number>()
-
-  if (jobIds.length > 0) {
-    const { data: scores, error: scoresError } = await supabase
-      .from('job_scores')
-      .select('job_id, score, created_at')
-      .in('job_id', jobIds)
-      .order('created_at', { ascending: false })
-
-    if (scoresError) {
-      throw new Error(scoresError.message)
-    }
-
-    for (const scoreRow of (scores ?? []) as JobScoreLookupRow[]) {
-      if (!latestScoresByJobId.has(scoreRow.job_id)) {
-        latestScoresByJobId.set(scoreRow.job_id, scoreRow.score)
-      }
-    }
-  }
+  const latestScoresByJobId = await getLatestJobScoresByJobId(jobIds)
 
   return baseRows.map((row) => ({
     id: row.id,

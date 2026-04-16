@@ -4,12 +4,7 @@ export const revalidate = 0
 import { requireUser } from '@/lib/auth/require-user'
 import { PageShell, PageHeader } from '@/components/ui/page-shell'
 import { JobsList, type JobRow } from '@/app/jobs/jobs-list'
-import type { Database } from '@/lib/supabase/schema'
-
-type JobScoreRow = Pick<
-  Database['public']['Tables']['job_scores']['Row'],
-  'job_id' | 'score' | 'created_at'
->
+import { getLatestJobScoresByJobId } from '@/lib/jobs/get-latest-job-scores'
 
 function ErrorState({ message }: { message: string }) {
   return (
@@ -76,26 +71,20 @@ export default async function JobsPage() {
     .filter((job) => job.archived_at == null)
     .map((job) => job.id)
 
-  const latestScoresByJobId: Record<string, number | null> = {}
+  let latestScoresByJobId: Record<string, number | null> = {}
 
-  if (activeJobIds.length > 0) {
-    const { data: scores, error: scoresError } = await supabase
-      .from('job_scores')
-      .select('job_id, score, created_at')
-      .in('job_id', activeJobIds)
-      .order('created_at', { ascending: false })
-
-    if (scoresError) {
-      return <ErrorState message={scoresError.message} />
-    }
-
-    const typedScores: JobScoreRow[] = scores ?? []
-
-    for (const scoreRow of typedScores) {
-      if (!(scoreRow.job_id in latestScoresByJobId)) {
-        latestScoresByJobId[scoreRow.job_id] = scoreRow.score
-      }
-    }
+  try {
+    latestScoresByJobId = Object.fromEntries(
+      await getLatestJobScoresByJobId(activeJobIds)
+    )
+  } catch (error) {
+    return (
+      <ErrorState
+        message={
+          error instanceof Error ? error.message : 'Failed to load job scores'
+        }
+      />
+    )
   }
 
   return (

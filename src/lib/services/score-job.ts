@@ -15,7 +15,7 @@ type ScorePayload = {
 
 type JobForScore = Pick<
   JobRow,
-  'id' | 'company' | 'title' | 'location' | 'description_raw'
+  'id' | 'company' | 'title' | 'location' | 'description_raw' | 'user_id'
 >
 
 type CandidateProfileForScore = Pick<
@@ -75,7 +75,7 @@ export async function scoreJobService(jobId: string) {
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')
-    .select('id, company, title, location, description_raw')
+    .select('id, company, title, location, description_raw, user_id')
     .eq('id', jobId)
     .single()
 
@@ -229,6 +229,7 @@ ${typedJob.description_raw}
 
   const insertPayload: JobScoreRouteInsert = {
     job_id: typedJob.id,
+    user_id: typedJob.user_id,
     score: parsed.score,
     matched_skills: normalizeStringArray(parsed.matched_skills),
     missing_skills: normalizeStringArray(parsed.missing_skills),
