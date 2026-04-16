@@ -699,6 +699,22 @@ export default async function JobDetailPage({
           Mark Interviewing
         </button>
       </form>
+
+      <form action="/api/applications-form" method="post">
+        <input type="hidden" name="jobId" value={typedJob.id} />
+        <input type="hidden" name="status" value="closed" />
+        <input
+          type="hidden"
+          name="from"
+          value={from === 'apply' ? 'apply' : 'jobs'}
+        />
+        <button
+          className="rounded-md border border-zinc-300 bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+          type="submit"
+        >
+          Close Job
+        </button>
+      </form>
     </div>
   </div>
 

@@ -56,6 +56,10 @@ function isTerminalDisposition(disposition: ApplicationDisposition) {
   return disposition !== 'landed_interview'
 }
 
+function isActiveStatus(status: ApplicationStatus) {
+  return status !== 'closed'
+}
+
 export async function upsertApplicationForJob({
   jobId,
   status,
@@ -127,7 +131,16 @@ export async function upsertApplicationForJob({
         updatePayload.follow_up_1_due = null
         updatePayload.follow_up_2_due = null
       }
-    } else if (isTransitioningToInterviewing) {
+    } else if (isActiveStatus(normalizedStatus)) {
+      updatePayload.disposition = null
+      updatePayload.disposition_at = null
+      updatePayload.disposition_notes = null
+    } else {
+      updatePayload.follow_up_1_due = null
+      updatePayload.follow_up_2_due = null
+    }
+
+    if (!normalizedDisposition && isTransitioningToInterviewing) {
       updatePayload.applied_at = existing.applied_at ?? nowIso
     }
 
