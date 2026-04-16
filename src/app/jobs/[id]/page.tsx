@@ -152,13 +152,21 @@ function getDescriptionPreview(value: string | null | undefined, maxLength = 280
   return `${normalized.slice(0, maxLength).trimEnd()}...`
 }
 
+function isTerminalDisposition(disposition: string | null | undefined) {
+  return Boolean(disposition && disposition !== 'landed_interview')
+}
+
 function getPipelineStageId(
   job: JobDetailRow,
   application: JobDetailApplicationRow | null,
   hasScore: boolean,
   hasAssets: boolean
 ): (typeof PIPELINE_STAGES)[number]['id'] {
-  if (job.archived_at || application?.status === 'closed' || application?.disposition) {
+  if (
+    job.archived_at ||
+    application?.status === 'closed' ||
+    isTerminalDisposition(application?.disposition)
+  ) {
     return 'closed'
   }
 
