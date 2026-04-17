@@ -1,13 +1,10 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth/require-user'
-import { getBillingStatusForUser } from '@/lib/billing/get-billing-status'
 import { formatDate } from '@/lib/dates'
 import {
   getActiveWorkflowApplications,
   type ActiveWorkflowApplicationRow,
 } from '@/lib/applications/get-active-workflow-applications'
-import BillingPortalButton from './billing-portal-button'
-import UpgradeButton from './upgrade-button'
 
 type RecentJob = {
   id: string
@@ -406,105 +403,6 @@ function QuickLinks() {
   )
 }
 
-function BillingCard({
-  billingState,
-  plans,
-  isPro,
-  billingInterval,
-  currentPeriodEnd,
-}: {
-  billingState?: string
-  plans: Partial<
-    Record<
-      'trial' | 'month' | 'year',
-      {
-        label: string
-        priceLabel: string
-        detail: string
-        cta: string
-        billingInterval: 'month' | 'year'
-        trialDays?: number
-      }
-    >
-  >
-  isPro: boolean
-  billingInterval: 'month' | 'year' | null
-  currentPeriodEnd: string | null
-}) {
-  const statusMessage =
-    billingState === 'success'
-      ? 'Checkout completed. If the subscription is still settling, refresh in a few seconds.'
-      : billingState === 'cancelled'
-        ? 'Checkout was cancelled. You can start again any time.'
-        : billingState === 'portal'
-          ? 'Returned from the Stripe billing portal.'
-          : billingState === 'trial'
-            ? 'Account ready. Starting your 7-day trial checkout now.'
-            : billingState === 'month'
-              ? 'Account ready. Starting monthly checkout now.'
-              : billingState === 'year'
-                ? 'Account ready. Starting yearly checkout now.'
-          : null
-
-  return (
-    <SectionCard
-      title="Billing"
-      description={
-        isPro
-          ? 'Stripe-backed billing is active for this account.'
-          : 'Launch a Stripe test checkout to validate customer and subscription sync.'
-      }
-    >
-      <div className="space-y-4">
-        {statusMessage ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-            {statusMessage}
-          </div>
-        ) : null}
-
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
-            Plan
-          </p>
-          <p className="mt-2 text-xl font-semibold tracking-tight text-zinc-950">
-            {isPro ? 'Pro active' : 'Free'}
-          </p>
-          <p className="mt-1 text-sm text-zinc-600">
-            {isPro
-              ? `Interval: ${billingInterval ?? 'unknown'}`
-              : 'No active subscription synced yet.'}
-          </p>
-          {currentPeriodEnd ? (
-            <p className="mt-1 text-sm text-zinc-500">
-              Current period ends {formatDate(currentPeriodEnd)}
-            </p>
-          ) : null}
-        </div>
-
-        {isPro ? (
-          <div className="space-y-3">
-            <p className="text-sm text-zinc-600">
-              The webhook has already synced an active subscription for this user.
-            </p>
-            <BillingPortalButton />
-          </div>
-        ) : (
-          <UpgradeButton
-            plans={plans}
-            autoStartIntent={
-              billingState === 'trial' ||
-              billingState === 'month' ||
-              billingState === 'year'
-                ? billingState
-                : null
-            }
-          />
-        )}
-      </div>
-    </SectionCard>
-  )
-}
-
 function RecentActivity({ jobs }: { jobs: RecentJob[] }) {
   return (
     <SectionCard
@@ -554,65 +452,13 @@ function RecentActivity({ jobs }: { jobs: RecentJob[] }) {
   )
 }
 
-type DashboardPageProps = {
-  searchParams?: Promise<{ billing?: string }>
-}
-
-export default async function DashboardPage({
-  searchParams,
-}: DashboardPageProps) {
-  const params = searchParams ? await searchParams : undefined
-  const { supabase, user } = await requireUser()
-  const plans: Partial<
-    Record<
-      'trial' | 'month' | 'year',
-      {
-        label: string
-        priceLabel: string
-        detail: string
-        cta: string
-        billingInterval: 'month' | 'year'
-        trialDays?: number
-      }
-    >
-  > = {}
-
-  if (process.env.STRIPE_PRICE_PRO_MONTHLY_ID) {
-    plans.trial = {
-      label: 'Free Trial',
-      priceLabel: '7 days free',
-      detail:
-        'Start with a 7-day trial on Pro, then continue on the monthly plan unless cancelled.',
-      cta: 'Start Free Trial',
-      billingInterval: 'month',
-      trialDays: 7,
-    }
-    plans.month = {
-      label: 'Monthly',
-      priceLabel:
-        process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_DISPLAY ?? '$19.99/month',
-      detail: 'Flexible access to ApplyEngine Pro billed monthly.',
-      cta: 'Choose Monthly',
-      billingInterval: 'month',
-    }
-  }
-
-  if (process.env.STRIPE_PRICE_PRO_YEARLY_ID) {
-    plans.year = {
-      label: 'Yearly',
-      priceLabel:
-        process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_DISPLAY ?? '$99/year',
-      detail: 'Best value for long-term use with yearly billing.',
-      cta: 'Choose Yearly',
-      billingInterval: 'year',
-    }
-  }
+export default async function DashboardPage() {
+  const { supabase } = await requireUser()
 
   const [
     activeJobsResult,
     recentJobsResult,
     workflowApplications,
-    billingStatus,
   ] =
     await Promise.all([
       supabase
@@ -640,7 +486,6 @@ export default async function DashboardPage({
         .order('updated_at', { ascending: false })
         .limit(6),
       getActiveWorkflowApplications(supabase),
-      getBillingStatusForUser(supabase, user.id),
     ])
 
   if (activeJobsResult.error) {
@@ -755,35 +600,6 @@ export default async function DashboardPage({
 
         <QuickLinks />
       </section>
-
-      <BillingCard
-        billingState={params?.billing}
-        plans={
-          Object.keys(plans).length > 0
-            ? plans
-            : {
-                trial: {
-                  label: 'Free Trial',
-                  priceLabel: '7 days free',
-                  detail:
-                    'Start with a 7-day trial on Pro, then continue on the monthly plan unless cancelled.',
-                  cta: 'Start Free Trial',
-                  billingInterval: 'month',
-                  trialDays: 7,
-                },
-                month: {
-                  label: 'Monthly',
-                  priceLabel: '$19.99/month',
-                  detail: 'Flexible access to ApplyEngine Pro billed monthly.',
-                  cta: 'Choose Monthly',
-                  billingInterval: 'month',
-                },
-              }
-        }
-        isPro={billingStatus.isPro}
-        billingInterval={billingStatus.subscription?.billingInterval ?? null}
-        currentPeriodEnd={billingStatus.subscription?.currentPeriodEnd ?? null}
-      />
 
       <RecentActivity jobs={recentJobs} />
     </div>

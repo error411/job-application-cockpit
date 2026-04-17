@@ -21,7 +21,7 @@ export async function AppHeader({
 
   const isLoggedIn = Boolean(user)
 
-let isNewUser = false
+  let isNewUser = false
   let hasActiveFollowUps = false
 
   if (user) {
@@ -84,10 +84,6 @@ let isNewUser = false
               />
 
               <div className="flex items-center gap-3">
-                <span className="hidden text-sm text-slate-500 xl:inline">
-                  {user?.email}
-                </span>
-
                 {showAddJobCta ? (
                   <Link
                     href="/jobs/new"
@@ -96,6 +92,27 @@ let isNewUser = false
                     Add Job
                   </Link>
                 ) : null}
+
+                <Link
+                  href="/account"
+                  aria-label="Account settings"
+                  title="Account settings"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-950"
+                >
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20 21a8 8 0 0 0-16 0" />
+                    <circle cx="12" cy="8" r="4" />
+                  </svg>
+                </Link>
 
                 <LogoutButton />
               </div>
