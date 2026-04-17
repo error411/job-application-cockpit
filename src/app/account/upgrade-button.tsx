@@ -78,8 +78,8 @@ export default function UpgradeButton({
         body: JSON.stringify({
           billingInterval: plan.billingInterval,
           trialDays: plan.trialDays,
-          successPath: '/dashboard?billing=success',
-          cancelPath: '/dashboard?billing=cancelled',
+          successPath: '/account?billing=success',
+          cancelPath: '/account?billing=cancelled',
         }),
       })
 

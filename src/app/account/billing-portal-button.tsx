@@ -18,7 +18,7 @@ export default function BillingPortalButton() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          returnPath: '/dashboard?billing=portal',
+          returnPath: '/account?billing=portal',
         }),
       })
 
