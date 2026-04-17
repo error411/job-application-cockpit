@@ -63,6 +63,17 @@ export type ReportsSummary = {
     acceptanceRate: number
     medianDaysToApply: number | null
   }
+  pipelineStages: Array<{
+    label: string
+    value: number
+    conversionRate: number
+    dropOff: number
+  }>
+  pipelineConversions: {
+    capturedToApplied: number
+    appliedToInterview: number
+    interviewToOffer: number
+  }
   funnel: Array<{ label: string; value: number }>
   outcomeBreakdown: Array<{ label: string; value: number }>
   statusBreakdown: Array<{ label: string; value: number }>
@@ -366,6 +377,20 @@ const allApplications: NormalizedReportApplicationWithJob[] = (
     (app) => app.disposition === ACCEPTED_DISPOSITION
   ).length
 
+  const appliedCount = applications.filter(
+    (app) =>
+      app.applied_at != null ||
+      app.status === 'applied' ||
+      app.status === 'interviewing' ||
+      app.status === 'closed'
+  ).length
+
+  const scoredCount = jobs.filter(
+    (job) => job.archived_at == null && isJobConsideredScored(job, scoreByJobId)
+  ).length
+
+  const readyOrLaterCount = applications.length
+
   const medianApplyDays = median(
     applications
       .map((app) => daysBetween(app.job.created_at, app.applied_at))
@@ -374,12 +399,7 @@ const allApplications: NormalizedReportApplicationWithJob[] = (
 
   const funnel: Array<{ label: string; value: number }> = [
     { label: 'Captured', value: activeJobs },
-    {
-      label: 'Scored',
-      value: jobs.filter(
-        (job) => job.archived_at == null && isJobConsideredScored(job, scoreByJobId)
-      ).length,
-    },
+    { label: 'Scored', value: scoredCount },
     {
       label: 'Ready',
       value: activeApplications.filter((app) => app.status === 'ready').length,
@@ -394,6 +414,25 @@ const allApplications: NormalizedReportApplicationWithJob[] = (
     },
     { label: 'Closed', value: closedApplications.length },
   ]
+
+  const pipelineStageCounts = [
+    { label: 'Captured', value: activeJobs },
+    { label: 'Scored', value: scoredCount },
+    { label: 'Ready', value: readyOrLaterCount },
+    { label: 'Applied', value: appliedCount },
+    { label: 'Interviewing', value: interviewedCount },
+    { label: 'Offers', value: offerCount },
+  ]
+
+  const pipelineStages = pipelineStageCounts.map((stage, index) => {
+    const previousValue = index === 0 ? stage.value : pipelineStageCounts[index - 1]?.value ?? 0
+
+    return {
+      ...stage,
+      conversionRate: index === 0 ? 100 : pct(stage.value, previousValue),
+      dropOff: Math.max(previousValue - stage.value, 0),
+    }
+  })
 
   const outcomeLabels: ApplicationDisposition[] = [
     'landed_interview',
@@ -550,6 +589,12 @@ const allApplications: NormalizedReportApplicationWithJob[] = (
       ),
       acceptanceRate: pct(acceptedCount, offerCount),
       medianDaysToApply: medianApplyDays,
+    },
+    pipelineStages,
+    pipelineConversions: {
+      capturedToApplied: pct(appliedCount, activeJobs),
+      appliedToInterview: pct(interviewedCount, appliedCount),
+      interviewToOffer: pct(offerCount, interviewedCount),
     },
     funnel,
     outcomeBreakdown,
