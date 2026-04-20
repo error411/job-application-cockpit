@@ -4,7 +4,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChangeEvent, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { markOnboardingStepComplete } from '@/lib/onboarding/progress'
+import {
+  clearOnboardingStepComplete,
+  markOnboardingStepComplete,
+} from '@/lib/onboarding/progress'
 import {
   SectionCard,
   SectionCardBody,
@@ -42,6 +45,8 @@ export function ResumeImportCard() {
 
     try {
       setHasImported(false)
+      clearOnboardingStepComplete('import_resume')
+      clearOnboardingStepComplete('review_profile')
       setResumeFilename(file.name)
 
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
@@ -149,6 +154,9 @@ export function ResumeImportCard() {
             onChange={(event) => {
               setResumePdfData(null)
               setResumeFilename(null)
+              setHasImported(false)
+              clearOnboardingStepComplete('import_resume')
+              clearOnboardingStepComplete('review_profile')
               setResumeText(event.target.value)
             }}
             rows={16}

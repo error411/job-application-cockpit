@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   isOnboardingStepComplete,
+  subscribeToOnboardingProgress,
   type OnboardingStepKey,
 } from '@/lib/onboarding/progress'
 
@@ -21,20 +22,35 @@ export function OnboardingChecklist({
 }: {
   steps: OnboardingChecklistStep[]
 }) {
-  const [completedSteps] = useState<Partial<Record<OnboardingStepKey, boolean>>>(
-    () =>
-      steps.reduce<
+  const getCompletedSteps = useCallback(() => {
+    return steps.reduce<
       Partial<Record<OnboardingStepKey, boolean>>
     >((accumulator, step) => {
       accumulator[step.key] = isOnboardingStepComplete(step.key)
       return accumulator
     }, {})
+  }, [steps])
+
+  const [completedSteps, setCompletedSteps] = useState<
+    Partial<Record<OnboardingStepKey, boolean>>
+  >(() => getCompletedSteps())
+
+  useEffect(
+    () =>
+      subscribeToOnboardingProgress(() => {
+        setCompletedSteps(getCompletedSteps())
+      }),
+    [getCompletedSteps]
   )
 
   return (
     <div className="space-y-4">
       {steps.map((step, index) => {
-        const isComplete = completedSteps[step.key] === true
+        const hasImportedResume = completedSteps.import_resume === true
+        const isComplete =
+          step.key === 'review_profile'
+            ? hasImportedResume && completedSteps.review_profile === true
+            : completedSteps[step.key] === true
 
         return (
           <div

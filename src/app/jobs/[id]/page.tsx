@@ -152,13 +152,21 @@ function getDescriptionPreview(value: string | null | undefined, maxLength = 280
   return `${normalized.slice(0, maxLength).trimEnd()}...`
 }
 
+function isTerminalDisposition(disposition: string | null | undefined) {
+  return Boolean(disposition && disposition !== 'landed_interview')
+}
+
 function getPipelineStageId(
   job: JobDetailRow,
   application: JobDetailApplicationRow | null,
   hasScore: boolean,
   hasAssets: boolean
 ): (typeof PIPELINE_STAGES)[number]['id'] {
-  if (job.archived_at || application?.status === 'closed' || application?.disposition) {
+  if (
+    job.archived_at ||
+    application?.status === 'closed' ||
+    isTerminalDisposition(application?.disposition)
+  ) {
     return 'closed'
   }
 
@@ -689,6 +697,22 @@ export default async function JobDetailPage({
           type="submit"
         >
           Mark Interviewing
+        </button>
+      </form>
+
+      <form action="/api/applications-form" method="post">
+        <input type="hidden" name="jobId" value={typedJob.id} />
+        <input type="hidden" name="status" value="closed" />
+        <input
+          type="hidden"
+          name="from"
+          value={from === 'apply' ? 'apply' : 'jobs'}
+        />
+        <button
+          className="rounded-md border border-zinc-300 bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+          type="submit"
+        >
+          Close Job
         </button>
       </form>
     </div>

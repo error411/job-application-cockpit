@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { OnboardingTourPopup } from '@/components/onboarding-tour-popup'
 import { OnboardingCompleteMarker } from './onboarding-complete-marker'
 import { StatusBadge } from '@/components/status-badge'
-import { ScoreBadge } from '@/components/score-badge'
 import { DispositionBadge } from '@/components/disposition-badge'
 import {
   SectionCard,
@@ -45,6 +44,17 @@ function formatMaybeDate(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleString()
+}
+
+function normalizeScore(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+
+  return null
 }
 
 function normalizeApplications(rows: unknown[]): NormalizedTodayApplication[] {
@@ -131,7 +141,7 @@ function normalizeApplications(rows: unknown[]): NormalizedTodayApplication[] {
       disposition,
       dispositionAt,
       appliedAt,
-      score: (row.score as number | null | undefined) ?? null,
+      score: normalizeScore(row.score),
       followUpDate,
       followUpCompletedAt,
       interviewDate,
@@ -258,6 +268,25 @@ function MetaPill({
     >
       {children}
     </div>
+  )
+}
+
+function TodayScoreBadge({ score }: { score: number | null | undefined }) {
+  if (score == null) return null
+
+  const toneClassName =
+    score >= 80
+      ? 'bg-emerald-50/80 text-emerald-700 ring-emerald-200/70'
+      : score >= 60
+        ? 'bg-amber-50/80 text-amber-700 ring-amber-200/70'
+        : 'bg-red-50/80 text-red-700 ring-red-200/70'
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${toneClassName}`}
+    >
+      Score {score}/100
+    </span>
   )
 }
 
@@ -389,7 +418,7 @@ export default async function TodayPage({
                               {item.kind.replaceAll('_', ' ')}
                             </span>
 
-                            <ScoreBadge score={item.score} />
+                            <TodayScoreBadge score={item.score} />
 
                             {item.status ? (
                               <StatusBadge status={item.status} />
