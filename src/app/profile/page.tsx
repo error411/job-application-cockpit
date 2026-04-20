@@ -2,7 +2,10 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useMemo, useState } from 'react'
-import { markOnboardingStepComplete } from '@/lib/onboarding/progress'
+import {
+  isOnboardingStepComplete,
+  markOnboardingStepComplete,
+} from '@/lib/onboarding/progress'
 import { OnboardingTourPopup } from '@/components/onboarding-tour-popup'
 
 type Profile = {
@@ -217,18 +220,27 @@ function ProfilePageClient() {
       return
     }
 
-    setProfile(result.profile)
-    setMessage(
-      isOnboardingFlow
-        ? 'Profile saved. Moving you to the next onboarding step...'
-        : 'Profile saved.'
-    )
-    setIsSaving(false)
-
     if (isOnboardingFlow) {
+      if (!isOnboardingStepComplete('import_resume')) {
+        setProfile(result.profile)
+        setMessage(
+          'Profile saved. Import your resume before completing this onboarding step.'
+        )
+        setIsSaving(false)
+        return
+      }
+
+      setProfile(result.profile)
+      setMessage('Profile saved. Moving you to the next onboarding step...')
+      setIsSaving(false)
       markOnboardingStepComplete('review_profile')
       router.push(nextPath)
+      return
     }
+
+    setProfile(result.profile)
+    setMessage('Profile saved.')
+    setIsSaving(false)
   }
 
   async function handleCreateExperience() {

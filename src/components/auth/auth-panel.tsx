@@ -46,6 +46,7 @@ export function AuthPanel({
   plan = null,
 }: AuthPanelProps) {
   const selectedPlan = plan ? PLAN_SUMMARY[plan] : null
+  const showLoginButton = !selectedPlan
 
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -127,16 +128,22 @@ export function AuthPanel({
         </div>
 
         <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-          <button
-            formAction={login}
-            className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            Log in
-          </button>
+          {showLoginButton ? (
+            <button
+              formAction={login}
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Log in
+            </button>
+          ) : null}
 
           <button
             formAction={signup}
-            className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className={`inline-flex h-11 items-center justify-center rounded-2xl px-5 text-sm font-semibold transition ${
+              selectedPlan
+                ? 'bg-slate-950 text-white hover:bg-slate-800'
+                : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
           >
             Create account
           </button>
