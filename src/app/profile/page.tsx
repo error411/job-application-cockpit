@@ -137,6 +137,21 @@ function emptyExperienceForm(): ExperienceFormState {
   }
 }
 
+function experienceFormFromRow(row: ExperienceRow): ExperienceFormState {
+  return {
+    company: row.company ?? '',
+    title: row.title ?? '',
+    location: row.location ?? '',
+    start_date: row.start_date ?? '',
+    end_date: row.end_date ?? '',
+    is_current: Boolean(row.is_current),
+    summary: row.summary ?? '',
+    bulletsText: (row.bullets ?? []).join('\n'),
+    technologiesText: (row.technologies ?? []).join(', '),
+    sort_order: String(row.sort_order ?? 0),
+  }
+}
+
 function ProfilePageClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -150,6 +165,11 @@ function ProfilePageClient() {
   const [newExperience, setNewExperience] = useState<ExperienceFormState>(
     emptyExperienceForm()
   )
+  const [editingExperienceId, setEditingExperienceId] = useState<string | null>(
+    null
+  )
+  const [editingExperience, setEditingExperience] =
+    useState<ExperienceFormState>(emptyExperienceForm())
 
   const isOnboardingFlow = searchParams.get('onboarding') === 'review-profile'
   const nextPath =
@@ -283,6 +303,60 @@ function ProfilePageClient() {
     setIsSavingExperience(false)
   }
 
+  function handleStartEditExperience(row: ExperienceRow) {
+    setEditingExperienceId(row.id)
+    setEditingExperience(experienceFormFromRow(row))
+    setExperienceMessage('')
+  }
+
+  function handleCancelEditExperience() {
+    setEditingExperienceId(null)
+    setEditingExperience(emptyExperienceForm())
+  }
+
+  async function handleUpdateExperience(id: string) {
+    setIsSavingExperience(true)
+    setExperienceMessage('Saving experience...')
+
+    const res = await fetch(`/api/profile/experience/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        company: editingExperience.company,
+        title: editingExperience.title,
+        location: editingExperience.location || null,
+        start_date: editingExperience.start_date || null,
+        end_date: editingExperience.is_current
+          ? null
+          : editingExperience.end_date || null,
+        is_current: editingExperience.is_current,
+        summary: editingExperience.summary || null,
+        bullets: toLines(editingExperience.bulletsText),
+        technologies: toCommaList(editingExperience.technologiesText),
+        sort_order: Number(editingExperience.sort_order || '0'),
+      }),
+    })
+
+    const result = await res.json().catch(() => null)
+
+    if (!res.ok) {
+      setExperienceMessage(
+        `Error: ${result?.error || 'Failed to update experience row'}`
+      )
+      setIsSavingExperience(false)
+      return
+    }
+
+    const updatedRow = result.experience ?? result.item
+
+    setExperienceRows((current) =>
+      current.map((row) => (row.id === id ? updatedRow : row))
+    )
+    handleCancelEditExperience()
+    setExperienceMessage('Experience saved.')
+    setIsSavingExperience(false)
+  }
+
   async function handleDeleteExperience(id: string) {
     const confirmed = window.confirm('Delete this experience entry?')
     if (!confirmed) return
@@ -305,6 +379,9 @@ function ProfilePageClient() {
     }
 
     setExperienceRows((current) => current.filter((row) => row.id !== id))
+    if (editingExperienceId === id) {
+      handleCancelEditExperience()
+    }
 
     setExperienceMessage('Experience deleted.')
     setIsSavingExperience(false)
@@ -595,42 +672,221 @@ function ProfilePageClient() {
 
       {/* Experience List */}
       <div className="space-y-4">
-        {sortedExperience.map((row) => (
-          <div key={row.id} className="app-panel">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-zinc-950">
-                  {row.title}
-                </h3>
-                <p className="text-sm text-zinc-700">{row.company}</p>
-                <p className="text-sm text-zinc-500">
-                  {row.location || 'No location'}
-                </p>
-              </div>
+        {sortedExperience.map((row) => {
+          const isEditing = editingExperienceId === row.id
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => void handleDeleteExperience(row.id)}
-                  className="app-button border-red-300 text-red-700"
-                >
-                  Delete
-                </button>
-              </div>
+          return (
+            <div key={row.id} className="app-panel">
+              {isEditing ? (
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <InputField
+                      label="Company"
+                      value={editingExperience.company}
+                      onChange={(v) =>
+                        setEditingExperience((current) => ({
+                          ...current,
+                          company: v,
+                        }))
+                      }
+                    />
+
+                    <InputField
+                      label="Title"
+                      value={editingExperience.title}
+                      onChange={(v) =>
+                        setEditingExperience((current) => ({
+                          ...current,
+                          title: v,
+                        }))
+                      }
+                    />
+
+                    <InputField
+                      label="Location"
+                      value={editingExperience.location}
+                      onChange={(v) =>
+                        setEditingExperience((current) => ({
+                          ...current,
+                          location: v,
+                        }))
+                      }
+                    />
+
+                    <InputField
+                      label="Sort Order"
+                      value={editingExperience.sort_order}
+                      onChange={(v) =>
+                        setEditingExperience((current) => ({
+                          ...current,
+                          sort_order: v,
+                        }))
+                      }
+                    />
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-zinc-900">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={editingExperience.start_date}
+                        onChange={(e) =>
+                          setEditingExperience((current) => ({
+                            ...current,
+                            start_date: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-xl border border-zinc-300 bg-white p-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-zinc-900">
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={editingExperience.end_date}
+                        onChange={(e) =>
+                          setEditingExperience((current) => ({
+                            ...current,
+                            end_date: e.target.value,
+                          }))
+                        }
+                        disabled={editingExperience.is_current}
+                        className="w-full rounded-xl border border-zinc-300 bg-white p-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300 disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+
+                  <label className="flex items-center gap-2 text-sm text-zinc-700">
+                    <input
+                      type="checkbox"
+                      checked={editingExperience.is_current}
+                      onChange={(e) =>
+                        setEditingExperience((current) => ({
+                          ...current,
+                          is_current: e.target.checked,
+                        }))
+                      }
+                    />
+                    Current role
+                  </label>
+
+                  <TextareaField
+                    label="Summary"
+                    value={editingExperience.summary}
+                    onChange={(v) =>
+                      setEditingExperience((current) => ({
+                        ...current,
+                        summary: v,
+                      }))
+                    }
+                    rows={3}
+                  />
+
+                  <TextareaField
+                    label="Bullets (one per line)"
+                    value={editingExperience.bulletsText}
+                    onChange={(v) =>
+                      setEditingExperience((current) => ({
+                        ...current,
+                        bulletsText: v,
+                      }))
+                    }
+                    rows={5}
+                  />
+
+                  <TextareaField
+                    label="Technologies (comma separated)"
+                    value={editingExperience.technologiesText}
+                    onChange={(v) =>
+                      setEditingExperience((current) => ({
+                        ...current,
+                        technologiesText: v,
+                      }))
+                    }
+                    rows={3}
+                  />
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleUpdateExperience(row.id)}
+                      disabled={isSavingExperience}
+                      className="app-button-primary disabled:opacity-50"
+                    >
+                      {isSavingExperience ? 'Saving...' : 'Save Experience'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelEditExperience}
+                      disabled={isSavingExperience}
+                      className="app-button disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-zinc-950">
+                        {row.title}
+                      </h3>
+                      <p className="text-sm text-zinc-700">{row.company}</p>
+                      <p className="text-sm text-zinc-500">
+                        {row.location || 'No location'}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditExperience(row)}
+                        disabled={isSavingExperience}
+                        className="app-button disabled:opacity-50"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteExperience(row.id)}
+                        disabled={isSavingExperience}
+                        className="app-button border-red-300 text-red-700 disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  {row.summary && (
+                    <p className="mt-3 text-sm text-zinc-700">{row.summary}</p>
+                  )}
+
+                  {(row.bullets ?? []).length > 0 && (
+                    <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-700">
+                      {row.bullets!.map((b, i) => (
+                        <li key={i}>{b}</li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {(row.technologies ?? []).length > 0 && (
+                    <p className="mt-3 text-sm text-zinc-600">
+                      <span className="font-medium text-zinc-800">
+                        Technologies:
+                      </span>{' '}
+                      {(row.technologies ?? []).join(', ')}
+                    </p>
+                  )}
+                </>
+              )}
             </div>
-
-            {row.summary && (
-              <p className="mt-3 text-sm text-zinc-700">{row.summary}</p>
-            )}
-
-            {(row.bullets ?? []).length > 0 && (
-              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-700">
-                {row.bullets!.map((b, i) => (
-                  <li key={i}>{b}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {experienceMessage && (

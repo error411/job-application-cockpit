@@ -107,7 +107,7 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ item: data })
+    return NextResponse.json({ experience: data, item: data })
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Unexpected server error'
