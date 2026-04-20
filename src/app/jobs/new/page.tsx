@@ -234,6 +234,7 @@ function NewJobPageClient() {
       }
 
       setCreatedJobId(result.job.id)
+      markOnboardingStepComplete('add_job')
 
       if (result.scoringApplied) {
         const scoreText =
@@ -249,10 +250,6 @@ function NewJobPageClient() {
         )
 
         setForm(initialForm)
-
-        if (isOnboardingFlow) {
-          markOnboardingStepComplete('add_job')
-        }
 
         router.push(
           isOnboardingFlow
@@ -277,10 +274,6 @@ function NewJobPageClient() {
       )
 
       setForm(initialForm)
-
-      if (isOnboardingFlow) {
-        markOnboardingStepComplete('add_job')
-      }
 
       router.push(
         isOnboardingFlow
