@@ -62,10 +62,7 @@ export default function GenerateDraftAssetsButton({
           : 'Draft assets generated. Refreshing job status...'
       )
       setMessageTone('success')
-
-      if (onSuccessHref) {
-        markOnboardingStepComplete('generate_assets')
-      }
+      markOnboardingStepComplete('generate_assets')
 
       startTransition(() => {
         if (onSuccessHref) {
