@@ -35,9 +35,11 @@ function isActive(pathname: string, href: string): boolean {
 export function AppNav({
   showOnboarding = false,
   hasActiveFollowUps = false,
+  showAdmin = false,
 }: {
   showOnboarding?: boolean
   hasActiveFollowUps?: boolean
+  showAdmin?: boolean
 }) {
   const pathname = usePathname()
   const shouldShowOnboarding = useCallback(
@@ -60,9 +62,13 @@ export function AppNav({
     ? NAV_ITEMS
     : NAV_ITEMS.filter((item) => item.href !== '/onboarding')
 
+  const visibleNavItems = showAdmin
+    ? [...navItems, { href: '/admin', label: 'Admin' }]
+    : navItems
+
   return (
     <nav aria-label="Primary" className="flex flex-wrap items-center gap-1">
-      {navItems.map((item) => {
+      {visibleNavItems.map((item) => {
         const active = isActive(pathname, item.href)
 
         return (

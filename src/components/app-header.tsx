@@ -4,6 +4,7 @@ import { AppNav } from '@/app/app-nav'
 import { LogoutButton } from '@/components/auth/logout-button'
 import { getFollowUpState } from '@/lib/applications/get-follow-up-state'
 import { getActiveWorkflowApplications } from '@/lib/applications/get-active-workflow-applications'
+import { isAdminUser } from '@/lib/admin'
 import { createClient } from '@/lib/supabase/server'
 
 type AppHeaderProps = {
@@ -20,6 +21,7 @@ export async function AppHeader({
   } = await supabase.auth.getUser()
 
   const isLoggedIn = Boolean(user)
+  const isAdmin = isAdminUser(user)
 
   let isNewUser = false
   let hasActiveFollowUps = false
@@ -81,6 +83,7 @@ export async function AppHeader({
               <AppNav
                 showOnboarding={isNewUser}
                 hasActiveFollowUps={hasActiveFollowUps}
+                showAdmin={isAdmin}
               />
 
               <div className="flex items-center gap-3">

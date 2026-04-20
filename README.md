@@ -71,7 +71,13 @@ Set environment variables:
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+SUPABASE_SERVICE_ROLE_KEY=...
+ADMIN_EMAILS=you@example.com
 ```
+
+`ADMIN_EMAILS` and `ADMIN_USER_IDS` are comma-separated allowlists for the
+private `/admin` section. At least one must match the signed-in user for the
+admin nav item and page to appear.
 
 ## Production
 
