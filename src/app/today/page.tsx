@@ -353,9 +353,10 @@ export default async function TodayPage({
 
   return (
     <PageShell className="space-y-8">
+      <OnboardingCompleteMarker />
+
       {isOnboardingFlow ? (
         <>
-          <OnboardingCompleteMarker />
           <OnboardingTourPopup
             stageKey="onboarding-work-queue"
             stepLabel="Product Tour"

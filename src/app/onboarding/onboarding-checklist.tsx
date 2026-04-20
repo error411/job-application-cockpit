@@ -4,7 +4,9 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
+  areAllOnboardingStepsComplete,
   isOnboardingStepComplete,
+  markAllOnboardingStepsComplete,
   subscribeToOnboardingProgress,
   type OnboardingStepKey,
 } from '@/lib/onboarding/progress'
@@ -30,18 +32,30 @@ export function OnboardingChecklist({
       return accumulator
     }, {})
   }, [steps])
+  const getAllStepsComplete = useCallback(
+    () => areAllOnboardingStepsComplete(),
+    []
+  )
 
   const [completedSteps, setCompletedSteps] = useState<
     Partial<Record<OnboardingStepKey, boolean>>
   >(() => getCompletedSteps())
-
-  useEffect(
-    () =>
-      subscribeToOnboardingProgress(() => {
-        setCompletedSteps(getCompletedSteps())
-      }),
-    [getCompletedSteps]
+  const [allStepsComplete, setAllStepsComplete] = useState(() =>
+    getAllStepsComplete()
   )
+
+  const refreshProgress = useCallback(() => {
+    setCompletedSteps(getCompletedSteps())
+    setAllStepsComplete(getAllStepsComplete())
+  }, [getAllStepsComplete, getCompletedSteps])
+
+  useEffect(() => {
+    return subscribeToOnboardingProgress(refreshProgress)
+  }, [refreshProgress])
+
+  function completeOnboarding() {
+    markAllOnboardingStepsComplete()
+  }
 
   return (
     <div className="space-y-4">
@@ -90,6 +104,27 @@ export function OnboardingChecklist({
           </div>
         )
       })}
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-slate-950">
+            Finished setting up?
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Complete onboarding to remove it from the main menu.
+          </p>
+        </div>
+
+        <Button
+          type="button"
+          variant={allStepsComplete ? 'outline' : 'brand'}
+          disabled={allStepsComplete}
+          onClick={completeOnboarding}
+          className="sm:shrink-0"
+        >
+          {allStepsComplete ? 'Onboarding Complete' : 'Complete Onboarding'}
+        </Button>
+      </div>
     </div>
   )
 }

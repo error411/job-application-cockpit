@@ -25,6 +25,14 @@ export function markOnboardingStepComplete(step: OnboardingStepKey) {
   notifyOnboardingProgressChange()
 }
 
+export function markAllOnboardingStepsComplete() {
+  if (typeof window === 'undefined') return
+  ONBOARDING_STEP_KEYS.forEach((step) => {
+    window.localStorage.setItem(getStorageKey(step), 'true')
+  })
+  notifyOnboardingProgressChange()
+}
+
 export function clearOnboardingStepComplete(step: OnboardingStepKey) {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(getStorageKey(step))
