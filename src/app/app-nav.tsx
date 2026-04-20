@@ -2,6 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+import {
+  areAllOnboardingStepsComplete,
+  subscribeToOnboardingProgress,
+} from '@/lib/onboarding/progress'
 import { cn } from '@/lib/utils'
 
 type NavItem = {
@@ -35,8 +40,23 @@ export function AppNav({
   hasActiveFollowUps?: boolean
 }) {
   const pathname = usePathname()
+  const shouldShowOnboarding = useCallback(
+    () => showOnboarding || !areAllOnboardingStepsComplete(),
+    [showOnboarding]
+  )
+  const [shouldIncludeOnboarding, setShouldIncludeOnboarding] =
+    useState(showOnboarding)
 
-  const navItems = showOnboarding
+  useEffect(() => {
+    const updateOnboardingVisibility = () => {
+      setShouldIncludeOnboarding(shouldShowOnboarding())
+    }
+
+    updateOnboardingVisibility()
+    return subscribeToOnboardingProgress(updateOnboardingVisibility)
+  }, [shouldShowOnboarding])
+
+  const navItems = shouldIncludeOnboarding
     ? NAV_ITEMS
     : NAV_ITEMS.filter((item) => item.href !== '/onboarding')
 

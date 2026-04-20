@@ -36,6 +36,11 @@ export function isOnboardingStepComplete(step: OnboardingStepKey) {
   return window.localStorage.getItem(getStorageKey(step)) === 'true'
 }
 
+export function areAllOnboardingStepsComplete() {
+  if (typeof window === 'undefined') return false
+  return ONBOARDING_STEP_KEYS.every((step) => isOnboardingStepComplete(step))
+}
+
 export function subscribeToOnboardingProgress(
   callback: () => void
 ): () => void {
