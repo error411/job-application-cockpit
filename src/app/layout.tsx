@@ -1,6 +1,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { AppHeader } from '@/components/app-header'
+import { Analytics } from '@vercel/analytics/next'
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL || 'https://apply-engine.com'
@@ -57,6 +58,7 @@ export default function RootLayout({
             {children}
           </main>
         </div>
+        <Analytics />
       </body>
     </html>
   )
