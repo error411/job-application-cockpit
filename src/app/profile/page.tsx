@@ -550,10 +550,23 @@ function ProfilePageClient() {
       </div>
 
       {/* Add Experience */}
-      <div className="app-panel">
-        <h3 className="text-lg font-medium text-zinc-950">
-          Add Experience
-        </h3>
+      <details className="app-panel group">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-medium text-zinc-950">
+              Add Experience
+            </h3>
+            <p className="mt-1 text-sm text-zinc-600">
+              Add a role manually when the imported resume missed something.
+            </p>
+          </div>
+          <span className="text-sm font-medium text-zinc-600 group-open:hidden">
+            Expand
+          </span>
+          <span className="hidden text-sm font-medium text-zinc-600 group-open:inline">
+            Collapse
+          </span>
+        </summary>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <InputField
@@ -668,7 +681,7 @@ function ProfilePageClient() {
             {isSavingExperience ? 'Saving...' : 'Add Experience'}
           </button>
         </div>
-      </div>
+      </details>
 
       {/* Experience List */}
       <div className="space-y-4">

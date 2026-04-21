@@ -56,7 +56,7 @@ export async function AppHeader({
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex min-h-16 flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between">
           <Link
-            href={isLoggedIn ? '/today' : '/login'}
+            href={isLoggedIn ? '/today' : '/'}
             className="flex items-center gap-3"
           >
             <Image

@@ -949,11 +949,11 @@ export default async function JobDetailPage({
                       </p>
                     </div>
 
-                    <div className="grid gap-4 lg:grid-cols-3">
-                      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+                    <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+                      <div className="min-w-0 rounded-xl border border-zinc-200 bg-white p-4">
                         <h3 className="font-medium text-zinc-950">Matched Skills</h3>
                         {matchedSkills.length ? (
-                          <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-zinc-700">
+                          <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-zinc-700 [overflow-wrap:anywhere]">
                             {matchedSkills.map((skill: string, index: number) => (
                               <li key={index}>{skill}</li>
                             ))}
@@ -965,10 +965,10 @@ export default async function JobDetailPage({
                         )}
                       </div>
 
-                      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+                      <div className="min-w-0 rounded-xl border border-zinc-200 bg-white p-4">
                         <h3 className="font-medium text-zinc-950">Missing Skills</h3>
                         {missingSkills.length ? (
-                          <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-zinc-700">
+                          <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-zinc-700 [overflow-wrap:anywhere]">
                             {missingSkills.map((skill: string, index: number) => (
                               <li key={index}>{skill}</li>
                             ))}
@@ -980,10 +980,10 @@ export default async function JobDetailPage({
                         )}
                       </div>
 
-                      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+                      <div className="min-w-0 rounded-xl border border-zinc-200 bg-white p-4 lg:col-span-2">
                         <h3 className="font-medium text-zinc-950">Reasons</h3>
                         {reasons.length ? (
-                          <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-zinc-700">
+                          <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-zinc-700 [overflow-wrap:anywhere]">
                             {reasons.map((reason: string, index: number) => (
                               <li key={index}>{reason}</li>
                             ))}

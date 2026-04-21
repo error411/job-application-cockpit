@@ -43,6 +43,7 @@ function LoginPlanCard({
   return (
     <Link
       href={href}
+      replace
       className={`rounded-3xl border p-4 shadow-sm transition hover:-translate-y-0.5 ${classes} ${selected ? selectedClasses : ''}`}
     >
       <p className="text-sm font-semibold tracking-tight">{title}</p>
