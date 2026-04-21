@@ -4,6 +4,8 @@ import { createServerClient } from '@supabase/ssr'
 const PUBLIC_PATHS = ['/', '/login', '/signup']
 const PUBLIC_PREFIXES = ['/auth']
 const PROTECTED_PREFIXES = [
+  '/account',
+  '/admin',
   '/today',
   '/jobs',
   '/apply',
@@ -11,7 +13,14 @@ const PROTECTED_PREFIXES = [
   '/follow-ups',
   '/dashboard',
   '/profile',
+  '/reports',
+  '/api/applications',
+  '/api/application-assets',
+  '/api/generate-assets',
+  '/api/generate-assets-form',
   '/api/profile',
+  '/api/stripe/billing-portal',
+  '/api/stripe/checkout-session',
 ]
 
 function isStaticAsset(pathname: string) {
@@ -91,6 +100,34 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
+
+  if (user && isProtectedPath(pathname)) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('account_status')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (profile?.account_status === 'suspended') {
+      await supabase.auth.signOut()
+
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { error: 'Account suspended.' },
+          { status: 403 }
+        )
+      }
+
+      const loginUrl = request.nextUrl.clone()
+      loginUrl.pathname = '/login'
+      loginUrl.search = ''
+      loginUrl.searchParams.set(
+        'error',
+        'Your account is suspended. Contact support for help.'
+      )
+      return NextResponse.redirect(loginUrl)
+    }
+  }
 
   if (isProtectedPath(pathname) && !user) {
     const loginUrl = request.nextUrl.clone()

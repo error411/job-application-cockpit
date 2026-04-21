@@ -1,17 +1,20 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/require-user'
-import { requireAdminUser } from '@/lib/admin'
+import { isAdminUser, requireAdminUser } from '@/lib/admin'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AdminUserActions } from './admin-user-actions'
 
 export const metadata: Metadata = {
   title: 'Admin',
 }
 
 type RecentUser = {
+  account_status: string
   id: string
   email: string | null
   full_name: string | null
   created_at: string
+  suspended_at: string | null
   updated_at: string
 }
 
@@ -54,6 +57,12 @@ function getDisplayName(user: RecentUser): string {
   if (name) return name
 
   return user.email ?? 'Unknown user'
+}
+
+function getStatusClasses(status: string): string {
+  return status === 'suspended'
+    ? 'bg-amber-100 text-amber-800'
+    : 'bg-emerald-100 text-emerald-700'
 }
 
 function AdminMetric({
@@ -117,6 +126,7 @@ export default async function AdminPage() {
     totalApplicationsResult,
     recentApplicationsResult,
     activeSubscriptionsResult,
+    suspendedUsersResult,
     recentBillingEventsResult,
   ] = await Promise.all([
     admin.from('profiles').select('id', { count: 'exact', head: true }),
@@ -126,7 +136,9 @@ export default async function AdminPage() {
       .gte('created_at', sevenDaysAgo),
     admin
       .from('profiles')
-      .select('id, email, full_name, created_at, updated_at')
+      .select(
+        'id, email, full_name, account_status, suspended_at, created_at, updated_at'
+      )
       .order('created_at', { ascending: false })
       .limit(10),
     admin.from('jobs').select('id', { count: 'exact', head: true }),
@@ -144,6 +156,10 @@ export default async function AdminPage() {
       .select('id', { count: 'exact', head: true })
       .in('status', ACTIVE_SUBSCRIPTION_STATUSES),
     admin
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_status', 'suspended'),
+    admin
       .from('billing_events')
       .select('id, event_type, created_at, processed_at, processing_error, livemode')
       .order('created_at', { ascending: false })
@@ -159,6 +175,7 @@ export default async function AdminPage() {
     totalApplicationsResult,
     recentApplicationsResult,
     activeSubscriptionsResult,
+    suspendedUsersResult,
     recentBillingEventsResult,
   ]
 
@@ -176,6 +193,7 @@ export default async function AdminPage() {
   const totalJobs = totalJobsResult.count ?? 0
   const totalApplications = totalApplicationsResult.count ?? 0
   const activeSubscriptions = activeSubscriptionsResult.count ?? 0
+  const suspendedUsers = suspendedUsersResult.count ?? 0
 
   return (
     <div className="space-y-8">
@@ -201,7 +219,7 @@ export default async function AdminPage() {
         ) : null}
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
         <AdminMetric
           label="Users"
           value={totalUsers}
@@ -229,6 +247,11 @@ export default async function AdminPage() {
           value={activeSubscriptions}
           hint="Active, trialing, past due, paused, or incomplete."
         />
+        <AdminMetric
+          label="Suspended"
+          value={suspendedUsers}
+          hint="Accounts currently blocked from app access."
+        />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -245,19 +268,41 @@ export default async function AdminPage() {
               {recentUsers.map((recentUser) => (
                 <div
                   key={recentUser.id}
-                  className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 lg:flex-row lg:items-center lg:justify-between"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-950">
-                      {getDisplayName(recentUser)}
-                    </p>
-                    <p className="mt-1 truncate text-xs text-slate-500">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-slate-950">
+                        {getDisplayName(recentUser)}
+                      </p>
+                      <span
+                        className={`rounded-full px-2 py-1 text-[11px] font-medium capitalize ${getStatusClasses(
+                          recentUser.account_status
+                        )}`}
+                      >
+                        {recentUser.account_status}
+                      </span>
+                    </div>
+                    <p className="mt-1 break-all text-xs text-slate-500">
                       {recentUser.email ?? recentUser.id}
                     </p>
                   </div>
-                  <div className="shrink-0 text-left text-xs text-slate-500 sm:text-right">
+                  <div className="shrink-0 text-left text-xs text-slate-500 lg:text-right">
                     <p>Joined {formatDateTime(recentUser.created_at)}</p>
                     <p>Updated {formatDateTime(recentUser.updated_at)}</p>
+                    {recentUser.suspended_at ? (
+                      <p>Suspended {formatDateTime(recentUser.suspended_at)}</p>
+                    ) : null}
+                  </div>
+                  <div className="shrink-0">
+                    <AdminUserActions
+                      userId={recentUser.id}
+                      isSuspended={recentUser.account_status === 'suspended'}
+                      isProtected={
+                        recentUser.id === user.id || isAdminUser(recentUser)
+                      }
+                      label={getDisplayName(recentUser)}
+                    />
                   </div>
                 </div>
               ))}

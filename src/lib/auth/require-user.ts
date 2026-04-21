@@ -13,5 +13,16 @@ export async function requireUser() {
     redirect('/login')
   }
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('account_status')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profile?.account_status === 'suspended') {
+    await supabase.auth.signOut()
+    redirect('/login?error=Your account is suspended. Contact support for help.')
+  }
+
   return { supabase, user }
 }

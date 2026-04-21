@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import type { User } from '@supabase/supabase-js'
 
 function parseAdminList(value: string | undefined): string[] {
   return (value ?? '')
@@ -8,7 +7,9 @@ function parseAdminList(value: string | undefined): string[] {
     .filter(Boolean)
 }
 
-export function isAdminUser(user: Pick<User, 'id' | 'email'> | null): boolean {
+export function isAdminUser(
+  user: { id: string; email?: string | null } | null
+): boolean {
   if (!user) return false
 
   const adminEmails = parseAdminList(process.env.ADMIN_EMAILS)
@@ -20,7 +21,9 @@ export function isAdminUser(user: Pick<User, 'id' | 'email'> | null): boolean {
   )
 }
 
-export function requireAdminUser(user: Pick<User, 'id' | 'email'> | null) {
+export function requireAdminUser(
+  user: { id: string; email?: string | null } | null
+) {
   if (!isAdminUser(user)) {
     notFound()
   }
