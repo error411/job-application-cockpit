@@ -73,11 +73,27 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 SUPABASE_SERVICE_ROLE_KEY=...
 ADMIN_EMAILS=you@example.com
+ADMIN_WEBHOOK_SECRET=...
+ADMIN_NOTIFICATION_EMAIL=you@example.com
+ADMIN_NOTIFICATION_FROM=ApplyEngine <notifications@apply-engine.com>
+RESEND_API_KEY=...
 ```
 
 `ADMIN_EMAILS` and `ADMIN_USER_IDS` are comma-separated allowlists for the
 private `/admin` section. At least one must match the signed-in user for the
 admin nav item and page to appear.
+
+### New user admin email
+
+Create a Supabase Database Webhook for `public.profiles` inserts:
+
+* Method: `POST`
+* URL: `https://your-domain.com/api/admin/new-user-notification`
+* Header: `x-admin-webhook-secret: <ADMIN_WEBHOOK_SECRET>`
+* Events: `INSERT`
+
+The webhook sends a Resend email to `ADMIN_NOTIFICATION_EMAIL`, or the first
+address in `ADMIN_EMAILS` when `ADMIN_NOTIFICATION_EMAIL` is not set.
 
 ## Production
 
