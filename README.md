@@ -1,113 +1,91 @@
-# ApplyEngine
+# ApplyEngine 🚀  
+A full-stack job application tracking platform designed to help users stay organized, follow up consistently, and improve their chances of landing interviews.
 
-ApplyEngine is a focused job search workspace that helps you track opportunities, manage follow-ups, and execute your search like a system—not a scramble.
+🔗 Live: https://apply-engine.com
 
-## Overview
+---
 
-Job searches break down when they’re spread across tabs, notes, and memory.
+## 🧠 Why This Exists
 
-ApplyEngine brings everything into one place:
+Most job trackers are glorified spreadsheets.
 
-* Track jobs and application status
-* Work the right next actions from a centralized “Today” view
-* Stay on top of follow-ups
-* Understand pipeline health with a dashboard
+ApplyEngine is built to:
+- Guide users through the application process
+- Encourage consistent follow-up
+- Provide visibility into what’s working (and what’s not)
 
-## Core Features
+The goal is simple: **help users convert more applications into interviews.**
 
-### Dashboard
+---
 
-* Snapshot of pipeline state (Ready, Applied, Interviewing, Overdue)
-* Recent activity across jobs
-* Quick navigation into execution views
+## ⚙️ Core Features
 
-### Today
+### 📌 Structured Onboarding
+- Step-by-step setup for new users
+- Reduces friction and improves activation
 
-* Action-oriented queue of what needs attention now
-* Highlights:
+### 📊 Job Tracking + Scoring
+- Track applications across stages
+- Score opportunities based on quality and fit
 
-  * Overdue follow-ups
-  * Due-today follow-ups
-  * Ready-to-apply opportunities
+### 📈 Reporting Dashboard
+- 7 / 30 / 90 day insights
+- Identify stuck or underperforming opportunities
 
-### Jobs
+### ✉️ Follow-Up System
+- Built-in email follow-up workflows
+- Helps users stay consistent without manual tracking
 
-* Central record of all opportunities
-* Track:
+### 💳 Subscription System
+- Free trial → paid conversion flow
+- Integrated with Stripe
 
-  * Company, role, location
-  * Status and progression
-  * Application history
+---
 
-### Follow-ups
+## 🏗 Tech Stack
 
-* Dedicated view for managing outreach and follow-through
-* Surfaces follow-up timing based on application state
+**Frontend**
+- Next.js (App Router)
+- TypeScript
+- Tailwind CSS
 
-## Tech Stack
+**Backend**
+- Supabase (Postgres, Auth, Edge Functions)
 
-* **Frontend:** Next.js (App Router), React, TypeScript, Tailwind
-* **Backend / Data:** Supabase (PostgreSQL, Auth, RLS)
-* **Auth:** Supabase email/password with server-side session handling
-* **Hosting:** Vercel
+**Infrastructure**
+- Vercel (hosting + deployments)
+- Stripe (payments + subscriptions)
 
-## Architecture Notes
+---
 
-* Server Components + Supabase SSR for auth-aware rendering
-* Middleware enforces route protection for authenticated areas
-* Row Level Security (RLS) ensures user-scoped data access
-* Dashboard and Today derive state from application workflow data
+## 🧩 Architecture Notes
 
-## Local Development
+- Server components for performance + data fetching
+- Supabase for auth + database + API layer
+- Modular UI components for scalability
+- API routes for application actions (tracking, follow-ups, reporting)
+
+---
+
+## 📸 Screenshots
+
+_(Add screenshots here — dashboard, onboarding, job tracker, reports)_
+
+---
+
+## 🚧 Roadmap
+
+- Improved onboarding (guided UX, tooltips, progress indicators)
+- Advanced reporting (conversion rates, trends)
+- AI-assisted resume + application tools
+- Email deliverability + tracking improvements
+
+---
+
+## 🧪 Local Development
 
 ```bash
+git clone https://github.com/error411/job-application-cockpit
+cd job-application-cockpit
 npm install
 npm run dev
-```
-
-Set environment variables:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-SUPABASE_SERVICE_ROLE_KEY=...
-ADMIN_EMAILS=you@example.com
-ADMIN_WEBHOOK_SECRET=...
-ADMIN_NOTIFICATION_EMAIL=you@example.com
-ADMIN_NOTIFICATION_FROM=ApplyEngine <notifications@apply-engine.com>
-RESEND_API_KEY=...
-```
-
-`ADMIN_EMAILS` and `ADMIN_USER_IDS` are comma-separated allowlists for the
-private `/admin` section. At least one must match the signed-in user for the
-admin nav item and page to appear.
-
-### New user admin email
-
-Create a Supabase Database Webhook for `public.profiles` inserts:
-
-* Method: `POST`
-* URL: `https://your-domain.com/api/admin/new-user-notification`
-* Header: `x-admin-webhook-secret: <ADMIN_WEBHOOK_SECRET>`
-* Events: `INSERT`
-
-The webhook sends a Resend email to `ADMIN_NOTIFICATION_EMAIL`, or the first
-address in `ADMIN_EMAILS` when `ADMIN_NOTIFICATION_EMAIL` is not set.
-
-## Production
-
-Ensure:
-
-* Supabase Site URL is set to your domain
-* Redirect URLs include:
-
-  * `/auth/confirm`
-  * `/login`
-* Environment variables are configured in Vercel
-
-## Status
-
-Active development.
-
-Core auth, dashboard, and workflow views are functional. Follow-up logic and workflow refinement are in progress.
