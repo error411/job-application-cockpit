@@ -27,6 +27,12 @@ type RecentBillingEvent = {
   livemode: boolean
 }
 
+type UserMetrics = {
+  activeJobs: number
+  applications: number
+  totalJobs: number
+}
+
 const ACTIVE_SUBSCRIPTION_STATUSES = [
   'active',
   'trialing',
@@ -70,6 +76,33 @@ function getStatusClasses(status: string): string {
   return status === 'suspended'
     ? 'bg-amber-100 text-amber-800'
     : 'bg-emerald-100 text-emerald-700'
+}
+
+function getEmptyUserMetrics(): UserMetrics {
+  return {
+    activeJobs: 0,
+    applications: 0,
+    totalJobs: 0,
+  }
+}
+
+function UserMetric({
+  label,
+  value,
+}: {
+  label: string
+  value: number | string
+}) {
+  return (
+    <div className="min-w-20 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+      <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold tabular-nums text-slate-950">
+        {value}
+      </p>
+    </div>
+  )
 }
 
 function AdminMetric({
@@ -200,6 +233,50 @@ export default async function AdminPage() {
   const recentUsers = (recentUsersResult.data ?? []) as RecentUser[]
   const recentBillingEvents =
     (recentBillingEventsResult.data ?? []) as RecentBillingEvent[]
+  const recentUserIds = recentUsers.map((recentUser) => recentUser.id)
+  const [recentUserJobsResult, recentUserApplicationsResult] =
+    recentUserIds.length > 0
+      ? await Promise.all([
+          admin
+            .from('jobs')
+            .select('user_id, archived_at')
+            .in('user_id', recentUserIds),
+          admin.from('applications').select('user_id').in('user_id', recentUserIds),
+        ])
+      : [
+          { data: [], error: null },
+          { data: [], error: null },
+        ]
+
+  const metricsError =
+    recentUserJobsResult.error ?? recentUserApplicationsResult.error
+  if (metricsError) {
+    throw new Error(metricsError.message)
+  }
+
+  const userMetricsById = new Map<string, UserMetrics>(
+    recentUserIds.map((recentUserId) => [recentUserId, getEmptyUserMetrics()])
+  )
+
+  for (const job of recentUserJobsResult.data ?? []) {
+    if (!job.user_id) continue
+
+    const metrics = userMetricsById.get(job.user_id) ?? getEmptyUserMetrics()
+    metrics.totalJobs += 1
+    if (job.archived_at == null) {
+      metrics.activeJobs += 1
+    }
+    userMetricsById.set(job.user_id, metrics)
+  }
+
+  for (const application of recentUserApplicationsResult.data ?? []) {
+    if (!application.user_id) continue
+
+    const metrics =
+      userMetricsById.get(application.user_id) ?? getEmptyUserMetrics()
+    metrics.applications += 1
+    userMetricsById.set(application.user_id, metrics)
+  }
 
   const totalUsers = totalUsersResult.count ?? 0
   const newUsers = newUsersResult.count ?? 0
@@ -284,47 +361,64 @@ export default async function AdminPage() {
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {recentUsers.map((recentUser) => (
-                <div
-                  key={recentUser.id}
-                  className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 lg:flex-row lg:items-center lg:justify-between"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate text-sm font-semibold text-slate-950">
-                        {getDisplayName(recentUser)}
+              {recentUsers.map((recentUser) => {
+                const userMetrics =
+                  userMetricsById.get(recentUser.id) ?? getEmptyUserMetrics()
+
+                return (
+                  <div
+                    key={recentUser.id}
+                    className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 lg:flex-row lg:items-center lg:justify-between"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-semibold text-slate-950">
+                          {getDisplayName(recentUser)}
+                        </p>
+                        <span
+                          className={`rounded-full px-2 py-1 text-[11px] font-medium capitalize ${getStatusClasses(
+                            recentUser.account_status
+                          )}`}
+                        >
+                          {recentUser.account_status}
+                        </span>
+                      </div>
+                      <p className="mt-1 break-all text-xs text-slate-500">
+                        {recentUser.email ?? recentUser.id}
                       </p>
-                      <span
-                        className={`rounded-full px-2 py-1 text-[11px] font-medium capitalize ${getStatusClasses(
-                          recentUser.account_status
-                        )}`}
-                      >
-                        {recentUser.account_status}
-                      </span>
                     </div>
-                    <p className="mt-1 break-all text-xs text-slate-500">
-                      {recentUser.email ?? recentUser.id}
-                    </p>
+
+                    <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap lg:justify-end">
+                      <UserMetric label="Active" value={userMetrics.activeJobs} />
+                      <UserMetric label="Jobs" value={userMetrics.totalJobs} />
+                      <UserMetric
+                        label="Apps"
+                        value={userMetrics.applications}
+                      />
+                    </div>
+
+                    <div className="shrink-0 text-left text-xs text-slate-500 lg:text-right">
+                      <p>Joined {formatDateTime(recentUser.created_at)}</p>
+                      <p>Updated {formatDateTime(recentUser.updated_at)}</p>
+                      {recentUser.suspended_at ? (
+                        <p>
+                          Suspended {formatDateTime(recentUser.suspended_at)}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="shrink-0">
+                      <AdminUserActions
+                        userId={recentUser.id}
+                        isSuspended={recentUser.account_status === 'suspended'}
+                        isProtected={
+                          recentUser.id === user.id || isAdminUser(recentUser)
+                        }
+                        label={getDisplayName(recentUser)}
+                      />
+                    </div>
                   </div>
-                  <div className="shrink-0 text-left text-xs text-slate-500 lg:text-right">
-                    <p>Joined {formatDateTime(recentUser.created_at)}</p>
-                    <p>Updated {formatDateTime(recentUser.updated_at)}</p>
-                    {recentUser.suspended_at ? (
-                      <p>Suspended {formatDateTime(recentUser.suspended_at)}</p>
-                    ) : null}
-                  </div>
-                  <div className="shrink-0">
-                    <AdminUserActions
-                      userId={recentUser.id}
-                      isSuspended={recentUser.account_status === 'suspended'}
-                      isProtected={
-                        recentUser.id === user.id || isAdminUser(recentUser)
-                      }
-                      label={getDisplayName(recentUser)}
-                    />
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </Section>
