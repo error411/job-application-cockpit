@@ -52,6 +52,13 @@ function formatDateTime(value: string | null | undefined): string {
   }).format(new Date(value))
 }
 
+function formatJobsPerUser(activeJobs: number, totalUsers: number): string {
+  if (totalUsers === 0) return '0'
+
+  const jobsPerUser = activeJobs / totalUsers
+  return jobsPerUser.toFixed(jobsPerUser >= 10 ? 0 : 1)
+}
+
 function getDisplayName(user: RecentUser): string {
   const name = user.full_name?.trim()
   if (name) return name
@@ -122,6 +129,7 @@ export default async function AdminPage() {
     newUsersResult,
     recentUsersResult,
     totalJobsResult,
+    activeJobsResult,
     recentJobsResult,
     totalApplicationsResult,
     recentApplicationsResult,
@@ -142,6 +150,10 @@ export default async function AdminPage() {
       .order('created_at', { ascending: false })
       .limit(10),
     admin.from('jobs').select('id', { count: 'exact', head: true }),
+    admin
+      .from('jobs')
+      .select('id', { count: 'exact', head: true })
+      .is('archived_at', null),
     admin
       .from('jobs')
       .select('id', { count: 'exact', head: true })
@@ -171,6 +183,7 @@ export default async function AdminPage() {
     newUsersResult,
     recentUsersResult,
     totalJobsResult,
+    activeJobsResult,
     recentJobsResult,
     totalApplicationsResult,
     recentApplicationsResult,
@@ -191,6 +204,7 @@ export default async function AdminPage() {
   const totalUsers = totalUsersResult.count ?? 0
   const newUsers = newUsersResult.count ?? 0
   const totalJobs = totalJobsResult.count ?? 0
+  const activeJobs = activeJobsResult.count ?? 0
   const totalApplications = totalApplicationsResult.count ?? 0
   const activeSubscriptions = activeSubscriptionsResult.count ?? 0
   const suspendedUsers = suspendedUsersResult.count ?? 0
@@ -219,7 +233,7 @@ export default async function AdminPage() {
         ) : null}
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
         <AdminMetric
           label="Users"
           value={totalUsers}
@@ -234,6 +248,11 @@ export default async function AdminPage() {
           label="Jobs"
           value={totalJobs}
           hint={`${recentJobsResult.count ?? 0} created in the last 30 days.`}
+        />
+        <AdminMetric
+          label="Active Jobs/User"
+          value={formatJobsPerUser(activeJobs, totalUsers)}
+          hint={`${activeJobs} active ${activeJobs === 1 ? 'job' : 'jobs'} across all users.`}
         />
         <AdminMetric
           label="Applications"
