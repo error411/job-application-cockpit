@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/require-user'
 import { isAdminUser, requireAdminUser } from '@/lib/admin'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { AdminLocalTime } from './admin-local-time'
 import { AdminUserActions } from './admin-user-actions'
 
 export const metadata: Metadata = {
@@ -34,6 +33,8 @@ type UserMetrics = {
   totalJobs: number
 }
 
+const DEFAULT_TIMEZONE_OFFSET_MINUTES = 0
+
 const ACTIVE_SUBSCRIPTION_STATUSES = [
   'active',
   'trialing',
@@ -42,21 +43,60 @@ const ACTIVE_SUBSCRIPTION_STATUSES = [
   'incomplete',
 ]
 
+function isMissingTimezoneOffsetColumn(error: { message?: string } | null) {
+  return (
+    typeof error?.message === 'string' &&
+    error.message.includes('profiles.timezone_offset_minutes')
+  )
+}
+
 function toIsoDaysAgo(days: number): string {
   const date = new Date()
   date.setDate(date.getDate() - days)
   return date.toISOString()
 }
 
-function formatDateTime(value: string | null | undefined): string {
+function formatTimezoneOffset(offsetMinutes: number): string {
+  const sign = offsetMinutes >= 0 ? '+' : '-'
+  const absoluteMinutes = Math.abs(offsetMinutes)
+  const hours = Math.floor(absoluteMinutes / 60)
+  const minutes = absoluteMinutes % 60
+
+  return `UTC${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+function normalizeTimezoneOffsetMinutes(
+  value: number | null | undefined
+): number {
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    return DEFAULT_TIMEZONE_OFFSET_MINUTES
+  }
+
+  if (value < -840 || value > 840) {
+    return DEFAULT_TIMEZONE_OFFSET_MINUTES
+  }
+
+  return value
+}
+
+function formatDateTime(
+  value: string | null | undefined,
+  timezoneOffsetMinutes = DEFAULT_TIMEZONE_OFFSET_MINUTES
+): string {
   if (!value) return 'Never'
 
-  return new Intl.DateTimeFormat('en', {
+  const date = new Date(value)
+  const shiftedDate = new Date(
+    date.getTime() + timezoneOffsetMinutes * 60 * 1000
+  )
+
+  return `${new Intl.DateTimeFormat('en', {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-  }).format(new Date(value))
+    timeZone: 'UTC',
+  }).format(shiftedDate)} ${formatTimezoneOffset(timezoneOffsetMinutes)}`
 }
 
 function formatJobsPerUser(activeJobs: number, totalUsers: number): string {
@@ -234,6 +274,22 @@ export default async function AdminPage() {
   const recentUsers = (recentUsersResult.data ?? []) as RecentUser[]
   const recentBillingEvents =
     (recentBillingEventsResult.data ?? []) as RecentBillingEvent[]
+  const adminProfileResult = await admin
+    .from('profiles')
+    .select('timezone_offset_minutes')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (
+    adminProfileResult.error &&
+    !isMissingTimezoneOffsetColumn(adminProfileResult.error)
+  ) {
+    throw new Error(adminProfileResult.error.message)
+  }
+
+  const adminTimezoneOffsetMinutes = normalizeTimezoneOffsetMinutes(
+    adminProfileResult.data?.timezone_offset_minutes
+  )
   const recentUserIds = recentUsers.map((recentUser) => recentUser.id)
   const [recentUserJobsResult, recentUserApplicationsResult] =
     recentUserIds.length > 0
@@ -400,15 +456,26 @@ export default async function AdminPage() {
 
                     <div className="shrink-0 text-left text-xs text-slate-500 lg:text-right">
                       <p>
-                        Joined <AdminLocalTime value={recentUser.created_at} />
+                        Joined{' '}
+                        {formatDateTime(
+                          recentUser.created_at,
+                          adminTimezoneOffsetMinutes
+                        )}
                       </p>
                       <p>
-                        Updated <AdminLocalTime value={recentUser.updated_at} />
+                        Updated{' '}
+                        {formatDateTime(
+                          recentUser.updated_at,
+                          adminTimezoneOffsetMinutes
+                        )}
                       </p>
                       {recentUser.suspended_at ? (
                         <p>
                           Suspended{' '}
-                          <AdminLocalTime value={recentUser.suspended_at} />
+                          {formatDateTime(
+                            recentUser.suspended_at,
+                            adminTimezoneOffsetMinutes
+                          )}
                         </p>
                       ) : null}
                     </div>
@@ -460,8 +527,15 @@ export default async function AdminPage() {
                   </div>
                   <p className="mt-2 text-xs text-slate-500">
                     {event.livemode ? 'Live' : 'Test'} - Created{' '}
-                    {formatDateTime(event.created_at)} - Processed{' '}
-                    {formatDateTime(event.processed_at)}
+                    {formatDateTime(
+                      event.created_at,
+                      adminTimezoneOffsetMinutes
+                    )}{' '}
+                    - Processed{' '}
+                    {formatDateTime(
+                      event.processed_at,
+                      adminTimezoneOffsetMinutes
+                    )}
                   </p>
                   {event.processing_error ? (
                     <p className="mt-2 line-clamp-2 text-xs text-rose-700">

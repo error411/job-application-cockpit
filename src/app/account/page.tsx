@@ -1,7 +1,9 @@
 import { requireUser } from '@/lib/auth/require-user'
+import { isAdminUser } from '@/lib/admin'
 import { getBillingStatusForUser } from '@/lib/billing/get-billing-status'
 import { formatDate } from '@/lib/dates'
 import BillingPortalButton from './billing-portal-button'
+import { TimezoneOffsetForm } from './timezone-offset-form'
 import UpgradeButton from './upgrade-button'
 
 type AccountPageProps = {
@@ -15,6 +17,13 @@ type PlanOption = {
   cta: string
   billingInterval: 'month' | 'year'
   trialDays?: number
+}
+
+function isMissingTimezoneOffsetColumn(error: { message?: string } | null) {
+  return (
+    typeof error?.message === 'string' &&
+    error.message.includes('profiles.timezone_offset_minutes')
+  )
 }
 
 function buildPlans(): Partial<Record<'trial' | 'month' | 'year', PlanOption>> {
@@ -232,10 +241,56 @@ function BillingCard({
   )
 }
 
+function AdminTimezoneCard({
+  timezoneOffsetMinutes,
+}: {
+  timezoneOffsetMinutes: number | null
+}) {
+  return (
+    <section className="app-panel rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="border-b border-zinc-100 pb-4">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
+          Admin
+        </p>
+        <h2 className="mt-1 text-xl font-semibold tracking-tight text-zinc-950">
+          Timezone Offset
+        </h2>
+        <p className="mt-1 text-sm text-zinc-600">
+          Used for admin dashboard timestamps rendered on the server.
+        </p>
+      </div>
+
+      <div className="mt-5">
+        <TimezoneOffsetForm initialOffsetMinutes={timezoneOffsetMinutes} />
+      </div>
+    </section>
+  )
+}
+
 export default async function AccountPage({ searchParams }: AccountPageProps) {
   const params = searchParams ? await searchParams : undefined
   const { supabase, user } = await requireUser()
-  const billingStatus = await getBillingStatusForUser(supabase, user.id)
+  const [billingStatus, profileResult] = await Promise.all([
+    getBillingStatusForUser(supabase, user.id),
+    supabase
+      .from('profiles')
+      .select('timezone_offset_minutes')
+      .eq('id', user.id)
+      .maybeSingle(),
+  ])
+
+  if (
+    profileResult.error &&
+    !isMissingTimezoneOffsetColumn(profileResult.error)
+  ) {
+    throw new Error(profileResult.error.message)
+  }
+
+  const isAdmin = isAdminUser(user)
+  const hasTimezoneOffsetColumn =
+    !isMissingTimezoneOffsetColumn(profileResult.error)
+  const timezoneOffsetMinutes =
+    profileResult.data?.timezone_offset_minutes ?? null
 
   return (
     <div className="space-y-8">
@@ -270,6 +325,10 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           currentPeriodEnd={billingStatus.subscription?.currentPeriodEnd ?? null}
         />
       </section>
+
+      {isAdmin && hasTimezoneOffsetColumn ? (
+        <AdminTimezoneCard timezoneOffsetMinutes={timezoneOffsetMinutes} />
+      ) : null}
     </div>
   )
 }

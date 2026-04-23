@@ -601,6 +601,7 @@ export type Database = {
           full_name: string | null
           id: string
           suspended_at: string | null
+          timezone_offset_minutes: number | null
           updated_at: string
         }
         Insert: {
@@ -610,6 +611,7 @@ export type Database = {
           full_name?: string | null
           id: string
           suspended_at?: string | null
+          timezone_offset_minutes?: number | null
           updated_at?: string
         }
         Update: {
@@ -619,6 +621,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           suspended_at?: string | null
+          timezone_offset_minutes?: number | null
           updated_at?: string
         }
         Relationships: []
