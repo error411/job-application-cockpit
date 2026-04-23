@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/require-user'
 import { isAdminUser, requireAdminUser } from '@/lib/admin'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AdminLocalTime } from './admin-local-time'
 import { AdminUserActions } from './admin-user-actions'
 
 export const metadata: Metadata = {
@@ -398,11 +399,16 @@ export default async function AdminPage() {
                     </div>
 
                     <div className="shrink-0 text-left text-xs text-slate-500 lg:text-right">
-                      <p>Joined {formatDateTime(recentUser.created_at)}</p>
-                      <p>Updated {formatDateTime(recentUser.updated_at)}</p>
+                      <p>
+                        Joined <AdminLocalTime value={recentUser.created_at} />
+                      </p>
+                      <p>
+                        Updated <AdminLocalTime value={recentUser.updated_at} />
+                      </p>
                       {recentUser.suspended_at ? (
                         <p>
-                          Suspended {formatDateTime(recentUser.suspended_at)}
+                          Suspended{' '}
+                          <AdminLocalTime value={recentUser.suspended_at} />
                         </p>
                       ) : null}
                     </div>
