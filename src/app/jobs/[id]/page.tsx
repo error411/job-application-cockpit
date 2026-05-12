@@ -13,6 +13,7 @@ import { formatDate } from '@/lib/dates'
 import { OnboardingTourPopup } from '@/components/onboarding-tour-popup'
 import JobFollowUpActions from './job-follow-up-actions'
 import GenerateDraftAssetsButton from './generate-draft-assets-button'
+import { DeleteJobForm } from './delete-job-form'
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -420,6 +421,8 @@ export default async function JobDetailPage({
   )
   const isGenerateAssetsOnboarding = onboarding === 'generate-assets'
   const nextOnboardingHref = next || '/today?onboarding=work-queue'
+  const actionSource = from === 'apply' ? 'apply' : 'jobs'
+  const jobLabel = `${typedJob.company} - ${typedJob.title}`
 
   return (
     <main className="max-w-6xl p-6">
@@ -438,19 +441,12 @@ export default async function JobDetailPage({
                   </button>
                 </form>
 
-                <form action={`/api/jobs/${typedJob.id}/delete-form`} method="post">
-                  <input
-                    type="hidden"
-                    name="from"
-                    value={from === 'apply' ? 'apply' : 'jobs'}
-                  />
-                  <button
-                    className="rounded-md border border-rose-300 px-4 py-2 text-sm font-medium text-rose-700"
-                    type="submit"
-                  >
-                    Delete Permanently
-                  </button>
-                </form>
+                <DeleteJobForm
+                  jobId={typedJob.id}
+                  from={actionSource}
+                  jobLabel={jobLabel}
+                  archived
+                />
               </>
             ) : (
               <>
@@ -465,19 +461,11 @@ export default async function JobDetailPage({
                   </button>
                 </form>
 
-                <form action={`/api/jobs/${typedJob.id}/delete-form`} method="post">
-                  <input
-                    type="hidden"
-                    name="from"
-                    value={from === 'apply' ? 'apply' : 'jobs'}
-                  />
-                  <button
-                    className="rounded-md border border-rose-200 px-4 py-2 text-sm font-medium text-rose-600"
-                    type="submit"
-                  >
-                    Delete Permanently
-                  </button>
-                </form>
+                <DeleteJobForm
+                  jobId={typedJob.id}
+                  from={actionSource}
+                  jobLabel={jobLabel}
+                />
               </>
             )}
           </div>
