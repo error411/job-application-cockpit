@@ -49,12 +49,12 @@ export function AuthPanel({
   const showLoginButton = !selectedPlan
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+    <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
       <div className="space-y-2">
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
+        <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
           {title}
         </h2>
-        <p className="text-sm leading-6 text-slate-600">{description}</p>
+        <p className="text-sm leading-6 text-zinc-600">{description}</p>
       </div>
 
       {selectedPlan ? (
@@ -62,10 +62,10 @@ export function AuthPanel({
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700">
             {selectedPlan.eyebrow}
           </p>
-          <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
             {selectedPlan.price}
           </p>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+          <p className="mt-2 text-sm leading-6 text-zinc-600">
             {selectedPlan.detail}
           </p>
           {selectedPlan.note ? (
@@ -94,7 +94,7 @@ export function AuthPanel({
         <div>
           <label
             htmlFor="email"
-            className="block text-sm font-medium text-slate-700"
+            className="block text-sm font-medium text-zinc-700"
           >
             Email
           </label>
@@ -104,7 +104,7 @@ export function AuthPanel({
             type="email"
             autoComplete="email"
             required
-            className="mt-1.5 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="mt-1.5 w-full rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
             placeholder="you@example.com"
           />
         </div>
@@ -112,7 +112,7 @@ export function AuthPanel({
         <div>
           <label
             htmlFor="password"
-            className="block text-sm font-medium text-slate-700"
+            className="block text-sm font-medium text-zinc-700"
           >
             Password
           </label>
@@ -122,7 +122,7 @@ export function AuthPanel({
             type="password"
             autoComplete="current-password"
             required
-            className="mt-1.5 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="mt-1.5 w-full rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
             placeholder="Enter your password"
           />
         </div>
@@ -131,7 +131,7 @@ export function AuthPanel({
           {showLoginButton ? (
             <button
               formAction={login}
-              className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800"
             >
               Log in
             </button>
@@ -141,8 +141,8 @@ export function AuthPanel({
             formAction={signup}
             className={`inline-flex h-11 items-center justify-center rounded-2xl px-5 text-sm font-semibold transition ${
               selectedPlan
-                ? 'bg-slate-950 text-white hover:bg-slate-800'
-                : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                ? 'bg-zinc-950 text-white hover:bg-zinc-800'
+                : 'border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
             }`}
           >
             Create account

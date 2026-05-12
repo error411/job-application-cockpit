@@ -22,23 +22,23 @@ function LoginPlanCard({
     accent === 'blue'
       ? 'border-blue-200 bg-blue-50'
       : accent === 'dark'
-        ? 'border-slate-950 bg-slate-950 text-white'
-        : 'border-slate-200 bg-white'
+        ? 'border-zinc-950 bg-zinc-950 text-white'
+        : 'border-zinc-200 bg-white'
 
   const selectedClasses =
     accent === 'dark'
-      ? 'ring-2 ring-offset-2 ring-slate-950'
+      ? 'ring-2 ring-offset-2 ring-zinc-950'
       : accent === 'blue'
         ? 'ring-2 ring-offset-2 ring-blue-500'
-        : 'ring-2 ring-offset-2 ring-slate-900'
+        : 'ring-2 ring-offset-2 ring-zinc-900'
 
-  const detailClass = accent === 'dark' ? 'text-slate-300' : 'text-slate-600'
+  const detailClass = accent === 'dark' ? 'text-zinc-300' : 'text-zinc-600'
   const linkClass =
     accent === 'dark'
       ? 'text-white'
       : accent === 'blue'
         ? 'text-blue-700'
-        : 'text-slate-900'
+        : 'text-zinc-900'
 
   return (
     <Link
@@ -61,6 +61,7 @@ export default async function LoginPage({
     error?: string
     message?: string
     plan?: 'trial' | 'month' | 'year'
+    mode?: 'login'
   }>
 }) {
   const params = await searchParams
@@ -99,20 +100,20 @@ export default async function LoginPage({
                 'Log in to continue managing your job search, or create an account to get started.',
             }
 
-  const showPlanChooser = !params.plan
+  const showPlanChooser = !params.plan && params.mode !== 'login'
 
   return (
     <div className="mx-auto max-w-5xl py-10 sm:py-16">
       {showPlanChooser ? (
         <div className="mb-8 space-y-4">
           <div className="space-y-2 text-center">
-            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
               Pricing
             </p>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
+            <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">
               Start free, then choose the plan that fits your search
             </h1>
-            <p className="mx-auto max-w-2xl text-sm leading-6 text-slate-600">
+            <p className="mx-auto max-w-2xl text-sm leading-6 text-zinc-600">
               Create your account for a 7-day free trial, or jump straight into
               monthly or yearly Pro.
             </p>

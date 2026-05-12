@@ -56,15 +56,6 @@ function toIsoDaysAgo(days: number): string {
   return date.toISOString()
 }
 
-function formatTimezoneOffset(offsetMinutes: number): string {
-  const sign = offsetMinutes >= 0 ? '+' : '-'
-  const absoluteMinutes = Math.abs(offsetMinutes)
-  const hours = Math.floor(absoluteMinutes / 60)
-  const minutes = absoluteMinutes % 60
-
-  return `UTC${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
-}
-
 function normalizeTimezoneOffsetMinutes(
   value: number | null | undefined
 ): number {
@@ -96,7 +87,7 @@ function formatDateTime(
     hour: 'numeric',
     minute: '2-digit',
     timeZone: 'UTC',
-  }).format(shiftedDate)} ${formatTimezoneOffset(timezoneOffsetMinutes)}`
+  }).format(shiftedDate)}`
 }
 
 function formatJobsPerUser(activeJobs: number, totalUsers: number): string {

@@ -52,7 +52,7 @@ export async function AppHeader({
 
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/90 backdrop-blur">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex min-h-16 flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between">
           <Link
@@ -69,10 +69,10 @@ export async function AppHeader({
             />
 
             <div className="leading-tight">
-              <div className="text-base font-semibold text-slate-950">
+              <div className="text-base font-semibold text-zinc-950">
                 ApplyEngine
               </div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-zinc-500">
                 Run your job search like a system.
               </div>
             </div>
@@ -100,7 +100,7 @@ export async function AppHeader({
                   href="/account"
                   aria-label="Account settings"
                   title="Account settings"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-950"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:bg-zinc-50 hover:text-zinc-950"
                 >
                   <svg
                     aria-hidden="true"
@@ -123,8 +123,8 @@ export async function AppHeader({
           ) : (
             <div className="flex items-center justify-end">
               <Link
-                href="/login"
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                href="/login?mode=login"
+                className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50"
               >
                 Log in
               </Link>

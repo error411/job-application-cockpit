@@ -33,10 +33,7 @@ export const metadata: Metadata = {
     description:
       'Track jobs, manage follow-ups, and understand your application pipeline with clearer workflow and reporting.',
   },
-  robots: {
-    index: false,
-    follow: false,
-  },
+
   formatDetection: {
     email: false,
     address: false,
@@ -51,7 +48,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-slate-50 text-slate-900 antialiased">
+      <body className="bg-zinc-50 text-zinc-900 antialiased">
         <div className="min-h-screen">
           <AppHeader showAddJobCta />
 
