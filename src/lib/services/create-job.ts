@@ -7,6 +7,8 @@ export async function createJobWithApplication(input: {
   url?: string | null
   description: string
 }) {
+  // Service functions sit between API routes/pages and Supabase. They keep
+  // database write rules in one reusable place.
   const supabase = await createClient()
 
   const {
@@ -18,6 +20,8 @@ export async function createJobWithApplication(input: {
     throw new Error('Unauthorized')
   }
 
+  // Jobs are owned by the authenticated Supabase user. Row-level security can
+  // then keep each user's records separated at the database layer.
   const { data: job, error: jobError } = await supabase
     .from('jobs')
     .insert({
@@ -37,6 +41,8 @@ export async function createJobWithApplication(input: {
     throw new Error(jobError.message)
   }
 
+  // Every captured job starts with a matching application row, which lets the
+  // pipeline/status screens reason about applications instead of raw jobs alone.
   const { data: application, error: appError } = await supabase
     .from('applications')
     .insert({

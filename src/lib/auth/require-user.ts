@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
 export async function requireUser() {
+  // Use this in protected Server Components and services that should only run
+  // for signed-in users. redirect() stops rendering and sends the browser away.
   const supabase = await createClient()
 
   const {
@@ -13,6 +15,8 @@ export async function requireUser() {
     redirect('/login')
   }
 
+  // Authentication answers "who are you"; this profile check handles the app's
+  // account-level access state.
   const { data: profile } = await supabase
     .from('profiles')
     .select('account_status')

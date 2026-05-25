@@ -7,6 +7,8 @@ import { AppHeader } from '@/components/app-header'
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL || 'https://apply-engine.com'
 
+// Root metadata becomes the default SEO/social metadata for every route.
+// Individual pages can export their own metadata to override or extend it.
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   applicationName: 'ApplyEngine',
@@ -46,6 +48,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // In the Next.js App Router, this layout wraps every page under src/app.
+  // Shared UI such as the header, analytics, and the max-width page frame live here.
   return (
     <html lang="en">
       <body className="bg-zinc-50 text-zinc-900 antialiased">

@@ -148,6 +148,8 @@ function MessageBanner({
 }
 
 function NewJobPageClient() {
+  // This page is a Client Component because the form needs browser state,
+  // fetch(), and Next's client-side router after submission.
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -164,6 +166,8 @@ function NewJobPageClient() {
 
   useEffect(() => {
     async function loadProfileHints() {
+      // Profile hints are optional UI polish: they customize placeholders without
+      // blocking the form if the profile endpoint is unavailable.
       const res = await fetch('/api/profile/current')
       const result = await res.json().catch(() => null)
 
@@ -199,6 +203,9 @@ function NewJobPageClient() {
 
     if (isSaving) return
 
+    // The browser submits to this app's API route. The API route owns database
+    // writes and immediate scoring, keeping service keys and server logic off
+    // the client.
     setIsSaving(true)
     setCreatedJobId(null)
     setMessageTone('info')

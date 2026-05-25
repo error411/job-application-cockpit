@@ -24,6 +24,8 @@ const PROTECTED_PREFIXES = [
 ]
 
 function isStaticAsset(pathname: string) {
+  // Static assets should never pay the auth-check cost, and redirecting them can
+  // break Next's image/script/css loading.
   return (
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/favicon') ||
@@ -49,6 +51,8 @@ function isProtectedPath(pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
+  // proxy.ts runs before matching pages/API routes. It is the app-wide gate that
+  // keeps protected paths behind Supabase auth.
   const { pathname } = request.nextUrl
 
   if (isStaticAsset(pathname)) {
@@ -78,6 +82,8 @@ export async function proxy(request: NextRequest) {
 
   let response = NextResponse.next({ request })
 
+  // Supabase SSR needs both the incoming request cookies and a response object it
+  // can update when auth tokens are refreshed.
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       getAll() {
@@ -102,6 +108,8 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (user && isProtectedPath(pathname)) {
+    // Suspended accounts are treated as authenticated but not authorized.
+    // API callers receive JSON while browser pages are redirected to login.
     const { data: profile } = await supabase
       .from('profiles')
       .select('account_status')
@@ -130,6 +138,8 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isProtectedPath(pathname) && !user) {
+    // Preserve the requested path so the login page can send the user back after
+    // a successful sign-in.
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/login'
     loginUrl.searchParams.set('next', pathname)

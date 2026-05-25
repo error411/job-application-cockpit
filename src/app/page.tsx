@@ -22,6 +22,8 @@ type HomePageProps = {
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL || 'https://apply-engine.com'
 
+// This metadata is specific to the public landing page and helps search engines
+// understand the product before a user signs in.
 export const metadata: Metadata = {
   title: 'AI Job Application Tracker, Resume Builder, and Job Scoring',
   description:
@@ -62,6 +64,9 @@ export const metadata: Metadata = {
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams
   const supabase = await createClient()
+
+  // Structured data is JSON-LD: search engines can read it even though users do
+  // not see it rendered on the page.
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
@@ -92,6 +97,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Server Components can redirect before rendering. Logged-in users should land
+  // in the product instead of seeing marketing content.
   if (user) {
     redirect('/dashboard')
   }

@@ -14,6 +14,8 @@ type AppHeaderProps = {
 export async function AppHeader({
   showAddJobCta = false,
 }: AppHeaderProps) {
+  // The header is a Server Component so it can read the current Supabase session
+  // and show the right navigation before the page reaches the browser.
   const supabase = await createClient()
 
   const {
@@ -27,6 +29,8 @@ export async function AppHeader({
   let hasActiveFollowUps = false
 
   if (user) {
+    // A user with no jobs sees onboarding navigation; established users see the
+    // normal workflow-oriented nav.
     const { count } = await supabase
       .from('jobs')
       .select('id', { count: 'exact', head: true })
@@ -34,6 +38,8 @@ export async function AppHeader({
     isNewUser = (count ?? 0) === 0
 
     try {
+      // This small status check lets the nav highlight follow-up work without
+      // each page having to duplicate the same query.
       const applications = await getActiveWorkflowApplications(supabase)
       hasActiveFollowUps = applications.some((application) => {
         const followUpState = getFollowUpState({

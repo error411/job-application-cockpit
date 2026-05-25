@@ -45,11 +45,15 @@ type JobScoreRouteInsert = Omit<
 }
 
 function toStringArray(value: unknown): string[] {
+  // Supabase JSON/array columns arrive as unknown from generated types in a few
+  // places, so this helper narrows them before they go into prompts.
   if (!Array.isArray(value)) return []
   return value.filter((item): item is string => typeof item === 'string')
 }
 
 function normalizeStringArray(value: unknown): string[] | undefined {
+  // Returning undefined keeps empty arrays out of insert payloads when the model
+  // produced no useful values for an optional list.
   if (!Array.isArray(value)) return undefined
 
   const normalized = value
@@ -71,6 +75,8 @@ function formatDateRange(
 }
 
 export async function scoreJobService(jobId: string) {
+  // Scoring uses the admin client because it may run from server routes and must
+  // read/write several tables as one trusted backend operation.
   const supabase = createAdminClient()
 
   const { data: job, error: jobError } = await supabase
@@ -134,6 +140,8 @@ ${technologies.length ? `Technologies: ${technologies.join(', ')}` : ''}
     })
     .join('\n\n')
 
+  // The model is asked for strict JSON so the app can parse and store a
+  // predictable score payload instead of scraping free-form text.
   const response = await openai.responses.create({
     model: 'gpt-5.4',
     input: [
@@ -236,6 +244,8 @@ ${typedJob.description_raw}
     reasons: parsed.reasons,
   }
 
+  // Store scores as their own rows so the app can retain scoring history, then
+  // update the job's current status for quick filtering in the UI.
   const { data: savedScore, error: saveError } = await supabase
     .from('job_scores')
     .insert(insertPayload)

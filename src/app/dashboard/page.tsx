@@ -23,6 +23,8 @@ type RecentJob = {
 }
 
 function startOfTodayLocal(): Date {
+  // Date comparisons on the dashboard are intentionally local to the server
+  // runtime so "today" means the current calendar day, not a UTC boundary.
   const now = new Date()
   return new Date(now.getFullYear(), now.getMonth(), now.getDate())
 }
@@ -67,6 +69,8 @@ function isDateToday(dateString: string | null | undefined): boolean {
 function getEarliestFollowUpDate(
   app: ActiveWorkflowApplicationRow
 ): string | null {
+  // The dashboard only needs the next outstanding follow-up date; the detailed
+  // follow-up workflow decides which message/action should happen.
   return app.follow_up_1_due ?? app.follow_up_2_due ?? null
 }
 
@@ -108,6 +112,8 @@ function getPrimaryApplicationStatusForJob(job: RecentJob): string | null {
   const applications = job.applications ?? []
   if (!applications.length) return null
 
+  // A job can have related application rows. The dashboard displays the most
+  // recently changed application status as the clearest current state.
   const sorted = [...applications].sort((a, b) => {
     const aTime = new Date(a.updated_at ?? a.created_at ?? 0).getTime()
     const bTime = new Date(b.updated_at ?? b.created_at ?? 0).getTime()
@@ -453,8 +459,12 @@ function RecentActivity({ jobs }: { jobs: RecentJob[] }) {
 }
 
 export default async function DashboardPage() {
+  // Server pages can talk to Supabase directly. requireUser redirects to /login
+  // if there is no active session, then returns an authenticated client.
   const { supabase } = await requireUser()
 
+  // These queries are independent, so Promise.all lets the page fetch the
+  // summary counts, recent jobs, and workflow rows at the same time.
   const [
     activeJobsResult,
     recentJobsResult,

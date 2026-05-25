@@ -24,6 +24,8 @@ type CreateJobResponse = {
 
 export async function POST(req: NextRequest) {
   try {
+    // Route handlers are server-only endpoints under /api. This one receives the
+    // Add Job form payload from the browser.
     const body = await req.json()
 
     const {
@@ -51,6 +53,8 @@ export async function POST(req: NextRequest) {
 
     const descriptionText = descriptionValue.trim()
 
+    // Keep the first write small and reliable: create the job row and its linked
+    // application row before attempting any AI work.
     const { job, application } = await createJobWithApplication({
       company: String(company),
       title: String(title),
@@ -64,6 +68,8 @@ export async function POST(req: NextRequest) {
     let scoringError: string | null = null
 
     try {
+      // Scoring is attempted immediately so a newly created job is useful right
+      // away, but failures are reported without undoing the saved job.
       const scoringResult = await scoreJobService(job.id)
 
       score = {

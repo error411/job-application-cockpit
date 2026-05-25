@@ -38,8 +38,12 @@ function ErrorState({ message }: { message: string }) {
 }
 
 export default async function JobsPage() {
+  // This is a Server Component page: it fetches data before returning JSX, so the
+  // browser receives a ready-to-render jobs list instead of doing the first load.
   const { supabase } = await requireUser()
 
+  // Supabase's nested select pulls each job plus its related application rows in
+  // one request. The JobsList client component handles filtering and interaction.
   const { data: jobs, error: jobsError } = await supabase
     .from('jobs')
     .select(
@@ -74,6 +78,8 @@ export default async function JobsPage() {
   let latestScoresByJobId: Record<string, number | null> = {}
 
   try {
+    // Scores are fetched separately because the UI only needs the latest score
+    // per active job, not the full scoring history.
     latestScoresByJobId = Object.fromEntries(
       await getLatestJobScoresByJobId(activeJobIds)
     )
