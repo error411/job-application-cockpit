@@ -626,12 +626,48 @@ export type Database = {
         }
         Relationships: []
       }
+      signup_ip_emails: {
+        Row: {
+          created_at: string
+          email_normalized: string
+          ip_hash: string
+          reservation_token: string
+        }
+        Insert: {
+          created_at?: string
+          email_normalized: string
+          ip_hash: string
+          reservation_token?: string
+        }
+        Update: {
+          created_at?: string
+          email_normalized?: string
+          ip_hash?: string
+          reservation_token?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      release_signup_slot: {
+        Args: {
+          p_email: string
+          p_ip_hash: string
+          p_reservation_token: string
+        }
+        Returns: undefined
+      }
+      reserve_signup_slot: {
+        Args: {
+          p_email: string
+          p_ip_hash: string
+          p_max_accounts: number
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
