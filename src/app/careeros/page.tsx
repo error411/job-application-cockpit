@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ResumeVariantsManager } from '@/app/careeros/resume-variants-manager'
 import { getCareerProfileSnapshot } from '@/lib/careeros/server'
 import type {
   AccomplishmentRow,
@@ -384,10 +385,6 @@ export default async function CareerOsPage() {
   const projects = bySortOrder(snapshot.projects)
   const skills = bySortOrder(snapshot.skills)
   const accomplishments = bySortOrder(snapshot.accomplishments)
-  const resumeVariants = [...snapshot.resumeVariants].sort(
-    (a, b) =>
-      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  )
 
   const technologyNames = snapshot.technologies.map((item) => item.name).sort()
 
@@ -572,34 +569,19 @@ export default async function CareerOsPage() {
 
         <Panel
           title="Resume Variants"
-          description="Generated compositions that reference source data instead of replacing it."
+          description="View, edit, and create generated compositions that reference source data instead of replacing it."
         >
-          {resumeVariants.length > 0 ? (
-            <div className="space-y-3">
-              {resumeVariants.map((variant) => (
-                <article
-                  key={variant.id}
-                  className="rounded-2xl border border-zinc-200 bg-white p-4"
-                >
-                  <h3 className="text-sm font-semibold text-zinc-950">
-                    {variant.name}
-                  </h3>
-                  <p className="mt-1 text-sm text-zinc-600">
-                    {variant.target_title ?? variant.variant_type}
-                  </p>
-                  <p className="mt-3 text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">
-                    {variant.generated_at
-                      ? `Generated ${new Date(
-                          variant.generated_at
-                        ).toLocaleDateString()}`
-                      : 'Composition only'}
-                  </p>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <EmptyState label="No resume variants yet." />
-          )}
+          <ResumeVariantsManager
+            careerProfileId={profile.id}
+            initialVariants={snapshot.resumeVariants}
+            roles={roles}
+            projects={projects}
+            accomplishments={accomplishments}
+            skills={skills}
+            technologies={snapshot.technologies}
+            education={snapshot.education}
+            certifications={snapshot.certifications}
+          />
         </Panel>
       </section>
     </div>
