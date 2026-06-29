@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -7,8 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.4'
+    PostgrestVersion: "14.4"
   }
   graphql_public: {
     Tables: {
@@ -37,6 +39,182 @@ export type Database = {
   }
   public: {
     Tables: {
+      accomplishment_tag_links: {
+        Row: {
+          accomplishment_id: string
+          created_at: string
+          id: string
+          tag_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accomplishment_id: string
+          created_at?: string
+          id?: string
+          tag_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accomplishment_id?: string
+          created_at?: string
+          id?: string
+          tag_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accomplishment_tag_links_accomplishment_id_user_id_fkey"
+            columns: ["accomplishment_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "accomplishments"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "accomplishment_tag_links_tag_id_user_id_fkey"
+            columns: ["tag_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "accomplishment_tags"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      accomplishment_tags: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      accomplishment_technologies: {
+        Row: {
+          accomplishment_id: string
+          created_at: string
+          id: string
+          technology_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accomplishment_id: string
+          created_at?: string
+          id?: string
+          technology_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accomplishment_id?: string
+          created_at?: string
+          id?: string
+          technology_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accomplishment_technologies_accomplishment_id_user_id_fkey"
+            columns: ["accomplishment_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "accomplishments"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "accomplishment_technologies_technology_id_user_id_fkey"
+            columns: ["technology_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "technologies"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      accomplishments: {
+        Row: {
+          career_profile_id: string | null
+          confidence_score: number | null
+          created_at: string
+          evidence_url: string | null
+          id: string
+          impact_summary: string | null
+          is_featured: boolean
+          metric_unit: string | null
+          metric_value: string | null
+          scope: string | null
+          sort_order: number
+          source_note: string | null
+          statement: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          career_profile_id?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          evidence_url?: string | null
+          id?: string
+          impact_summary?: string | null
+          is_featured?: boolean
+          metric_unit?: string | null
+          metric_value?: string | null
+          scope?: string | null
+          sort_order?: number
+          source_note?: string | null
+          statement: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          career_profile_id?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          evidence_url?: string | null
+          id?: string
+          impact_summary?: string | null
+          is_featured?: boolean
+          metric_unit?: string | null
+          metric_value?: string | null
+          scope?: string | null
+          sort_order?: number
+          source_note?: string | null
+          statement?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accomplishments_career_profile_id_user_id_fkey"
+            columns: ["career_profile_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "career_profiles"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       application_assets: {
         Row: {
           cover_letter_markdown: string | null
@@ -73,11 +251,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'application_assets_job_id_fkey'
-            columns: ['job_id']
+            foreignKeyName: "application_assets_job_id_fkey"
+            columns: ["job_id"]
             isOneToOne: true
-            referencedRelation: 'jobs'
-            referencedColumns: ['id']
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -108,11 +286,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'application_workflow_meta_application_id_fkey'
-            columns: ['application_id']
+            foreignKeyName: "application_workflow_meta_application_id_fkey"
+            columns: ["application_id"]
             isOneToOne: true
-            referencedRelation: 'applications'
-            referencedColumns: ['id']
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -182,11 +360,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'applications_job_id_fkey'
-            columns: ['job_id']
+            foreignKeyName: "applications_job_id_fkey"
+            columns: ["job_id"]
             isOneToOne: false
-            referencedRelation: 'jobs'
-            referencedColumns: ['id']
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -382,13 +560,58 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'billing_subscriptions_billing_customer_id_fkey'
-            columns: ['billing_customer_id']
+            foreignKeyName: "billing_subscriptions_billing_customer_id_fkey"
+            columns: ["billing_customer_id"]
             isOneToOne: false
-            referencedRelation: 'billing_customers'
-            referencedColumns: ['id']
+            referencedRelation: "billing_customers"
+            referencedColumns: ["id"]
           },
         ]
+      }
+      candidate_education: {
+        Row: {
+          created_at: string | null
+          degree: string | null
+          details: string | null
+          end_date: string | null
+          field_of_study: string | null
+          id: string
+          is_current: boolean | null
+          location: string | null
+          school: string
+          sort_order: number | null
+          start_date: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          degree?: string | null
+          details?: string | null
+          end_date?: string | null
+          field_of_study?: string | null
+          id?: string
+          is_current?: boolean | null
+          location?: string | null
+          school: string
+          sort_order?: number | null
+          start_date?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          degree?: string | null
+          details?: string | null
+          end_date?: string | null
+          field_of_study?: string | null
+          id?: string
+          is_current?: boolean | null
+          location?: string | null
+          school?: string
+          sort_order?: number | null
+          start_date?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       candidate_experience: {
         Row: {
@@ -498,6 +721,231 @@ export type Database = {
         }
         Relationships: []
       }
+      career_profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          github_url: string | null
+          headline: string | null
+          id: string
+          is_default: boolean
+          linkedin_url: string | null
+          location: string | null
+          phone: string | null
+          portfolio_url: string | null
+          summary: string | null
+          updated_at: string
+          user_id: string
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name: string
+          github_url?: string | null
+          headline?: string | null
+          id?: string
+          is_default?: boolean
+          linkedin_url?: string | null
+          location?: string | null
+          phone?: string | null
+          portfolio_url?: string | null
+          summary?: string | null
+          updated_at?: string
+          user_id: string
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          github_url?: string | null
+          headline?: string | null
+          id?: string
+          is_default?: boolean
+          linkedin_url?: string | null
+          location?: string | null
+          phone?: string | null
+          portfolio_url?: string | null
+          summary?: string | null
+          updated_at?: string
+          user_id?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      certifications: {
+        Row: {
+          career_profile_id: string | null
+          created_at: string
+          credential_id: string | null
+          credential_url: string | null
+          does_not_expire: boolean
+          expires_at: string | null
+          id: string
+          issued_at: string | null
+          issuer: string | null
+          name: string
+          sort_order: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          career_profile_id?: string | null
+          created_at?: string
+          credential_id?: string | null
+          credential_url?: string | null
+          does_not_expire?: boolean
+          expires_at?: string | null
+          id?: string
+          issued_at?: string | null
+          issuer?: string | null
+          name: string
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          career_profile_id?: string | null
+          created_at?: string
+          credential_id?: string | null
+          credential_url?: string | null
+          does_not_expire?: boolean
+          expires_at?: string | null
+          id?: string
+          issued_at?: string | null
+          issuer?: string | null
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certifications_career_profile_id_user_id_fkey"
+            columns: ["career_profile_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "career_profiles"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      education: {
+        Row: {
+          career_profile_id: string | null
+          created_at: string
+          degree: string | null
+          description: string | null
+          end_date: string | null
+          field_of_study: string | null
+          honors: string[]
+          id: string
+          institution: string
+          is_current: boolean
+          location: string | null
+          sort_order: number
+          start_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          career_profile_id?: string | null
+          created_at?: string
+          degree?: string | null
+          description?: string | null
+          end_date?: string | null
+          field_of_study?: string | null
+          honors?: string[]
+          id?: string
+          institution: string
+          is_current?: boolean
+          location?: string | null
+          sort_order?: number
+          start_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          career_profile_id?: string | null
+          created_at?: string
+          degree?: string | null
+          description?: string | null
+          end_date?: string | null
+          field_of_study?: string | null
+          honors?: string[]
+          id?: string
+          institution?: string
+          is_current?: boolean
+          location?: string | null
+          sort_order?: number
+          start_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "education_career_profile_id_user_id_fkey"
+            columns: ["career_profile_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "career_profiles"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      employers: {
+        Row: {
+          career_profile_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          industry: string | null
+          location: string | null
+          name: string
+          normalized_name: string | null
+          sort_order: number
+          updated_at: string
+          user_id: string
+          website_url: string | null
+        }
+        Insert: {
+          career_profile_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          industry?: string | null
+          location?: string | null
+          name: string
+          normalized_name?: string | null
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+          website_url?: string | null
+        }
+        Update: {
+          career_profile_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          industry?: string | null
+          location?: string | null
+          name?: string
+          normalized_name?: string | null
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employers_career_profile_id_user_id_fkey"
+            columns: ["career_profile_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "career_profiles"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       job_scores: {
         Row: {
           created_at: string
@@ -531,11 +979,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'job_scores_job_id_fkey'
-            columns: ['job_id']
+            foreignKeyName: "job_scores_job_id_fkey"
+            columns: ["job_id"]
             isOneToOne: false
-            referencedRelation: 'jobs'
-            referencedColumns: ['id']
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -626,6 +1074,406 @@ export type Database = {
         }
         Relationships: []
       }
+      project_accomplishments: {
+        Row: {
+          accomplishment_id: string
+          created_at: string
+          id: string
+          project_id: string
+          sort_order: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accomplishment_id: string
+          created_at?: string
+          id?: string
+          project_id: string
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accomplishment_id?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_accomplishments_accomplishment_id_user_id_fkey"
+            columns: ["accomplishment_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "accomplishments"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "project_accomplishments_project_id_user_id_fkey"
+            columns: ["project_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      project_technologies: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          technology_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          technology_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          technology_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_technologies_project_id_user_id_fkey"
+            columns: ["project_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "project_technologies_technology_id_user_id_fkey"
+            columns: ["technology_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "technologies"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          career_profile_id: string | null
+          created_at: string
+          description: string | null
+          employer_id: string | null
+          end_date: string | null
+          id: string
+          is_featured: boolean
+          name: string
+          project_url: string | null
+          repository_url: string | null
+          role_id: string | null
+          sort_order: number
+          start_date: string | null
+          summary: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          career_profile_id?: string | null
+          created_at?: string
+          description?: string | null
+          employer_id?: string | null
+          end_date?: string | null
+          id?: string
+          is_featured?: boolean
+          name: string
+          project_url?: string | null
+          repository_url?: string | null
+          role_id?: string | null
+          sort_order?: number
+          start_date?: string | null
+          summary?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          career_profile_id?: string | null
+          created_at?: string
+          description?: string | null
+          employer_id?: string | null
+          end_date?: string | null
+          id?: string
+          is_featured?: boolean
+          name?: string
+          project_url?: string | null
+          repository_url?: string | null
+          role_id?: string | null
+          sort_order?: number
+          start_date?: string | null
+          summary?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_career_profile_id_user_id_fkey"
+            columns: ["career_profile_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "career_profiles"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "projects_employer_id_user_id_fkey"
+            columns: ["employer_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "projects_role_id_user_id_fkey"
+            columns: ["role_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      resume_variants: {
+        Row: {
+          career_profile_id: string | null
+          composition: Json
+          created_at: string
+          generated_at: string | null
+          generated_html: string | null
+          generated_markdown: string | null
+          generated_text: string | null
+          generation_model: string | null
+          generation_prompt: Json | null
+          id: string
+          job_id: string | null
+          name: string
+          target_company: string | null
+          target_description: string | null
+          target_title: string | null
+          updated_at: string
+          user_id: string
+          variant_type: string
+        }
+        Insert: {
+          career_profile_id?: string | null
+          composition?: Json
+          created_at?: string
+          generated_at?: string | null
+          generated_html?: string | null
+          generated_markdown?: string | null
+          generated_text?: string | null
+          generation_model?: string | null
+          generation_prompt?: Json | null
+          id?: string
+          job_id?: string | null
+          name: string
+          target_company?: string | null
+          target_description?: string | null
+          target_title?: string | null
+          updated_at?: string
+          user_id: string
+          variant_type?: string
+        }
+        Update: {
+          career_profile_id?: string | null
+          composition?: Json
+          created_at?: string
+          generated_at?: string | null
+          generated_html?: string | null
+          generated_markdown?: string | null
+          generated_text?: string | null
+          generation_model?: string | null
+          generation_prompt?: Json | null
+          id?: string
+          job_id?: string | null
+          name?: string
+          target_company?: string | null
+          target_description?: string | null
+          target_title?: string | null
+          updated_at?: string
+          user_id?: string
+          variant_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resume_variants_career_profile_id_user_id_fkey"
+            columns: ["career_profile_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "career_profiles"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "resume_variants_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      role_accomplishments: {
+        Row: {
+          accomplishment_id: string
+          created_at: string
+          id: string
+          role_id: string
+          sort_order: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accomplishment_id: string
+          created_at?: string
+          id?: string
+          role_id: string
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accomplishment_id?: string
+          created_at?: string
+          id?: string
+          role_id?: string
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_accomplishments_accomplishment_id_user_id_fkey"
+            columns: ["accomplishment_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "accomplishments"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "role_accomplishments_role_id_user_id_fkey"
+            columns: ["role_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      role_technologies: {
+        Row: {
+          created_at: string
+          id: string
+          role_id: string
+          technology_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role_id: string
+          technology_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role_id?: string
+          technology_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_technologies_role_id_user_id_fkey"
+            columns: ["role_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "role_technologies_technology_id_user_id_fkey"
+            columns: ["technology_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "technologies"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          career_profile_id: string | null
+          created_at: string
+          employer_id: string | null
+          employment_type: string | null
+          end_date: string | null
+          id: string
+          is_current: boolean
+          location: string | null
+          responsibilities: string[]
+          sort_order: number
+          start_date: string | null
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          career_profile_id?: string | null
+          created_at?: string
+          employer_id?: string | null
+          employment_type?: string | null
+          end_date?: string | null
+          id?: string
+          is_current?: boolean
+          location?: string | null
+          responsibilities?: string[]
+          sort_order?: number
+          start_date?: string | null
+          summary?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          career_profile_id?: string | null
+          created_at?: string
+          employer_id?: string | null
+          employment_type?: string | null
+          end_date?: string | null
+          id?: string
+          is_current?: boolean
+          location?: string | null
+          responsibilities?: string[]
+          sort_order?: number
+          start_date?: string | null
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roles_career_profile_id_user_id_fkey"
+            columns: ["career_profile_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "career_profiles"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "roles_employer_id_user_id_fkey"
+            columns: ["employer_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       signup_ip_emails: {
         Row: {
           created_at: string
@@ -647,6 +1495,175 @@ export type Database = {
         }
         Relationships: []
       }
+      skills: {
+        Row: {
+          career_profile_id: string | null
+          category: string | null
+          created_at: string
+          id: string
+          is_featured: boolean
+          name: string
+          proficiency: string | null
+          sort_order: number
+          summary: string | null
+          updated_at: string
+          user_id: string
+          years_experience: number | null
+        }
+        Insert: {
+          career_profile_id?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_featured?: boolean
+          name: string
+          proficiency?: string | null
+          sort_order?: number
+          summary?: string | null
+          updated_at?: string
+          user_id: string
+          years_experience?: number | null
+        }
+        Update: {
+          career_profile_id?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_featured?: boolean
+          name?: string
+          proficiency?: string | null
+          sort_order?: number
+          summary?: string | null
+          updated_at?: string
+          user_id?: string
+          years_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skills_career_profile_id_user_id_fkey"
+            columns: ["career_profile_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "career_profiles"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      star_stories: {
+        Row: {
+          accomplishment_id: string | null
+          action: string
+          career_profile_id: string | null
+          created_at: string
+          id: string
+          interview_question_targets: string[]
+          lesson_learned: string | null
+          project_id: string | null
+          result: string
+          role_id: string | null
+          situation: string
+          tags: string[]
+          task: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accomplishment_id?: string | null
+          action: string
+          career_profile_id?: string | null
+          created_at?: string
+          id?: string
+          interview_question_targets?: string[]
+          lesson_learned?: string | null
+          project_id?: string | null
+          result: string
+          role_id?: string | null
+          situation: string
+          tags?: string[]
+          task: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accomplishment_id?: string | null
+          action?: string
+          career_profile_id?: string | null
+          created_at?: string
+          id?: string
+          interview_question_targets?: string[]
+          lesson_learned?: string | null
+          project_id?: string | null
+          result?: string
+          role_id?: string | null
+          situation?: string
+          tags?: string[]
+          task?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "star_stories_accomplishment_id_user_id_fkey"
+            columns: ["accomplishment_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "accomplishments"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "star_stories_career_profile_id_user_id_fkey"
+            columns: ["career_profile_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "career_profiles"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "star_stories_project_id_user_id_fkey"
+            columns: ["project_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "star_stories_role_id_user_id_fkey"
+            columns: ["role_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      technologies: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+          website_url: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+          website_url?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -661,11 +1678,7 @@ export type Database = {
         Returns: undefined
       }
       reserve_signup_slot: {
-        Args: {
-          p_email: string
-          p_ip_hash: string
-          p_max_accounts: number
-        }
+        Args: { p_email: string; p_ip_hash: string; p_max_accounts: number }
         Returns: Json
       }
     }
@@ -678,32 +1691,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] &
-        DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] &
-        DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -712,23 +1726,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -737,23 +1751,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -762,36 +1776,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
