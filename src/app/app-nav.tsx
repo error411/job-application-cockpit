@@ -20,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/jobs', label: 'Jobs' },
   { href: '/follow-ups', label: 'Follow Ups' },
   { href: '/reports', label: 'Reports' },
+  { href: '/careeros', label: 'CareerOS' },
   { href: '/onboarding', label: 'Onboarding' },
   { href: '/profile', label: 'Profile' },
 ]
