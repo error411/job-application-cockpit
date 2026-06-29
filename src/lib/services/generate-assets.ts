@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { openai } from '@/lib/openai/client'
+import { getCareerOsApplicationAssetContext } from '@/lib/careeros/application-assets-context'
 import type {
   ApplicationAssetInsert,
   CandidateProfileRow,
@@ -112,20 +113,25 @@ function normalizeCandidateProfile(
   }
 }
 
-export async function generateAssetsForJob(jobId: string, userId: string) {
-  const supabase = createAdminClient()
+type ApplicationAssetPromptContext = {
+  sourceLabel: string
+  candidateProfileBlock: string
+  strengthsBlock: string
+  generalExperienceBlock: string
+  structuredExperienceBlock: string
+  projectsBlock: string
+  accomplishmentsBlock: string
+  starStoriesBlock: string
+  educationBlock: string
+  certificationsBlock: string
+  resumeVariantsBlock: string
+  hasStructuredExperience: boolean
+}
 
-  const { data: job, error: jobError } = await supabase
-    .from('jobs')
-    .select('id, company, title, location, description_raw, user_id')
-    .eq('id', jobId)
-    .eq('user_id', userId)
-    .single()
-
-  if (jobError || !job) {
-    throw new Error(jobError?.message || 'Job not found')
-  }
-
+async function getLegacyPromptContext(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string
+): Promise<ApplicationAssetPromptContext> {
   const { data: profile, error: profileError } = await supabase
     .from('candidate_profile')
     .select('*')
@@ -134,14 +140,6 @@ export async function generateAssetsForJob(jobId: string, userId: string) {
 
   if (profileError || !profile) {
     throw new Error(profileError?.message || 'Candidate profile not found')
-  }
-
-  const typedJob: JobForAssets = {
-    id: job.id,
-    company: job.company,
-    title: job.title,
-    location: job.location,
-    description_raw: job.description_raw,
   }
 
   const typedProfile = normalizeCandidateProfile(
@@ -182,7 +180,94 @@ ${technologies.length ? `Technologies: ${technologies.join(', ')}` : ''}
     })
     .join('\n\n')
 
-  const hasStructuredExperience = experienceRows.length > 0
+  return {
+    sourceLabel: 'Legacy candidate_profile and candidate_experience',
+    candidateProfileBlock: `
+Name: ${typedProfile.full_name}
+Title: ${typedProfile.title || ''}
+Summary: ${typedProfile.summary || ''}
+City: ${typedProfile.city || ''}
+State: ${typedProfile.state || ''}
+Location line: ${candidateLocation}
+Email: ${typedProfile.email || ''}
+Phone: ${typedProfile.phone || ''}
+LinkedIn: ${typedProfile.linkedin_url || ''}
+    `.trim(),
+    strengthsBlock: strengths.length
+      ? strengths.map((s) => `- ${s}`).join('\n')
+      : '- None provided',
+    generalExperienceBlock: experienceBullets.length
+      ? experienceBullets.map((b) => `- ${b}`).join('\n')
+      : '- None provided',
+    structuredExperienceBlock:
+      formattedExperience || 'No structured past experience provided.',
+    projectsBlock: '- None provided',
+    accomplishmentsBlock: '- None provided',
+    starStoriesBlock: '- None provided',
+    educationBlock: '- None provided',
+    certificationsBlock: '- None provided',
+    resumeVariantsBlock: '- None provided',
+    hasStructuredExperience: experienceRows.length > 0,
+  }
+}
+
+async function getApplicationAssetPromptContext(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string
+): Promise<ApplicationAssetPromptContext> {
+  const careerOsContext = await getCareerOsApplicationAssetContext(
+    supabase,
+    userId
+  )
+
+  if (careerOsContext) {
+    return {
+      sourceLabel: 'CareerOS structured profile',
+      candidateProfileBlock: careerOsContext.candidateBlock,
+      strengthsBlock: careerOsContext.skillsBlock,
+      generalExperienceBlock: '- CareerOS accomplishments and roles are the primary source.',
+      structuredExperienceBlock:
+        careerOsContext.experienceBlock ||
+        'No structured CareerOS roles provided.',
+      projectsBlock: careerOsContext.projectsBlock || '- None provided',
+      accomplishmentsBlock:
+        careerOsContext.accomplishmentsBlock || '- None provided',
+      starStoriesBlock: careerOsContext.starStoriesBlock || '- None provided',
+      educationBlock: careerOsContext.educationBlock || '- None provided',
+      certificationsBlock:
+        careerOsContext.certificationsBlock || '- None provided',
+      resumeVariantsBlock:
+        careerOsContext.resumeVariantsBlock || '- None provided',
+      hasStructuredExperience: careerOsContext.hasStructuredExperience,
+    }
+  }
+
+  return getLegacyPromptContext(supabase, userId)
+}
+
+export async function generateAssetsForJob(jobId: string, userId: string) {
+  const supabase = createAdminClient()
+
+  const { data: job, error: jobError } = await supabase
+    .from('jobs')
+    .select('id, company, title, location, description_raw, user_id')
+    .eq('id', jobId)
+    .eq('user_id', userId)
+    .single()
+
+  if (jobError || !job) {
+    throw new Error(jobError?.message || 'Job not found')
+  }
+
+  const typedJob: JobForAssets = {
+    id: job.id,
+    company: job.company,
+    title: job.title,
+    location: job.location,
+    description_raw: job.description_raw,
+  }
+
+  const promptContext = await getApplicationAssetPromptContext(supabase, userId)
 
   const response = await openai.responses.create({
     model: 'gpt-5.4',
@@ -197,6 +282,8 @@ Rules:
 - Do not invent employers, dates, certifications, metrics, contact info, links, or locations
 - Tailor tightly to the job description
 - Use the candidate profile and structured past experience
+- If CareerOS data is provided, treat it as the primary source of truth
+- Prefer CareerOS accomplishments, roles, projects, skills, technologies, and STAR stories over legacy profile bullets
 - Prefer concrete, relevant experience over generic language
 - Keep resume markdown concise, targeted, professional, and ATS-friendly
 - Resume markdown should be formatted for real-world submission
@@ -220,31 +307,39 @@ Resume formatting requirements:
       {
         role: 'user',
         content: `
+Source system: ${promptContext.sourceLabel}
+
 Candidate profile:
-Name: ${typedProfile.full_name}
-Title: ${typedProfile.title || ''}
-Summary: ${typedProfile.summary || ''}
-City: ${typedProfile.city || ''}
-State: ${typedProfile.state || ''}
-Location line: ${candidateLocation}
-Email: ${typedProfile.email || ''}
-Phone: ${typedProfile.phone || ''}
-LinkedIn: ${typedProfile.linkedin_url || ''}
+${promptContext.candidateProfileBlock}
 
 Strengths:
-${strengths.length ? strengths.map((s) => `- ${s}`).join('\n') : '- None provided'}
+${promptContext.strengthsBlock}
 
 General experience bullets:
-${
-  experienceBullets.length
-    ? experienceBullets.map((b) => `- ${b}`).join('\n')
-    : '- None provided'
-}
+${promptContext.generalExperienceBlock}
 
 Structured past experience:
-${formattedExperience || 'No structured past experience provided.'}
+${promptContext.structuredExperienceBlock}
 
-Structured experience present: ${hasStructuredExperience ? 'yes' : 'no'}
+Projects:
+${promptContext.projectsBlock}
+
+Reusable accomplishments:
+${promptContext.accomplishmentsBlock}
+
+STAR interview stories:
+${promptContext.starStoriesBlock}
+
+Education:
+${promptContext.educationBlock}
+
+Certifications:
+${promptContext.certificationsBlock}
+
+Resume variants and compositions:
+${promptContext.resumeVariantsBlock}
+
+Structured experience present: ${promptContext.hasStructuredExperience ? 'yes' : 'no'}
 
 Target job:
 Company: ${typedJob.company}
