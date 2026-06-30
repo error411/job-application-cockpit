@@ -87,7 +87,7 @@ function formatDateRange(
   const start = formatMonthYear(startDate) ?? 'Unknown start'
   const end = isCurrent ? 'Present' : formatMonthYear(endDate) ?? 'Unknown end'
 
-  return `${start} – ${end}`
+  return `${start} - ${end}`
 }
 
 function formatLocationLine(city: string | null, state: string | null) {
@@ -128,6 +128,46 @@ type ApplicationAssetPromptContext = {
   hasStructuredExperience: boolean
 }
 
+async function getProfileExperienceBlock(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string
+) {
+  const { data: experienceData, error: experienceError } = await supabase
+    .from('candidate_experience')
+    .select(
+      'company, title, location, start_date, end_date, is_current, summary, bullets, technologies, sort_order'
+    )
+    .eq('user_id', userId)
+    .order('sort_order', { ascending: true })
+
+  if (experienceError) {
+    throw new Error(experienceError.message)
+  }
+
+  const experienceRows = (experienceData ?? []) as CandidateExperienceRow[]
+
+  const block = experienceRows
+    .map((exp) => {
+      const bullets = toStringArray(exp.bullets)
+      const technologies = toStringArray(exp.technologies)
+
+      return `
+${exp.title} @ ${exp.company}
+Location: ${exp.location || 'Not specified'}
+Dates: ${formatDateRange(exp.start_date, exp.end_date, exp.is_current)}
+${exp.summary ? `Summary: ${exp.summary}` : ''}
+${bullets.length ? `Bullets:\n${bullets.map((b) => `- ${b}`).join('\n')}` : ''}
+${technologies.length ? `Technologies: ${technologies.join(', ')}` : ''}
+      `.trim()
+    })
+    .join('\n\n')
+
+  return {
+    block,
+    hasExperience: experienceRows.length > 0,
+  }
+}
+
 async function getLegacyPromptContext(
   supabase: ReturnType<typeof createAdminClient>,
   userId: string
@@ -149,36 +189,7 @@ async function getLegacyPromptContext(
   const strengths = toStringArray(typedProfile.strengths)
   const experienceBullets = toStringArray(typedProfile.experience_bullets)
   const candidateLocation = formatLocationLine(typedProfile.city, typedProfile.state)
-
-  const { data: experienceData, error: experienceError } = await supabase
-    .from('candidate_experience')
-    .select(
-      'company, title, location, start_date, end_date, is_current, summary, bullets, technologies, sort_order'
-    )
-    .eq('user_id', userId)
-    .order('sort_order', { ascending: true })
-
-  if (experienceError) {
-    throw new Error(experienceError.message)
-  }
-
-  const experienceRows = (experienceData ?? []) as CandidateExperienceRow[]
-
-  const formattedExperience = experienceRows
-    .map((exp) => {
-      const bullets = toStringArray(exp.bullets)
-      const technologies = toStringArray(exp.technologies)
-
-      return `
-${exp.title} @ ${exp.company}
-Location: ${exp.location || 'Not specified'}
-Dates: ${formatDateRange(exp.start_date, exp.end_date, exp.is_current)}
-${exp.summary ? `Summary: ${exp.summary}` : ''}
-${bullets.length ? `Bullets:\n${bullets.map((b) => `- ${b}`).join('\n')}` : ''}
-${technologies.length ? `Technologies: ${technologies.join(', ')}` : ''}
-      `.trim()
-    })
-    .join('\n\n')
+  const profileExperience = await getProfileExperienceBlock(supabase, userId)
 
   return {
     sourceLabel: 'Legacy candidate_profile and candidate_experience',
@@ -200,14 +211,14 @@ LinkedIn: ${typedProfile.linkedin_url || ''}
       ? experienceBullets.map((b) => `- ${b}`).join('\n')
       : '- None provided',
     structuredExperienceBlock:
-      formattedExperience || 'No structured past experience provided.',
+      profileExperience.block || 'No structured past experience provided.',
     projectsBlock: '- None provided',
     accomplishmentsBlock: '- None provided',
     starStoriesBlock: '- None provided',
     educationBlock: '- None provided',
     certificationsBlock: '- None provided',
     resumeVariantsBlock: '- None provided',
-    hasStructuredExperience: experienceRows.length > 0,
+    hasStructuredExperience: profileExperience.hasExperience,
   }
 }
 
@@ -221,13 +232,25 @@ async function getApplicationAssetPromptContext(
   )
 
   if (careerOsContext) {
+    const profileExperience = await getProfileExperienceBlock(supabase, userId)
+    const structuredExperienceBlocks = [
+      careerOsContext.experienceBlock
+        ? `CareerOS roles:\n${careerOsContext.experienceBlock}`
+        : '',
+      profileExperience.block
+        ? `Profile job experience:\n${profileExperience.block}`
+        : '',
+    ].filter(Boolean)
+
     return {
-      sourceLabel: 'CareerOS structured profile',
+      sourceLabel: profileExperience.hasExperience
+        ? 'CareerOS structured profile and candidate_profile job experience'
+        : 'CareerOS structured profile',
       candidateProfileBlock: careerOsContext.candidateBlock,
       strengthsBlock: careerOsContext.skillsBlock,
       generalExperienceBlock: '- CareerOS accomplishments and roles are the primary source.',
       structuredExperienceBlock:
-        careerOsContext.experienceBlock ||
+        structuredExperienceBlocks.join('\n\n') ||
         'No structured CareerOS roles provided.',
       projectsBlock: careerOsContext.projectsBlock || '- None provided',
       accomplishmentsBlock:
@@ -238,7 +261,9 @@ async function getApplicationAssetPromptContext(
         careerOsContext.certificationsBlock || '- None provided',
       resumeVariantsBlock:
         careerOsContext.resumeVariantsBlock || '- None provided',
-      hasStructuredExperience: careerOsContext.hasStructuredExperience,
+      hasStructuredExperience:
+        careerOsContext.hasStructuredExperience ||
+        profileExperience.hasExperience,
     }
   }
 
