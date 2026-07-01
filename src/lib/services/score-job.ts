@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { openai } from '@/lib/openai/client'
+import { getCareerOsApplicationAssetContext } from '@/lib/careeros/application-assets-context'
 import type {
   CandidateProfileRow,
   JobRow,
@@ -34,6 +35,18 @@ type CandidateExperienceRow = {
   bullets: string[] | null
   technologies: string[] | null
   sort_order: number | null
+}
+
+type ScorePromptContext = {
+  sourceLabel: string
+  candidateProfileBlock: string
+  strengthsBlock: string
+  generalExperienceBlock: string
+  structuredExperienceBlock: string
+  projectsBlock: string
+  accomplishmentsBlock: string
+  starStoriesBlock: string
+  hasStructuredExperience: boolean
 }
 
 type JobScoreRouteInsert = Omit<
@@ -74,6 +87,131 @@ function formatDateRange(
   return `${start} to ${end}`
 }
 
+async function getProfileExperienceBlock(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string
+) {
+  const { data: experienceData, error: experienceError } = await supabase
+    .from('candidate_experience')
+    .select(
+      'company, title, location, start_date, end_date, is_current, summary, bullets, technologies, sort_order'
+    )
+    .eq('user_id', userId)
+    .order('sort_order', { ascending: true })
+
+  if (experienceError) {
+    throw new Error(experienceError.message)
+  }
+
+  const experienceRows = (experienceData ?? []) as CandidateExperienceRow[]
+
+  const block = experienceRows
+    .map((exp) => {
+      const bullets = toStringArray(exp.bullets)
+      const technologies = toStringArray(exp.technologies)
+
+      return `
+${exp.title} @ ${exp.company}
+Location: ${exp.location || 'Not specified'}
+Dates: ${formatDateRange(exp.start_date, exp.end_date, exp.is_current)}
+${exp.summary ? `Summary: ${exp.summary}` : ''}
+${bullets.length ? `Bullets:\n${bullets.map((b) => `- ${b}`).join('\n')}` : ''}
+${technologies.length ? `Technologies: ${technologies.join(', ')}` : ''}
+      `.trim()
+    })
+    .join('\n\n')
+
+  return {
+    block,
+    hasExperience: experienceRows.length > 0,
+  }
+}
+
+async function getLegacyScorePromptContext(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string
+): Promise<ScorePromptContext> {
+  const { data: profile, error: profileError } = await supabase
+    .from('candidate_profile')
+    .select('*')
+    .eq('user_id', userId)
+    .single()
+
+  if (profileError || !profile) {
+    throw new Error(profileError?.message || 'Candidate profile not found')
+  }
+
+  const typedProfile: CandidateProfileForScore = profile
+  const strengths = toStringArray(typedProfile.strengths)
+  const experienceBullets = toStringArray(typedProfile.experience_bullets)
+  const profileExperience = await getProfileExperienceBlock(supabase, userId)
+
+  return {
+    sourceLabel: 'Legacy candidate_profile and candidate_experience',
+    candidateProfileBlock: `
+Name: ${typedProfile.full_name}
+Title: ${typedProfile.title || ''}
+Summary: ${typedProfile.summary || ''}
+    `.trim(),
+    strengthsBlock: strengths.length
+      ? strengths.map((s) => `- ${s}`).join('\n')
+      : '- None provided',
+    generalExperienceBlock: experienceBullets.length
+      ? experienceBullets.map((b) => `- ${b}`).join('\n')
+      : '- None provided',
+    structuredExperienceBlock:
+      profileExperience.block || 'No structured past experience provided.',
+    projectsBlock: '- None provided',
+    accomplishmentsBlock: '- None provided',
+    starStoriesBlock: '- None provided',
+    hasStructuredExperience: profileExperience.hasExperience,
+  }
+}
+
+async function getScorePromptContext(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string
+): Promise<ScorePromptContext> {
+  const careerOsContext = await getCareerOsApplicationAssetContext(
+    supabase,
+    userId
+  )
+
+  if (careerOsContext) {
+    const profileExperience = await getProfileExperienceBlock(supabase, userId)
+    const structuredExperienceBlocks = [
+      careerOsContext.experienceBlock
+        ? `CareerOS roles:\n${careerOsContext.experienceBlock}`
+        : '',
+      profileExperience.block
+        ? `Profile job experience:\n${profileExperience.block}`
+        : '',
+    ].filter(Boolean)
+
+    return {
+      sourceLabel: profileExperience.hasExperience
+        ? 'CareerOS structured profile and candidate_profile job experience'
+        : 'CareerOS structured profile',
+      candidateProfileBlock: careerOsContext.candidateBlock,
+      strengthsBlock: careerOsContext.skillsBlock,
+      generalExperienceBlock:
+        '- CareerOS accomplishments, roles, projects, skills, technologies, and STAR stories are the primary source.',
+      structuredExperienceBlock:
+        structuredExperienceBlocks.join('\n\n') ||
+        'No structured CareerOS roles provided.',
+      projectsBlock: careerOsContext.projectsBlock || '- None provided',
+      accomplishmentsBlock:
+        careerOsContext.accomplishmentsBlock || '- None provided',
+      starStoriesBlock: careerOsContext.starStoriesBlock || '- None provided',
+      hasStructuredExperience:
+        careerOsContext.hasStructuredExperience ||
+        profileExperience.hasExperience,
+    }
+  }
+
+  return getLegacyScorePromptContext(supabase, userId)
+}
+
 export async function scoreJobService(jobId: string) {
   // Scoring uses the admin client because it may run from server routes and must
   // read/write several tables as one trusted backend operation.
@@ -93,52 +231,13 @@ export async function scoreJobService(jobId: string) {
     throw new Error('Job description is required before scoring.')
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('candidate_profile')
-    .select('*')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .single()
-
-  if (profileError || !profile) {
-    throw new Error(profileError?.message || 'Candidate profile not found')
+  if (!job.user_id) {
+    throw new Error('Job user not found')
   }
 
+  const userId = job.user_id
   const typedJob: JobForScore = job
-  const typedProfile: CandidateProfileForScore = profile
-
-  const strengths = toStringArray(typedProfile.strengths)
-  const experienceBullets = toStringArray(typedProfile.experience_bullets)
-
-  const { data: experienceData, error: experienceError } = await supabase
-    .from('candidate_experience')
-    .select(
-      'company, title, location, start_date, end_date, is_current, summary, bullets, technologies, sort_order'
-    )
-    .eq('candidate_profile_id', typedProfile.id)
-    .order('sort_order', { ascending: true })
-
-  if (experienceError) {
-    throw new Error(experienceError.message)
-  }
-
-  const experienceRows = (experienceData ?? []) as CandidateExperienceRow[]
-
-  const formattedExperience = experienceRows
-    .map((exp) => {
-      const bullets = toStringArray(exp.bullets)
-      const technologies = toStringArray(exp.technologies)
-
-      return `
-${exp.title} @ ${exp.company}
-Location: ${exp.location || 'Not specified'}
-Dates: ${formatDateRange(exp.start_date, exp.end_date, exp.is_current)}
-${exp.summary ? `Summary: ${exp.summary}` : ''}
-${bullets.length ? `Bullets:\n${bullets.map((b) => `- ${b}`).join('\n')}` : ''}
-${technologies.length ? `Technologies: ${technologies.join(', ')}` : ''}
-      `.trim()
-    })
-    .join('\n\n')
+  const promptContext = await getScorePromptContext(supabase, userId)
 
   // The model is asked for strict JSON so the app can parse and store a
   // predictable score payload instead of scraping free-form text.
@@ -158,6 +257,8 @@ Rules:
 - missing_skills should list important missing requirements
 - reasons should be short bullet-style explanations
 - Use both the profile summary and structured past experience
+- If CareerOS data is provided, treat it as the primary source of truth
+- Prefer CareerOS accomplishments, roles, projects, skills, technologies, and STAR stories over legacy profile bullets
 - Give strong weight to directly relevant work history
 - Output must follow the provided schema exactly
         `.trim(),
@@ -165,19 +266,30 @@ Rules:
       {
         role: 'user',
         content: `
+Source system: ${promptContext.sourceLabel}
+
 Candidate profile:
-Name: ${typedProfile.full_name}
-Title: ${typedProfile.title || ''}
-Summary: ${typedProfile.summary || ''}
+${promptContext.candidateProfileBlock}
 
 Strengths:
-${strengths.map((s) => `- ${s}`).join('\n')}
+${promptContext.strengthsBlock}
 
 General experience bullets:
-${experienceBullets.map((b) => `- ${b}`).join('\n')}
+${promptContext.generalExperienceBlock}
 
 Structured past experience:
-${formattedExperience || 'No structured past experience provided.'}
+${promptContext.structuredExperienceBlock}
+
+Projects:
+${promptContext.projectsBlock}
+
+Reusable accomplishments:
+${promptContext.accomplishmentsBlock}
+
+STAR interview stories:
+${promptContext.starStoriesBlock}
+
+Structured experience present: ${promptContext.hasStructuredExperience ? 'yes' : 'no'}
 
 Target job:
 Company: ${typedJob.company}
